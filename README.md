@@ -6,11 +6,11 @@ formats.
 ## Motivation
 
 At Segment, we do a lot of marshaling and unmarshaling of data when sending,
-queuing, or storing messages, and the resources that we need to provision on the
+queuing, or storing messages. The resources we need to provision on the
 infrastructure are directly related to the type and amount of data that we are
 processing. At the scale we operate at, the tools we choose to build programs
-can have a large impact on the efficiency of our systems, and it is important to
-explore alternative approaches when we reach the limits of the code we used.
+can have a large impact on the efficiency of our systems. It is important to
+explore alternative approaches when we reach the limits of the code we use.
 
 This repository includes experiments for Go packages for marshaling and
 unmarshaling data in various formats. While the focus is on providing a high
@@ -84,8 +84,8 @@ BenchmarkUnmarshal/*json.codeResponse2     1038339       8483          -99.18%
 ```
 
 Although this package aims to be a drop-in replacement of [`encoding/json`](https://golang.org/pkg/encoding/json/),
-it does not guarantee the same error messages. It will error in the same cases as the standard library, but the exact
-error message may be different.
+it does not guarantee the same error messages. It will error in the same cases 
+as the standard library, but the exact error message may be different.
 
 ## encoding/iso8601 [![GoDoc](https://godoc.org/github.com/segmentio/encoding/iso8601?status.svg)](https://godoc.org/github.com/segmentio/encoding/iso8601)
 
@@ -102,7 +102,7 @@ efficient, constructing errors is much slower and has a much bigger memory
 footprint.
 
 We've developed fast iso8601 validation functions that cause no heap allocations
-to remidiate to this problem. Adding a validation step at to determine whether
-the value is a date representation or a simple string reduced CPU and memory
-usage by 5% in some of our programs that were doing these `time.Parse` calls on
-very hot code paths.
+to remediate this problem. We added a validation step to determine whether
+the value is a date representation or a simple string. This reduced CPU and 
+memory usage by 5% in some programs that were doing `time.Parse` calls on very 
+hot code paths.
