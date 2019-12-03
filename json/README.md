@@ -1,4 +1,4 @@
-# encoding/json
+# encoding/json [![GoDoc](https://godoc.org/github.com/segmentio/encoding/json?status.svg)](https://godoc.org/github.com/segmentio/encoding/json)
 
 Go package offering a replacement implementation of the standard library's
 [`encoding/json`](https://golang.org/pkg/encoding/json/) package, with much
