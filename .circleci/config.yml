@@ -1,22 +1,16 @@
 version: 2
 jobs:
   test:
-    working_directory: /go/src/github.com/segmentio/encoding
     docker:
       - image: circleci/golang:1.13
-        environment:
-          GO111MODULE: 'on'
     steps:
       - checkout
       - run: go mod download
       - run: make test
 
   benchmark:
-    working_directory: /go/src/github.com/segmentio/encoding
     docker:
       - image: circleci/golang
-        environment:
-          GO111MODULE: 'on'
     steps:
       - checkout
       - run: go install golang.org/x/tools/cmd/benchcmp
