@@ -1,0 +1,7 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/mailru/easyjson
+compression: snappy
+avg size: 1415.50 KB
+min size: 1369.04 KB
+max size: 1468.66 KB

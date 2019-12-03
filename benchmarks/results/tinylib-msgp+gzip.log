@@ -1,0 +1,9 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/tinylib/msgp
+compression: gzip
+#187: json: cannot unmarshal number into Go struct field Message.userId of type string
+errors: 2/10000
+avg size: 1052.68 KB
+min size: 1018.90 KB
+max size: 1078.90 KB

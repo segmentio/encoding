@@ -1,0 +1,1 @@
+BenchmarkEncoding/count=20		200000		78793 ns/op		14.09 MB/s		17599 B/op		297 allocs/op		1.08 KB/msg

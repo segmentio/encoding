@@ -1,0 +1,8 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/segmentio/encoding/json
+#187: json: cannot unmarshal number into Go struct field Message.userId of type string
+errors: 2/10000
+avg size: 2026.17 KB
+min size: 1959.18 KB
+max size: 2075.97 KB

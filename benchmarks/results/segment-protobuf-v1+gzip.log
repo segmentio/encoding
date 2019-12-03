@@ -1,0 +1,9 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/segmentio/protobuf/v1
+compression: gzip
+#187: json: cannot unmarshal number into Go struct field Message.userId of type string
+errors: 2/10000
+avg size: 1130.42 KB
+min size: 1093.34 KB
+max size: 1170.82 KB

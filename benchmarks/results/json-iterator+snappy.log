@@ -1,0 +1,9 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/json-iterator/go
+compression: snappy
+#187: json: cannot unmarshal number into Go struct field Message.userId of type string
+errors: 2/10000
+avg size: 1423.65 KB
+min size: 1375.36 KB
+max size: 1479.84 KB

@@ -1,0 +1,9 @@
+goos: darwin
+goarch: amd64
+pkg: encoding/json
+compression: gzip
+#187: json: cannot unmarshal number into Go struct field Message.userId of type string
+errors: 2/10000
+avg size: 1075.97 KB
+min size: 1044.33 KB
+max size: 1100.51 KB
