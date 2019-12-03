@@ -1,4 +1,4 @@
-# encoding [![Circle CI](https://circleci.com/gh/segmentio/encoding.svg?style=shield&circle-token=9bc6038a8e264684efe602003bb52c26835fc400)](https://circleci.com/gh/segmentio/encoding)
+# encoding [![Circle CI](https://circleci.com/gh/segmentio/encoding.svg?style=shield&circle-token=9bc6038a8e264684efe602003bb52c26835fc400)](https://circleci.com/gh/segmentio/encoding) [![Go Report Card](https://goreportcard.com/badge/github.com/segmentio/encoding)](https://goreportcard.com/report/github.com/segmentio/encoding) 
 
 Go package containing implementations of encoders and decoders for various data
 formats.
@@ -18,7 +18,7 @@ performance library, we also aim for very low development and maintenance overhe
 by implementing APIs that can be used as drop-in replacements for the default
 solutions.
 
-## encoding/json
+## encoding/json [![GoDoc](https://godoc.org/github.com/segmentio/encoding/json?status.svg)](https://godoc.org/github.com/segmentio/encoding/json)
 
 The `json` sub-package provides a re-implementation of the functionalities
 offered by the standard library's [`encoding/json`](https://golang.org/pkg/encoding/json/)
@@ -87,7 +87,7 @@ Although this package aims to be a drop-in replacement of [`encoding/json`](http
 it does not guarantee the same error messages. It will error in the same cases as the standard library, but the exact
 error message may be different.
 
-## encoding/iso8601
+## encoding/iso8601 [![GoDoc](https://godoc.org/github.com/segmentio/encoding/iso8601?status.svg)](https://godoc.org/github.com/segmentio/encoding/iso8601)
 
 The `iso8601` sub-package exposes APIs to efficiently deal with with string
 representations of iso8601 dates.
