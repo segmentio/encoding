@@ -1,4 +1,4 @@
-# encoding [![Circle CI](https://circleci.com/gh/segmentio/encoding.svg?style=shield&circle-token=01f2b64ab9ae60b817cc9a60647c0fba3fe3d02f)](https://circleci.com/gh/segmentio/encoding)
+# encoding [![Circle CI](https://circleci.com/gh/segmentio/encoding.svg?style=svg&circle-token=9bc6038a8e264684efe602003bb52c26835fc400)](https://circleci.com/gh/segmentio/encoding)
 
 Go package containing implementations of encoders and decoders for various data
 formats.
