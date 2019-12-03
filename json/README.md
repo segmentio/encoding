@@ -49,4 +49,28 @@ need it you're better off sticking to the standard library, or spend a bit of
 time implementing it in here ;)
 
 Note that none of those features should result in performance degradations if
-they were implemented in the package.
+they were implemented in the package, and we welcome contributions!
+
+## Trade-offs
+
+As one would expect, we had to make a couple of trade-offs to achieve greater
+performance than the standard library, but there were also features that we
+did not want to give away.
+
+Other open-source packages which attempt to offer a reduced CPU and memory
+footprint usually do so by designing a different API, or require code generation
+(therefore adding complexity to the build process). These were not acceptable
+conditions for us, as we were not willing to trade off developer productivity
+for better runtime performance. The safest way to achieve this was to replicate
+exactly standard library interfaces and behavior, which meant the package
+implementation was the only area that we were able to work with.
+The internals of this package make heavy use of unsafe pointer arithmetics and
+other performance optimizations, and therefore are not as approachable as
+typical Go programs. Basically, we put a bigger burden on maintainers to achieve
+better runtime cost without sacrificing developer productivity.
+
+For these reasons, we also don't believe that this code should be ported upsteam
+to the standard `encoding/json` package. The standard library has to remain
+readable and approachable to maximize stability and maintainability, and make
+projects like this one possible because a high quality reference implementation
+already exists.
