@@ -61,7 +61,7 @@ Other open-source packages offering a reduced CPU and memory footprint usually
 do so by designing a different API, or require code generation (therefore adding
 complexity to the build process). These were not acceptable conditions for us,
 as we were not willing to trade off developer productivity for better runtime
-performance. The safest way to achieve this was to replicate exactly standard
+performance. To achieve this, we chose to exactly replicate the standard
 library interfaces and behavior, which meant the package implementation was the
 only area that we were able to work with. The internals of this package make
 heavy use of unsafe pointer arithmetics and other performance optimizations,
