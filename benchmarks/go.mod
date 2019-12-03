@@ -13,7 +13,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
-	github.com/segmentio/encoding v0.0.0-20191119221531-ede53addb484
+	github.com/segmentio/encoding v0.1.0
 	github.com/tinylib/msgp v1.1.0
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect
