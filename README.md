@@ -102,7 +102,7 @@ efficient, constructing errors is much slower and has a much bigger memory
 footprint.
 
 We've developed fast iso8601 validation functions that cause no heap allocations
-to remidiate this problem. We added a validation step to determine whether
+to remediate this problem. We added a validation step to determine whether
 the value is a date representation or a simple string. This reduced CPU and 
 memory usage by 5% in some programs that were doing `time.Parse` calls on very 
 hot code paths.
