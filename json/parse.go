@@ -452,8 +452,6 @@ func parseStringUnquote(b []byte, r []byte) ([]byte, []byte, bool, error) {
 					if err != nil {
 						return r, b, true, err
 					}
-					i += n2
-
 					if r1 = utf16.DecodeRune(r1, r2); r1 != unicode.ReplacementChar {
 						s = s[2+n2:]
 					}

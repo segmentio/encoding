@@ -30,7 +30,7 @@ func Fuzz(data []byte) int {
 		func() interface{} { return new(S) },
 	} {
 		// Note: we modified the test to verify that we behavior like the
-		// standard encoding/json pacakge, whether it's right or wrong.
+		// standard encoding/json package, whether it's right or wrong.
 		v1 := ctor()
 		v2 := ctor()
 		if encodingJSON.Unmarshal(data, v1) != nil {

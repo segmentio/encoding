@@ -90,7 +90,7 @@ const (
 	inObject
 )
 
-// NeweTokenizer constructs a new Tokenizer which reads its json input from b.
+// NewTokenizer constructs a new Tokenizer which reads its json input from b.
 func NewTokenizer(b []byte) *Tokenizer { return &Tokenizer{json: b} }
 
 // Reset erases the state of t and re-initializes it with the json input from b.

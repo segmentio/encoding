@@ -2,12 +2,12 @@ package ascii
 
 import "unsafe"
 
-// Valid retuns true if b contains only ASCII characters.
+// Valid returns true if b contains only ASCII characters.
 func Valid(b []byte) bool {
 	return valid(unsafe.Pointer(&b), uintptr(len(b)))
 }
 
-// Valid retuns true if s contains only ASCII characters.
+// ValidString returns true if s contains only ASCII characters.
 func ValidString(s string) bool {
 	return valid(unsafe.Pointer(&s), uintptr(len(s)))
 }

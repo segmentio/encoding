@@ -9,7 +9,7 @@ import (
 
 func main() {
 	m := map[string]map[string]interface{}{
-		"outerkey": map[string]interface{}{
+		"outerkey": {
 			"innerkey": "innervalue",
 		},
 	}
