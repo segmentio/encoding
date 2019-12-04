@@ -46,7 +46,7 @@ $(go-fuzz-build):
 	GO111MODULE=off go install github.com/dvyukov/go-fuzz/go-fuzz-build
 
 $(go-fuzz-corpus):
-	GO111MODULE=off go get github.com/dvyukov/go-fuzz/go-fuzz-corpus
+	GO111MODULE=off go get github.com/dvyukov/go-fuzz-corpus
 
 $(go-fuzz-dep):
 	GO111MODULE=off go get github.com/dvyukov/go-fuzz/go-fuzz-dep
