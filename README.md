@@ -48,43 +48,43 @@ alternatives; here's an overview of the results (using Go v1.13):
 **Comparing to encoding/json**
 ```
 benchmark                                  old ns/op     new ns/op     delta
-BenchmarkMarshal/*json.codeResponse2       7589434       6581487       -13.28%
-BenchmarkUnmarshal/*json.codeResponse2     33979780      9130120       -73.13%
+BenchmarkMarshal/*json.codeResponse2       5712642       4128238       -27.74%
+BenchmarkUnmarshal/*json.codeResponse2     26197728      8094932       -69.10%
 
 benchmark                                  old MB/s     new MB/s     speedup
-BenchmarkMarshal/*json.codeResponse2       255.68       294.84       1.15x
-BenchmarkUnmarshal/*json.codeResponse2     57.11        212.54       3.72x
+BenchmarkMarshal/*json.codeResponse2       339.68       470.05       1.38x
+BenchmarkUnmarshal/*json.codeResponse2     74.07        239.71       3.24x
 
 benchmark                                  old allocs     new allocs     delta
 BenchmarkMarshal/*json.codeResponse2       0              0              +0.00%
-BenchmarkUnmarshal/*json.codeResponse2     76400          39             -99.95%
+BenchmarkUnmarshal/*json.codeResponse2     76363          32             -99.96%
 
 benchmark                                  old bytes     new bytes     delta
 BenchmarkMarshal/*json.codeResponse2       0             0             +0.00%
-BenchmarkUnmarshal/*json.codeResponse2     1901670       8483          -99.55%
+BenchmarkUnmarshal/*json.codeResponse2     1849585       7247          -99.61%
 ```
 
 **Comparing to github.com/json-iterator/go**
 ```
 benchmark                                  old ns/op     new ns/op     delta
-BenchmarkMarshal/*json.codeResponse2       15065785      6581487       -56.32%
-BenchmarkUnmarshal/*json.codeResponse2     10275368      9130120       -11.15%
+BenchmarkMarshal/*json.codeResponse2       17818587      4128238       -76.83%
+BenchmarkUnmarshal/*json.codeResponse2     9928256       8094932       -18.47%
 
 benchmark                                  old MB/s     new MB/s     speedup
-BenchmarkMarshal/*json.codeResponse2       128.80       294.84       2.29x
-BenchmarkUnmarshal/*json.codeResponse2     188.85       212.54       1.13x
+BenchmarkMarshal/*json.codeResponse2       108.90       470.05       4.32x
+BenchmarkUnmarshal/*json.codeResponse2     195.45       239.71       1.23x
 
 benchmark                                  old allocs     new allocs     delta
 BenchmarkMarshal/*json.codeResponse2       102212         0              -100.00%
-BenchmarkUnmarshal/*json.codeResponse2     37120          39             -99.89%
+BenchmarkUnmarshal/*json.codeResponse2     37108          32             -99.91%
 
 benchmark                                  old bytes     new bytes     delta
-BenchmarkMarshal/*json.codeResponse2       3399409       0             -100.00%
-BenchmarkUnmarshal/*json.codeResponse2     1038339       8483          -99.18%
+BenchmarkMarshal/*json.codeResponse2       3399408       0             -100.00%
+BenchmarkUnmarshal/*json.codeResponse2     1022140       7247          -99.29%
 ```
 
 Although this package aims to be a drop-in replacement of [`encoding/json`](https://golang.org/pkg/encoding/json/),
-it does not guarantee the same error messages. It will error in the same cases 
+it does not guarantee the same error messages. It will error in the same cases
 as the standard library, but the exact error message may be different.
 
 ## encoding/iso8601 [![GoDoc](https://godoc.org/github.com/segmentio/encoding/iso8601?status.svg)](https://godoc.org/github.com/segmentio/encoding/iso8601)
@@ -103,6 +103,6 @@ footprint.
 
 We've developed fast iso8601 validation functions that cause no heap allocations
 to remediate this problem. We added a validation step to determine whether
-the value is a date representation or a simple string. This reduced CPU and 
-memory usage by 5% in some programs that were doing `time.Parse` calls on very 
+the value is a date representation or a simple string. This reduced CPU and
+memory usage by 5% in some programs that were doing `time.Parse` calls on very
 hot code paths.
