@@ -13,6 +13,8 @@ import (
 	"unsafe"
 )
 
+const hex = "0123456789abcdef"
+
 func (e encoder) encodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
 	return append(b, "null"...), nil
 }
@@ -124,8 +126,6 @@ func (e encoder) encodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
-	hex := "0123456789abcdef"
-
 	s := *(*string)(p)
 	i := 0
 	j := 0
@@ -235,8 +235,7 @@ func (e encoder) encodeToString(b []byte, p unsafe.Pointer, encode encodeFunc) (
 	}
 
 	j := len(b)
-	x := b[i:]
-	s := *(*string)(unsafe.Pointer(&x))
+	s := b[i:]
 
 	if b, err = e.encodeString(b, unsafe.Pointer(&s)); err != nil {
 		return b, err
@@ -661,7 +660,6 @@ func (e encoder) encodeTextMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 }
 
 func appendCompactEscapeHTML(dst []byte, src []byte) []byte {
-	const hex = "0123456789abcdef"
 	start := 0
 	escape := false
 	inString := false
