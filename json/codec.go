@@ -607,13 +607,13 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 		}
 
 		fields = append(fields, structField{
-			name:      name,
-			index:     i << 32,
-			offset:    offset + f.Offset,
 			codec:     codec,
+			offset:    offset + f.Offset,
 			empty:     emptyFuncOf(f.Type),
 			tag:       tag,
 			omitempty: omitempty,
+			name:      name,
+			index:     i << 32,
 			typ:       f.Type,
 			zero:      reflect.Zero(f.Type),
 		})
@@ -663,8 +663,20 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 		fields = append(fields, subfield)
 	}
 
+	for i := range fields {
+		fields[i].json = encodeString(fields[i].name, 0)
+		fields[i].html = encodeString(fields[i].name, EscapeHTML)
+	}
+
 	sort.Slice(fields, func(i, j int) bool { return fields[i].index < fields[j].index })
 	return fields
+}
+
+func encodeString(s string, flags AppendFlags) string {
+	b := make([]byte, 0, len(s)+2)
+	e := encoder{flags: flags}
+	b, _ = e.encodeString(b, unsafe.Pointer(&s))
+	return *(*string)(unsafe.Pointer(&b))
 }
 
 func constructPointerCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
@@ -872,15 +884,17 @@ type structType struct {
 }
 
 type structField struct {
-	name      string
-	index     int
-	offset    uintptr
 	codec     codec
+	offset    uintptr
 	empty     emptyFunc
 	tag       bool
 	omitempty bool
+	json      string
+	html      string
+	name      string
 	typ       reflect.Type
 	zero      reflect.Value
+	index     int
 }
 
 func unmarshalTypeError(b []byte, t reflect.Type) error {

@@ -526,6 +526,7 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byte, error) {
 	var start = len(b)
 	var err error
+	var k string
 	var n int
 	b = append(b, '{')
 
@@ -541,13 +542,19 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 			b = append(b, ',')
 		}
 
-		k := len(b)
-		b, _ = e.encodeString(b, unsafe.Pointer(&f.name))
+		if (e.flags & EscapeHTML) != 0 {
+			k = f.html
+		} else {
+			k = f.json
+		}
+
+		lengthBeforeKey := len(b)
+		b = append(b, k...)
 		b = append(b, ':')
 
 		if b, err = f.codec.encode(e, b, v); err != nil {
 			if err == (rollback{}) {
-				b = b[:k]
+				b = b[:lengthBeforeKey]
 				continue
 			}
 			return b[:start], err
