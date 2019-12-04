@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 var (
@@ -45,6 +47,19 @@ func TestMain(m *testing.M) {
 		}
 
 		unmarshal = json.Unmarshal
+
+	case "github.com/json-iterator/go":
+		buf := &buffer{}
+		enc := jsoniter.NewEncoder(buf)
+		enc.SetEscapeHTML(escapeHTML)
+
+		marshal = func(b []byte, v interface{}) ([]byte, error) {
+			buf.data = b
+			err := enc.Encode(v)
+			return buf.data, err
+		}
+
+		unmarshal = jsoniter.Unmarshal
 
 	default:
 		flags := AppendFlags(0)

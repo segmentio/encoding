@@ -22,8 +22,10 @@ $(benchcmp):
 # for more in-depth benchmarks, see the `benchmarks` directory.
 bench-simple: $(benchcmp)
 	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package encoding/json | tee encoding-json.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package github.com/json-iterator/go | tee json-iterator.txt
 	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee segmentio-encoding-json.txt
 	benchcmp encoding-json.txt segmentio-encoding-json.txt
+	benchcmp json-iterator.txt segmentio-encoding-json.txt
 
 update-golang-test: $(golang.test.files)
 	@echo "updated golang tests to $(golang.version)"
