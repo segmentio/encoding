@@ -7,6 +7,7 @@ import (
 	"bytes"
 	encodingJSON "encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/dvyukov/go-fuzz-corpus/fuzz"
 	"github.com/segmentio/encoding/json"
@@ -39,13 +40,16 @@ func Fuzz(data []byte) int {
 		if encodingErr != nil {
 			if err != nil {
 				// both implementations report an error
+				if reflect.TypeOf(encodingErr) != reflect.TypeOf(err) {
+					panic(fmt.Errorf("error types mismatch: encoding/json=%T segmentio/encoding=%T", encodingErr, err))
+				}
 				continue
 			} else {
-				panic(fmt.Errorf("encoding/json reported error but segmentio/json did not: %w", encodingErr))
+				panic(fmt.Errorf("encoding/json reported error but segmentio/encoding did not: %w", encodingErr))
 			}
 		} else {
 			if err != nil {
-				panic(fmt.Errorf("encoding/json did not report an error but segmentio/json did: %w", err))
+				panic(fmt.Errorf("encoding/json did not report an error but segmentio/encoding did: %w", err))
 			} else {
 				// both implementations pass
 			}
