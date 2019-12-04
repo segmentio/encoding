@@ -33,12 +33,24 @@ func Fuzz(data []byte) int {
 		// standard encoding/json package, whether it's right or wrong.
 		v1 := ctor()
 		v2 := ctor()
-		if encodingJSON.Unmarshal(data, v1) != nil {
-			continue
+		encodingErr := encodingJSON.Unmarshal(data, v1)
+		err := json.Unmarshal(data, v2)
+
+		if encodingErr != nil {
+			if err != nil {
+				// both implementations report an error
+				continue
+			} else {
+				panic(fmt.Errorf("encoding/json reported error but segmentio/json did not: %w", encodingErr))
+			}
+		} else {
+			if err != nil {
+				panic(fmt.Errorf("encoding/json did not report an error but segmentio/json did: %w", err))
+			} else {
+				// both implementations pass
+			}
 		}
-		if err := json.Unmarshal(data, v2); err != nil {
-			panic(err)
-		}
+
 		score = 1
 		fixS(v1)
 		fixS(v2)
