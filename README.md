@@ -20,6 +20,8 @@ solutions.
 
 ## encoding/json [![GoDoc](https://godoc.org/github.com/segmentio/encoding/json?status.svg)](https://godoc.org/github.com/segmentio/encoding/json)
 
+More details about the implementation of this package can be found [here](json/README.md).
+
 The `json` sub-package provides a re-implementation of the functionalities
 offered by the standard library's [`encoding/json`](https://golang.org/pkg/encoding/json/)
 package, with a focus on lowering the CPU and memory footprint of the code.
