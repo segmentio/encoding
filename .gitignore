@@ -22,10 +22,9 @@ vendor
 benchmarks/msgs.json
 benchmarks/results/*json
 benchmarks/result/benchmark
-*json.txt
+*.txt
 
 json/fuzz/corpus/*
 json/fuzz/crashers/*
 json/fuzz/suppressions/*
 *-fuzz.zip
-
