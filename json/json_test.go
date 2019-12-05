@@ -946,6 +946,18 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		{ // decode weird number value into nil
 			input: "-00",
 		},
+		{ // decode an invalid escaped sequence
+			input: "\"\\0\"",
+			value: "",
+		},
+		{ // decode what looks like an array followed by a number into a slice
+			input: "[9E600",
+			value: []interface{}{},
+		},
+		{ // decode a number which is too large to fit in a float64
+			input: "[1e900]",
+			value: []interface{}{},
+		},
 	}
 
 	for _, test := range tests {

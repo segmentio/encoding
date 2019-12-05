@@ -280,7 +280,10 @@ func (d decoder) decodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	s, r, new, err := parseStringUnquote(b, nil)
 	if err != nil {
-		return inputError(b, stringType)
+		if len(b) == 0 || b[0] != '"' {
+			return inputError(b, stringType)
+		}
+		return r, err
 	}
 
 	if new || (d.flags&DontCopyString) != 0 {
@@ -488,6 +491,8 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 		}
 		return inputError(b, t)
 	}
+
+	input := b
 	b = b[1:]
 
 	s := (*slice)(p)
@@ -531,6 +536,11 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 
 		b, err = decode(d, b, unsafe.Pointer(uintptr(s.data)+(uintptr(s.len)*size)))
 		if err != nil {
+			if _, r, err := parseValue(input); err != nil {
+				return r, err
+			} else {
+				b = r
+			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = t.String() + e.Struct
 				e.Field = strconv.Itoa(s.len) + "." + e.Field

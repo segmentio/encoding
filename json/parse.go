@@ -369,8 +369,20 @@ func parseStringFast(b []byte) ([]byte, []byte, bool, error) {
 			return b[:i+1], b[i+1:], true, nil
 		}
 		offset += j + 1
-		if offset < len(b) && b[offset] == '\\' || b[offset] == '"' {
-			offset++ // skip escaped sequence
+		if offset < len(b) {
+			switch b[offset] {
+			case '"', '\\', '/', 'n', 'r', 't', 'f', 'b':
+				offset++
+			case 'u':
+				offset++
+				_, n, err := parseUnicode(b[offset:])
+				if err != nil {
+					return nil, b, false, err
+				}
+				offset += n
+			default:
+				return nil, b, false, syntaxError(b[offset:i], "invalid character '%c' in string escape code", b[offset])
+			}
 		}
 	}
 
@@ -455,8 +467,7 @@ func parseStringUnquote(b []byte, r []byte) ([]byte, []byte, bool, error) {
 			continue
 
 		default: // not sure what this escape sequence is
-			r = append(r, '\\')
-			continue
+			return r, b, false, syntaxError(s, "invalid character '%c' in string escape code", c)
 		}
 
 		r = append(r, c)

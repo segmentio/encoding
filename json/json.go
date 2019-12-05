@@ -176,10 +176,12 @@ func MarshalIndent(x interface{}, prefix, indent string) ([]byte, error) {
 func Unmarshal(b []byte, x interface{}) error {
 	r, err := Parse(b, x, 0)
 	if len(r) != 0 {
-		// The encoding/json package prioritizes reporting errors caused by
-		// unexpected trailing bytes over other issues; here we emulate this
-		// behavior by overriding the error.
-		err = syntaxError(r, "invalid character '%c' after top-level value", r[0])
+		if _, ok := err.(*SyntaxError); !ok {
+			// The encoding/json package prioritizes reporting errors caused by
+			// unexpected trailing bytes over other issues; here we emulate this
+			// behavior by overriding the error.
+			err = syntaxError(r, "invalid character '%c' after top-level value", r[0])
+		}
 	}
 	return err
 }
@@ -187,15 +189,11 @@ func Unmarshal(b []byte, x interface{}) error {
 // Parse behaves like Unmarshal but the caller can pass a set of flags to
 // configure the parsing behavior.
 func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
-	if b = skipSpaces(b); len(b) == 0 {
-		return b, syntaxError(b, "expected json but found no data")
-	}
-
 	t := reflect.TypeOf(x)
 	p := (*iface)(unsafe.Pointer(&x)).ptr
 
 	if t == nil || p == nil || t.Kind() != reflect.Ptr {
-		_, r, err := parseValue(b)
+		_, r, err := parseValue(skipSpaces(b))
 		r = skipSpaces(r)
 		if err != nil {
 			return r, err
