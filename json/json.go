@@ -31,13 +31,8 @@ type Number = json.Number
 // RawMessage is documented at https://golang.org/pkg/encoding/json/#RawMessage
 type RawMessage = json.RawMessage
 
-// SyntaxError is documented at https://golang.org/pkg/encoding/json/#SyntaxError
-type SyntaxError struct {
-	msg    string // description of error
-	Offset int64  // error occurred after reading Offset bytes
-}
-
-func (e *SyntaxError) Error() string { return e.msg }
+// A SyntaxError is a description of a JSON syntax error.
+type SyntaxError = json.SyntaxError
 
 // Token is documented at https://golang.org/pkg/encoding/json/#Token
 type Token = json.Token
@@ -180,22 +175,32 @@ func MarshalIndent(x interface{}, prefix, indent string) ([]byte, error) {
 // Unmarshal is documented at https://golang.org/pkg/encoding/json/#Unmarshal
 func Unmarshal(b []byte, x interface{}) error {
 	r, err := Parse(b, x, 0)
-
-	if len(r) != 0 && err == nil {
-		err = syntaxError(r, "unexpected trailing tokens after json value")
+	if len(r) != 0 {
+		// The encoding/json package prioritizes reporting errors caused by
+		// unexpected trailing bytes over other issues; here we emulate this
+		// behavior by overriding the error.
+		err = syntaxError(r, "invalid character '%c' after top-level value", r[0])
 	}
-
 	return err
 }
 
 // Parse behaves like Unmarshal but the caller can pass a set of flags to
 // configure the parsing behavior.
 func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
+	if b = skipSpaces(b); len(b) == 0 {
+		return b, syntaxError(b, "expected json but found no data")
+	}
+
 	t := reflect.TypeOf(x)
 	p := (*iface)(unsafe.Pointer(&x)).ptr
 
 	if t == nil || p == nil || t.Kind() != reflect.Ptr {
-		return b, &InvalidUnmarshalError{Type: t}
+		_, r, err := parseValue(b)
+		r = skipSpaces(r)
+		if err != nil {
+			return r, err
+		}
+		return r, &InvalidUnmarshalError{Type: t}
 	}
 	t = t.Elem()
 

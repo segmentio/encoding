@@ -20,6 +20,15 @@ import (
 	"time"
 )
 
+// The encoding/json package does not export the msg field of json.SyntaxError,
+// so we use this replacement type in tests.
+type testSyntaxError struct {
+	msg    string
+	Offset int64
+}
+
+func (e *testSyntaxError) Error() string { return e.msg }
+
 var (
 	marshal    func([]byte, interface{}) ([]byte, error)
 	unmarshal  func([]byte, interface{}) error
@@ -878,20 +887,90 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				I map[string]string
 			}{I: map[string]string{"": ""}},
 		},
+		{ // an empty string is an invalid JSON input
+			input: "",
+		},
+		{ // ASCII character below 0x20 are invalid JSON input
+			input: "[\"\b\"]",
+		},
+		{ // random byte before any value
+			input: "\xad",
+		},
+		{ // cloud be the beginning of a false value but not
+			input: "f",
+			value: false,
+		},
+		{ // random ASCII character
+			input: "}",
+			value: []interface{}{},
+		},
+		{ // random byte after valid JSON, decoded to a nil type
+			input: "0\x93",
+		},
+		{ // random byte after valid JSON, decoded to a int type
+			input: "0\x93",
+			value: 0,
+		},
+		{ // random byte after valid JSON, decoded to a slice type
+			input: "0\x93",
+			value: []interface{}{},
+		},
+		{ // decode integer into slice
+			input: "0",
+			value: []interface{}{},
+		},
+		{ // decode integer with trailing space into slice
+			input: "0\t",
+			value: []interface{}{},
+		},
+		{ // decode integer with leading random bytes into slice
+			input: "\b0",
+			value: []interface{}{},
+		},
+		{ // decode string into slice followed by number
+			input: "\"\"0",
+			value: []interface{}{},
+		},
+		{ // decode what looks like an object followed by a number into a string
+			input: "{0",
+			value: "",
+		},
+		{ // decode what looks like an object followed by a number into a map
+			input: "{0",
+			value: map[string]string{},
+		},
+		{ // decode string into string with trailing random byte
+			input: "\"\"\f",
+			value: "",
+		},
+		{ // decode weird number value into nil
+			input: "-00",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run("", func(t *testing.T) {
-			ptr := reflect.New(reflect.TypeOf(test.value)).Interface()
+			var ptr1 interface{}
+			var ptr2 interface{}
 
-			if err := Unmarshal([]byte(test.input), ptr); err != nil {
-				t.Fatal(err)
+			if test.value != nil {
+				ptr1 = reflect.New(reflect.TypeOf(test.value)).Interface()
+				ptr2 = reflect.New(reflect.TypeOf(test.value)).Interface()
 			}
 
-			if value := reflect.ValueOf(ptr).Elem().Interface(); !reflect.DeepEqual(test.value, value) {
-				t.Error("values mismatch")
-				t.Logf("expected: %#v", test.value)
-				t.Logf("found:    %#v", value)
+			err1 := json.Unmarshal([]byte(test.input), ptr1)
+			err2 := Unmarshal([]byte(test.input), ptr2)
+
+			if reflect.TypeOf(err1) != reflect.TypeOf(err2) {
+				t.Error("errors mismatch")
+				t.Logf("expected: %T: %v", err1, err1)
+				t.Logf("found:    %T: %v", err2, err2)
+			} else if err1 == nil && test.value != nil {
+				if value := reflect.ValueOf(ptr2).Elem().Interface(); !reflect.DeepEqual(test.value, value) {
+					t.Error("values mismatch")
+					t.Logf("expected: %#v", test.value)
+					t.Logf("found:    %#v", value)
+				}
 			}
 		})
 	}

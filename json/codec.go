@@ -891,6 +891,10 @@ func unmarshalOverflow(b []byte, t reflect.Type) error {
 	return &UnmarshalTypeError{Value: "number " + prefix(b) + " overflows", Type: t}
 }
 
+func unexpectedEOF(b []byte) error {
+	return syntaxError(b, "unexpected end of JSON input")
+}
+
 func syntaxError(b []byte, msg string, args ...interface{}) error {
 	e := new(SyntaxError)
 	t := reflect.TypeOf(e).Elem()
@@ -904,6 +908,28 @@ func syntaxError(b []byte, msg string, args ...interface{}) error {
 	}
 
 	return e
+}
+
+func inputError(b []byte, t reflect.Type) ([]byte, error) {
+	if len(b) == 0 {
+		return nil, unexpectedEOF(b)
+	}
+	_, r, err := parseValue(b)
+	if err != nil {
+		return r, err
+	}
+	return skipSpaces(r), unmarshalTypeError(b, t)
+}
+
+func objectKeyError(b []byte, err error) ([]byte, error) {
+	if len(b) == 0 {
+		return nil, unexpectedEOF(b)
+	}
+	switch err.(type) {
+	case *UnmarshalTypeError:
+		err = syntaxError(b, "invalid character '%c' looking for beginning of object key", b[0])
+	}
+	return b, err
 }
 
 func prefix(b []byte) string {
