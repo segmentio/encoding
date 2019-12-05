@@ -974,6 +974,24 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			input: "{\"F\":[",
 			value: struct{ F []byte }{},
 		},
+		{ // attempt to decode string into in
+			input: "{\"S\":\"\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode object with null key into struct
+			input: "{null:0}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode unquoted integer into struct field with string tag
+			input: "{\"S\":0}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
 	}
 
 	for _, test := range tests {

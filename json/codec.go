@@ -221,6 +221,12 @@ func constructStringDecodeFunc(decode decodeFunc) decodeFunc {
 	}
 }
 
+func constructStringToIntDecodeFunc(decode decodeFunc) decodeFunc {
+	return func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
+		return d.decodeStringToInt(b, p, decode)
+	}
+}
+
 func constructArrayCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
 	e := t.Elem()
 	c := constructCodec(e, seen)
@@ -602,7 +608,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				reflect.Float64,
 				reflect.String:
 				codec.encode = constructStringEncodeFunc(codec.encode)
-				codec.decode = constructStringDecodeFunc(codec.decode)
+				codec.decode = constructStringToIntDecodeFunc(codec.decode)
 			}
 		}
 

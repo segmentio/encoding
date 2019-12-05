@@ -316,6 +316,35 @@ func (d decoder) decodeFromString(b []byte, p unsafe.Pointer, decode decodeFunc)
 	return b, nil
 }
 
+func (d decoder) decodeStringToInt(b []byte, p unsafe.Pointer, decode decodeFunc) ([]byte, error) {
+	if hasPrefix(b, "null") {
+		return decode(d, b, p)
+	}
+
+	if len(b) > 0 && b[0] != '"' {
+		return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal unquoted value into int")
+	}
+
+	if len(b) > 1 && b[0] == '"' && b[1] == '"' {
+		return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal \"\" into int")
+	}
+
+	v, b, _, err := parseStringUnquote(b, nil)
+	if err != nil {
+		return inputError(v, stringType)
+	}
+
+	if v, err = decode(d, v, p); err != nil {
+		return b, err
+	}
+
+	if v = skipSpaces(v); len(v) != 0 {
+		return b, syntaxError(v, "unexpected trailing tokens after string value")
+	}
+
+	return b, nil
+}
+
 func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 	if hasPrefix(b, "null") {
 		return b[4:], nil
@@ -832,6 +861,9 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 		b = skipSpaces(b)
 
+		if string(k) == "null" {
+			return b, syntaxError(b, "cannot decode object key string from 'null' value")
+		}
 		if len(b) == 0 {
 			return b, syntaxError(b, "unexpected end of JSON input after object field key")
 		}
