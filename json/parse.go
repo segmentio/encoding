@@ -61,6 +61,10 @@ func parseInt(b []byte) (int64, []byte, error) {
 			return 0, b, syntaxError(b, "cannot decode integer from '-'")
 		}
 
+		if len(b) > 2 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
+		}
+
 		for _, d := range b[1:] {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
@@ -88,6 +92,10 @@ func parseInt(b []byte) (int64, []byte, error) {
 	} else {
 		const max = math.MaxInt64
 		const lim = max / 10
+
+		if len(b) > 2 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
+		}
 
 		for _, d := range b {
 			if !(d >= '0' && d <= '9') {
@@ -137,8 +145,8 @@ func parseUint(b []byte) (uint64, []byte, error) {
 		return 0, b, syntaxError(b, "cannot decode integer value from an empty input")
 	}
 
-	if b[0] == '0' && len(b) > 1 && '0' <= b[1] && b[1] <= '9' {
-		return 0, b, syntaxError(b, "cannot decode positive integer with leading zero")
+	if len(b) > 2 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+		return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 	}
 
 	for _, d := range b {
@@ -279,6 +287,10 @@ func parseNumber(b []byte) (v, r []byte, err error) {
 		i++
 		if i == len(b) || (b[i] != '.' && b[i] != 'e' && b[i] != 'E') {
 			v, r = b[:i], b[i:]
+			return
+		}
+		if '0' <= b[i] && b[i] <= '9' {
+			r, err = b[i:], syntaxError(b, "cannot decode number with leading '0' character")
 			return
 		}
 	}
