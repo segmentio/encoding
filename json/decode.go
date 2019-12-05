@@ -316,13 +316,27 @@ func (d decoder) decodeFromString(b []byte, p unsafe.Pointer, decode decodeFunc)
 	return b, nil
 }
 
-func (d decoder) decodeStringToInt(b []byte, p unsafe.Pointer, decode decodeFunc) ([]byte, error) {
+func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Type, decode decodeFunc) ([]byte, error) {
 	if hasPrefix(b, "null") {
 		return decode(d, b, p)
 	}
 
 	if len(b) > 0 && b[0] != '"' {
-		return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal unquoted value into int")
+		v, r, err := parseNumber(b)
+		if err != nil {
+			return r, err
+		}
+		// The encoding/json package will return a *json.UnmarshalTypeError if
+		// the input was a floating point number representation, even tho a
+		// string is expected here.
+		switch {
+		case bytes.IndexByte(v, '.') >= 0:
+		case bytes.IndexByte(v, 'e') >= 0:
+		case bytes.IndexByte(v, 'E') >= 0:
+		default:
+			return r, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal unquoted value into int")
+		}
+		return r, unmarshalTypeError(v, t)
 	}
 
 	if len(b) > 1 && b[0] == '"' && b[1] == '"' {
@@ -634,6 +648,10 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 			b = skipSpaces(b[1:])
 		}
 
+		if hasPrefix(b, "null") {
+			return b, syntaxError(b, "cannot decode object key string from 'null' value")
+		}
+
 		if b, err = decodeKey(d, b, kptr); err != nil {
 			return objectKeyError(b, err)
 		}
@@ -707,6 +725,10 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 				return b, syntaxError(b, "expected ',' after object field value but found '%c'", b[0])
 			}
 			b = skipSpaces(b[1:])
+		}
+
+		if hasPrefix(b, "null") {
+			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
 		b, err = d.decodeString(b, unsafe.Pointer(&key))
@@ -784,6 +806,10 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 				return b, syntaxError(b, "expected ',' after object field value but found '%c'", b[0])
 			}
 			b = skipSpaces(b[1:])
+		}
+
+		if hasPrefix(b, "null") {
+			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
 		b, err = d.decodeString(b, unsafe.Pointer(&key))

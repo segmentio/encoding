@@ -980,11 +980,9 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				S int `json:",string"`
 			}{},
 		},
-		{ // decode object with null key into struct
+		{ // decode object with null key into map
 			input: "{null:0}",
-			value: struct {
-				S int `json:",string"`
-			}{},
+			value: map[string]interface{}{},
 		},
 		{ // decode unquoted integer into struct field with string tag
 			input: "{\"S\":0}",
@@ -998,6 +996,12 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode an object with a "null" string as key
 			input: "{\"null\":null}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{
+			input: "{\"s\":8e800}",
 			value: struct {
 				S int `json:",string"`
 			}{},
