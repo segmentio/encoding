@@ -780,7 +780,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 	// memory buffer used to convert short field names to lowercase
 	var buf [64]byte
 	var key []byte
-	var val = b
+	var input = b
 
 	b = b[1:]
 	for {
@@ -833,12 +833,12 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 
 		if b, err = f.codec.decode(d, b, unsafe.Pointer(uintptr(p)+f.offset)); err != nil {
-			if b == nil {
-				_, r, perr := parseValue(val)
-				if perr != nil {
-					return r, perr
+			if b == nil { // sentinel value returned by decodeEmbeddedStructPointer
+				if _, r, err := parseValue(input); err != nil {
+					return r, err
+				} else {
+					b = r
 				}
-				b = r
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = st.typ.String() + e.Struct

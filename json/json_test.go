@@ -958,6 +958,10 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			input: "[1e900]",
 			value: []interface{}{},
 		},
+		{ // many nested arrays openings
+			input: "[[[[[[",
+			value: []interface{}{},
+		},
 	}
 
 	for _, test := range tests {
