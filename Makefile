@@ -21,18 +21,18 @@ $(benchcmp):
 # This compares segmentio/encoding/json to the standard golang encoding/json;
 # for more in-depth benchmarks, see the `benchmarks` directory.
 bench-simple: $(benchcmp)
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package encoding/json | tee encoding-json.txt
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee segmentio-encoding-json.txt
-	benchcmp encoding-json.txt segmentio-encoding-json.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package encoding/json | tee /tmp/encoding-json.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee /tmp/segmentio-encoding-json.txt
+	benchcmp /tmp/encoding-json.txt /tmp/segmentio-encoding-json.txt
 
 bench-master: $(benchcmp)
 	git stash
 	git checkout master
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee segmentio-encoding-json-master.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee /tmp/segmentio-encoding-json-master.txt
 	git checkout -
 	git stash pop
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee segmentio-encoding-json.txt
-	benchcmp segmentio-encoding-json-master.txt segmentio-encoding-json.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee /tmp/segmentio-encoding-json.txt
+	benchcmp /tmp/segmentio-encoding-json-master.txt /tmp/segmentio-encoding-json.txt
 
 update-golang-test: $(golang.test.files)
 	@echo "updated golang tests to $(golang.version)"
