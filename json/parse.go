@@ -75,14 +75,14 @@ func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 			}
 
 			if value < lim {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			value *= 10
 			x := int64(d - '0')
 
 			if value < (max + x) {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			value -= x
@@ -108,11 +108,11 @@ func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 			x := int64(d - '0')
 
 			if value > lim {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			if value *= 10; value > (max - x) {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			value += x
@@ -160,11 +160,11 @@ func parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
 		x := uint64(d - '0')
 
 		if value > lim {
-			return 0, b, syntaxError(b, "integer value out of range")
+			return 0, b, unmarshalOverflow(b, t)
 		}
 
 		if value *= 10; value > (max - x) {
-			return 0, b, syntaxError(b, "integer value out of range")
+			return 0, b, unmarshalOverflow(b, t)
 		}
 
 		value += x

@@ -1064,6 +1064,16 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				S int `json:",string"`
 			}{},
 		},
+		{
+			input: "{\"N\":-00}",
+			value: struct{ N *int }{},
+		},
+		{
+			input: "{\"a\":9223372036854775808}",
+			value: struct {
+				A int `json:",omitempty"`
+			}{},
+		},
 	}
 
 	for _, test := range tests {
