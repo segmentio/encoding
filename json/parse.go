@@ -61,10 +61,6 @@ func parseInt(b []byte) (int64, []byte, error) {
 			return 0, b, syntaxError(b, "cannot decode integer from '-'")
 		}
 
-		if b[1] == '0' && len(b) > 2 && '0' <= b[2] && b[2] <= '9' {
-			return 0, b, syntaxError(b, "cannot decode negative integer with leading zero")
-		}
-
 		for _, d := range b[1:] {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
@@ -92,10 +88,6 @@ func parseInt(b []byte) (int64, []byte, error) {
 	} else {
 		const max = math.MaxInt64
 		const lim = max / 10
-
-		if b[0] == '0' && len(b) > 1 && '0' <= b[1] && b[1] <= '9' {
-			return 0, b, syntaxError(b, "cannot decode positive integer with leading zero")
-		}
 
 		for _, d := range b {
 			if !(d >= '0' && d <= '9') {

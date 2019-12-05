@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
-
-	"github.com/segmentio/encoding/ascii"
 )
 
 func (d decoder) decodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -325,20 +323,26 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 
 	if len(b) > 0 && b[0] != '"' {
 		v, r, err := parseNumber(b)
-		if err != nil {
-			return r, err
+		if err == nil {
+			// The encoding/json package will return a *json.UnmarshalTypeError if
+			// the input was a floating point number representation, even tho a
+			// string is expected here.
+			isFloat := true
+			switch {
+			case bytes.IndexByte(v, '.') >= 0:
+			case bytes.IndexByte(v, 'e') >= 0:
+			case bytes.IndexByte(v, 'E') >= 0:
+			default:
+				isFloat = false
+			}
+			if isFloat {
+				_, err := strconv.ParseFloat(*(*string)(unsafe.Pointer(&v)), 64)
+				if err != nil {
+					return r, unmarshalTypeError(v, t)
+				}
+			}
 		}
-		// The encoding/json package will return a *json.UnmarshalTypeError if
-		// the input was a floating point number representation, even tho a
-		// string is expected here.
-		switch {
-		case bytes.IndexByte(v, '.') >= 0:
-		case bytes.IndexByte(v, 'e') >= 0:
-		case bytes.IndexByte(v, 'E') >= 0:
-		default:
-			return r, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal unquoted value into int")
-		}
-		return r, unmarshalTypeError(v, t)
+		return r, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal unquoted value into int")
 	}
 
 	if len(b) > 1 && b[0] == '"' && b[1] == '"' {
@@ -350,28 +354,13 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		return inputError(v, t)
 	}
 
-	// When the input string contains non-printable ascii characters the
-	// encoding/json package return a generic error value.
-	if !ascii.ValidPrint(v) {
-		return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
-	}
+	var r []byte
 
-	// When reading an integer from a string the encoding/json package accepts
-	// leading zeroes so we play this trick where we normalize the value by
-	// decoding and re-encoding it.
-	i, err := strconv.ParseInt(*(*string)(unsafe.Pointer(&v)), 10, 64)
-	if err != nil {
-		return inputError(b, t)
-	}
-	s := make([]byte, 0, 32)
-	s = strconv.AppendInt(s, i, 10)
-
-	if v, err = decode(d, s, p); err != nil {
-		return b, err
-	}
-
-	if v = skipSpaces(v); len(v) != 0 {
-		return b, syntaxError(v, "unexpected trailing tokens after string value")
+	if r, err = decode(d, v, p); err != nil {
+		if _, isSyntaxError := err.(*SyntaxError); isSyntaxError {
+			return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
+		}
+		return r, err
 	}
 
 	return b, nil

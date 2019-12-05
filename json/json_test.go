@@ -1000,7 +1000,7 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				S int `json:",string"`
 			}{},
 		},
-		{ // decode a floating point number representation into an integer field with string tag
+		{ // decode an invalid floating point number representation into an integer field with string tag
 			input: "{\"s\":8e800}",
 			value: struct {
 				S int `json:",string"`
@@ -1014,6 +1014,24 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode non-ascii string into integer field with string tag
 			input: "{\"ſ\":\"\xbf\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a valid floating point number representation into an integer field with string tag
+			input: "{\"S\":0.0}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with invalid leading sign to integer field with string tag
+			input: "{\"S\":\"+0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with object representation to integer field with string tag
+			input: "{\"s\":{}}",
 			value: struct {
 				S int `json:",string"`
 			}{},
