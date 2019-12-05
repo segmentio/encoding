@@ -3,6 +3,7 @@ package json
 import (
 	"bytes"
 	"math"
+	"reflect"
 	"unicode"
 	"unicode/utf16"
 	"unicode/utf8"
@@ -45,7 +46,7 @@ skipLoop:
 //
 // Because it only works with base 10 the function is also significantly faster
 // than strconv.ParseInt.
-func parseInt(b []byte) (int64, []byte, error) {
+func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 	var value int64
 	var count int
 
@@ -61,7 +62,7 @@ func parseInt(b []byte) (int64, []byte, error) {
 			return 0, b, syntaxError(b, "cannot decode integer from '-'")
 		}
 
-		if len(b) > 2 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+		if len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
 			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 		}
 
@@ -93,7 +94,7 @@ func parseInt(b []byte) (int64, []byte, error) {
 		const max = math.MaxInt64
 		const lim = max / 10
 
-		if len(b) > 2 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+		if len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
 			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 		}
 
@@ -122,11 +123,11 @@ func parseInt(b []byte) (int64, []byte, error) {
 	if count < len(b) {
 		switch b[count] {
 		case '.', 'e', 'E': // was this actually a float?
-			_, r, err := parseNumber(b)
+			v, r, err := parseNumber(b)
 			if err != nil {
-				return 0, r, err
+				v, r = b[:count+1], b[count+1:]
 			}
-			return 0, r, syntaxError(b, "cannot decode integer from floating point representation")
+			return 0, r, unmarshalTypeError(v, t)
 		}
 	}
 
@@ -134,7 +135,7 @@ func parseInt(b []byte) (int64, []byte, error) {
 }
 
 // parseUint is like parseInt but for unsigned integers.
-func parseUint(b []byte) (uint64, []byte, error) {
+func parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
 	const max = math.MaxUint64
 	const lim = max / 10
 
@@ -145,7 +146,7 @@ func parseUint(b []byte) (uint64, []byte, error) {
 		return 0, b, syntaxError(b, "cannot decode integer value from an empty input")
 	}
 
-	if len(b) > 2 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+	if len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
 		return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 	}
 
@@ -173,11 +174,11 @@ func parseUint(b []byte) (uint64, []byte, error) {
 	if count < len(b) {
 		switch b[count] {
 		case '.', 'e', 'E': // was this actually a float?
-			_, r, err := parseNumber(b)
+			v, r, err := parseNumber(b)
 			if err != nil {
-				return 0, r, err
+				v, r = b[:count+1], b[count+1:]
 			}
-			return 0, r, syntaxError(b, "cannot decode integer from floating point representation")
+			return 0, r, unmarshalTypeError(v, t)
 		}
 	}
 

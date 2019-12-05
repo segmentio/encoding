@@ -43,9 +43,9 @@ func (d decoder) decodeInt(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b)
+	v, r, err := parseInt(b, intType)
 	if err != nil {
-		return inputError(b, intType)
+		return r, err
 	}
 
 	*(*int)(p) = int(v)
@@ -57,9 +57,9 @@ func (d decoder) decodeInt8(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b)
+	v, r, err := parseInt(b, int8Type)
 	if err != nil {
-		return inputError(b, int8Type)
+		return r, err
 	}
 
 	if v < math.MinInt8 || v > math.MaxInt8 {
@@ -75,9 +75,9 @@ func (d decoder) decodeInt16(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b)
+	v, r, err := parseInt(b, int16Type)
 	if err != nil {
-		return inputError(b, int16Type)
+		return r, err
 	}
 
 	if v < math.MinInt16 || v > math.MaxInt16 {
@@ -93,9 +93,9 @@ func (d decoder) decodeInt32(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b)
+	v, r, err := parseInt(b, int32Type)
 	if err != nil {
-		return inputError(b, int32Type)
+		return r, err
 	}
 
 	if v < math.MinInt32 || v > math.MaxInt32 {
@@ -111,9 +111,9 @@ func (d decoder) decodeInt64(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b)
+	v, r, err := parseInt(b, int64Type)
 	if err != nil {
-		return inputError(b, int64Type)
+		return r, err
 	}
 
 	*(*int64)(p) = v
@@ -125,9 +125,9 @@ func (d decoder) decodeUint(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b)
+	v, r, err := parseUint(b, uintType)
 	if err != nil {
-		return inputError(b, uintType)
+		return r, err
 	}
 
 	*(*uint)(p) = uint(v)
@@ -139,9 +139,9 @@ func (d decoder) decodeUintptr(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b)
+	v, r, err := parseUint(b, uintptrType)
 	if err != nil {
-		return inputError(b, uintType)
+		return r, err
 	}
 
 	*(*uintptr)(p) = uintptr(v)
@@ -153,9 +153,9 @@ func (d decoder) decodeUint8(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b)
+	v, r, err := parseUint(b, uint8Type)
 	if err != nil {
-		return inputError(b, uint8Type)
+		return r, err
 	}
 
 	if v > math.MaxUint8 {
@@ -171,9 +171,9 @@ func (d decoder) decodeUint16(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b)
+	v, r, err := parseUint(b, uint16Type)
 	if err != nil {
-		return inputError(b, uint16Type)
+		return r, err
 	}
 
 	if v > math.MaxUint16 {
@@ -189,9 +189,9 @@ func (d decoder) decodeUint32(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b)
+	v, r, err := parseUint(b, uint32Type)
 	if err != nil {
-		return inputError(b, uint32Type)
+		return r, err
 	}
 
 	if v > math.MaxUint32 {
@@ -207,9 +207,9 @@ func (d decoder) decodeUint64(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b)
+	v, r, err := parseUint(b, uint64Type)
 	if err != nil {
-		return inputError(b, uint64Type)
+		return r, err
 	}
 
 	*(*uint64)(p) = v
@@ -354,9 +354,14 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		return inputError(v, t)
 	}
 
-	var r []byte
+	// In this context the encoding/json package accepts leading zeroes because
+	// it is not constrained by the JSON syntax, remove them so the parsing
+	// functions don't return syntax errors.
+	for len(v) > 1 && v[0] == '0' && '0' <= v[1] && v[1] <= '9' {
+		v = v[1:]
+	}
 
-	if r, err = decode(d, v, p); err != nil {
+	if r, err := decode(d, v, p); err != nil {
 		if _, isSyntaxError := err.(*SyntaxError); isSyntaxError {
 			return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
 		}
@@ -411,7 +416,7 @@ func (d decoder) decodeDuration(b []byte, p unsafe.Pointer) ([]byte, error) {
 	// flexible on how durations are formatted, but for the time being, it's
 	// been punted to go2 at the earliest: https://github.com/golang/go/issues/4712
 	if len(b) > 0 && b[0] != '"' {
-		v, r, err := parseInt(b)
+		v, r, err := parseInt(b, durationType)
 		if err != nil {
 			return inputError(b, int32Type)
 		}
