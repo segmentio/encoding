@@ -1000,8 +1000,20 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				S int `json:",string"`
 			}{},
 		},
-		{
+		{ // decode a floating point number representation into an integer field with string tag
 			input: "{\"s\":8e800}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a string with leading zeroes into an integer field with string tag
+			input: "{\"S\":\"00\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode non-ascii string into integer field with string tag
+			input: "{\"ſ\":\"\xbf\"}",
 			value: struct {
 				S int `json:",string"`
 			}{},

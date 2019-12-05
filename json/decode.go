@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/segmentio/encoding/ascii"
 )
 
 func (d decoder) decodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -345,10 +347,26 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 
 	v, b, _, err := parseStringUnquote(b, nil)
 	if err != nil {
-		return inputError(v, stringType)
+		return inputError(v, t)
 	}
 
-	if v, err = decode(d, v, p); err != nil {
+	// When the input string contains non-printable ascii characters the
+	// encoding/json package return a generic error value.
+	if !ascii.ValidPrint(v) {
+		return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
+	}
+
+	// When reading an integer from a string the encoding/json package accepts
+	// leading zeroes so we play this trick where we normalize the value by
+	// decoding and re-encoding it.
+	i, err := strconv.ParseInt(*(*string)(unsafe.Pointer(&v)), 10, 64)
+	if err != nil {
+		return inputError(b, t)
+	}
+	s := make([]byte, 0, 32)
+	s = strconv.AppendInt(s, i, 10)
+
+	if v, err = decode(d, s, p); err != nil {
 		return b, err
 	}
 
