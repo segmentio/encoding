@@ -373,7 +373,7 @@ func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	n, err := base64.StdEncoding.Decode(dst, src)
 	if err != nil {
-		return inputError(b, bytesType)
+		return r, err
 	}
 
 	*(*[]byte)(p) = dst[:n]
@@ -855,15 +855,16 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 		i++
 
+		if hasPrefix(b, "null") {
+			return b, syntaxError(b, "cannot decode object key string from 'null' value")
+		}
+
 		k, b, _, err = parseStringUnquote(b, nil)
 		if err != nil {
 			return objectKeyError(b, err)
 		}
 		b = skipSpaces(b)
 
-		if string(k) == "null" {
-			return b, syntaxError(b, "cannot decode object key string from 'null' value")
-		}
 		if len(b) == 0 {
 			return b, syntaxError(b, "unexpected end of JSON input after object field key")
 		}

@@ -992,6 +992,16 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				S int `json:",string"`
 			}{},
 		},
+		{ // invalid base64 content when decoding string into byte slice
+			input: "{\"F\":\"0\"}",
+			value: struct{ F []uint8 }{},
+		},
+		{ // decode an object with a "null" string as key
+			input: "{\"null\":null}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
 	}
 
 	for _, test := range tests {
