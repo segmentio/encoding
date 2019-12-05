@@ -321,9 +321,13 @@ func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	if len(b) < 2 || b[0] != '"' {
+	if len(b) < 2 {
+		return inputError(b, bytesType)
+	}
+
+	if b[0] != '"' {
 		// Go 1.7- behavior: bytes slices may be decoded from array of integers.
-		if len(b) >= 1 && b[0] == '[' {
+		if len(b) > 0 && b[0] == '[' {
 			return d.decodeSlice(b, p, 1, bytesType, decoder.decodeUint8)
 		}
 		return inputError(b, bytesType)
@@ -482,7 +486,11 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 		return b[4:], nil
 	}
 
-	if len(b) < 2 || b[0] != '[' {
+	if len(b) < 2 {
+		return inputError(b, t)
+	}
+
+	if b[0] != '[' {
 		// Go 1.7- behavior: fallback to decoding as a []byte if the element
 		// type is byte; allow conversions from JSON strings even tho the
 		// underlying type implemented unmarshaler interfaces.
@@ -561,8 +569,6 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 	if len(b) < 2 || b[0] != '{' {
 		return inputError(b, t)
 	}
-	b = b[1:]
-
 	i := 0
 	m := reflect.NewAt(t, p).Elem()
 
@@ -571,12 +577,14 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 
 	kptr := (*iface)(unsafe.Pointer(&k)).ptr
 	vptr := (*iface)(unsafe.Pointer(&v)).ptr
+	input := b
 
 	if m.IsNil() {
 		m = reflect.MakeMap(t)
 	}
 
 	var err error
+	b = b[1:]
 	for {
 		k.Set(kz)
 		v.Set(vz)
@@ -611,6 +619,11 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 		b = skipSpaces(b[1:])
 
 		if b, err = decodeValue(d, b, vptr); err != nil {
+			if _, r, err := parseValue(input); err != nil {
+				return r, err
+			} else {
+				b = r
+			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = "map[" + kt.String() + "]" + vt.String() + "{" + e.Struct + "}"
 				e.Field = fmt.Sprint(k.Interface()) + "." + e.Field
@@ -632,7 +645,6 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 	if len(b) < 2 || b[0] != '{' {
 		return inputError(b, mapStringInterfaceType)
 	}
-	b = b[1:]
 
 	i := 0
 	m := *(*map[string]interface{})(p)
@@ -644,7 +656,9 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 	var err error
 	var key string
 	var val interface{}
+	var input = b
 
+	b = b[1:]
 	for {
 		key = ""
 		val = nil
@@ -682,6 +696,11 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 
 		b, err = d.decodeInterface(b, unsafe.Pointer(&val))
 		if err != nil {
+			if _, r, err := parseValue(input); err != nil {
+				return r, err
+			} else {
+				b = r
+			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = mapStringInterfaceType.String() + e.Struct
 				e.Field = key + "." + e.Field
@@ -703,7 +722,6 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 	if len(b) < 2 || b[0] != '{' {
 		return inputError(b, mapStringRawMessageType)
 	}
-	b = b[1:]
 
 	i := 0
 	m := *(*map[string]RawMessage)(p)
@@ -715,7 +733,9 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 	var err error
 	var key string
 	var val RawMessage
+	var input = b
 
+	b = b[1:]
 	for {
 		key = ""
 		val = nil
@@ -753,6 +773,11 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 
 		b, err = d.decodeRawMessage(b, unsafe.Pointer(&val))
 		if err != nil {
+			if _, r, err := parseValue(input); err != nil {
+				return r, err
+			} else {
+				b = r
+			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = mapStringRawMessageType.String() + e.Struct
 				e.Field = key + "." + e.Field
@@ -833,12 +858,10 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 
 		if b, err = f.codec.decode(d, b, unsafe.Pointer(uintptr(p)+f.offset)); err != nil {
-			if b == nil { // sentinel value returned by decodeEmbeddedStructPointer
-				if _, r, err := parseValue(input); err != nil {
-					return r, err
-				} else {
-					b = r
-				}
+			if _, r, err := parseValue(input); err != nil {
+				return r, err
+			} else {
+				b = r
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = st.typ.String() + e.Struct

@@ -847,21 +847,15 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode single-element slice into []byte field
 			input: "{\"f\":[0],\"0\":[0]}",
-			value: struct {
-				F []byte
-			}{F: []byte{0}},
+			value: struct{ F []byte }{F: []byte{0}},
 		},
 		{ // decode multi-element slice into []byte field
 			input: "{\"F\":[3,1,1,1,9,9]}",
-			value: struct {
-				F []byte
-			}{F: []byte{3, 1, 1, 1, 9, 9}},
+			value: struct{ F []byte }{F: []byte{3, 1, 1, 1, 9, 9}},
 		},
 		{ // decode string with escape sequence into []byte field
 			input: "{\"F\":\"0p00\\r\"}",
-			value: struct {
-				F []byte
-			}{F: []byte("ҝ4")},
+			value: struct{ F []byte }{F: []byte("ҝ4")},
 		},
 		{ // decode unicode code points which fold into ascii characters
 			input: "{\"ſ\":\"8\"}",
@@ -871,21 +865,15 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode unicode code points which don't fold into ascii characters
 			input: "{\"İ\":\"\"}",
-			value: struct {
-				I map[string]string
-			}{I: nil},
+			value: struct{ I map[string]string }{I: nil},
 		},
 		{ // override pointer-to-pointer field clears the inner pointer only
 			input: "{\"o\":0,\"o\":null}",
-			value: struct {
-				O **int
-			}{O: new(*int)},
+			value: struct{ O **int }{O: new(*int)},
 		},
 		{ // subsequent occurrences of a map field retain keys previously loaded
 			input: "{\"i\":{\"\":null},\"i\":{}}",
-			value: struct {
-				I map[string]string
-			}{I: map[string]string{"": ""}},
+			value: struct{ I map[string]string }{I: map[string]string{"": ""}},
 		},
 		{ // an empty string is an invalid JSON input
 			input: "",
@@ -961,6 +949,30 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		{ // many nested arrays openings
 			input: "[[[[[[",
 			value: []interface{}{},
+		},
+		{ // decode a map with value type mismatch and missing closing character
+			input: "{\"\":0",
+			value: map[string]string{},
+		},
+		{ // decode a struct with value type mismatch and missing closing character
+			input: "{\"E\":\"\"",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode a map with value type mismatch
+			input: "{\"\":0}",
+			value: map[string]string{},
+		},
+		{ // decode number with exponent into integer field
+			input: "{\"e\":0e0}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode invalid integer representation into integer field
+			input: "{\"e\":00}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode unterminated array into byte slice
+			input: "{\"F\":[",
+			value: struct{ F []byte }{},
 		},
 	}
 

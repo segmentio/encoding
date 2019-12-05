@@ -57,6 +57,14 @@ func parseInt(b []byte) (int64, []byte, error) {
 		const max = math.MinInt64
 		const lim = max / 10
 
+		if len(b) == 1 {
+			return 0, b, syntaxError(b, "cannot decode integer from '-'")
+		}
+
+		if b[1] == '0' && len(b) > 2 && '0' <= b[2] && b[2] <= '9' {
+			return 0, b, syntaxError(b, "cannot decode negative integer with leading zero")
+		}
+
 		for _, d := range b[1:] {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
@@ -85,6 +93,10 @@ func parseInt(b []byte) (int64, []byte, error) {
 		const max = math.MaxInt64
 		const lim = max / 10
 
+		if b[0] == '0' && len(b) > 1 && '0' <= b[1] && b[1] <= '9' {
+			return 0, b, syntaxError(b, "cannot decode positive integer with leading zero")
+		}
+
 		for _, d := range b {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
@@ -107,6 +119,17 @@ func parseInt(b []byte) (int64, []byte, error) {
 		}
 	}
 
+	if count < len(b) {
+		switch b[count] {
+		case '.', 'e', 'E': // was this actually a float?
+			_, r, err := parseNumber(b)
+			if err != nil {
+				return 0, r, err
+			}
+			return 0, r, syntaxError(b, "cannot decode integer from floating point representation")
+		}
+	}
+
 	return value, b[count:], nil
 }
 
@@ -120,6 +143,10 @@ func parseUint(b []byte) (uint64, []byte, error) {
 
 	if len(b) == 0 {
 		return 0, b, syntaxError(b, "cannot decode integer value from an empty input")
+	}
+
+	if b[0] == '0' && len(b) > 1 && '0' <= b[1] && b[1] <= '9' {
+		return 0, b, syntaxError(b, "cannot decode positive integer with leading zero")
 	}
 
 	for _, d := range b {
@@ -141,6 +168,17 @@ func parseUint(b []byte) (uint64, []byte, error) {
 
 		value += x
 		count++
+	}
+
+	if count < len(b) {
+		switch b[count] {
+		case '.', 'e', 'E': // was this actually a float?
+			_, r, err := parseNumber(b)
+			if err != nil {
+				return 0, r, err
+			}
+			return 0, r, syntaxError(b, "cannot decode integer from floating point representation")
+		}
 	}
 
 	return value, b[count:], nil
