@@ -329,64 +329,55 @@ func parseUnicode(b []byte) (rune, int, error) {
 	return rune(u), 4, nil
 }
 
-func isPrint(b []byte) (byte, bool) {
-	for _, c := range b {
-		if c < 0x20 {
-			return c, false
-		}
-	}
-	return 0, true
-}
-
 func parseStringFast(b []byte) ([]byte, []byte, bool, error) {
 	if len(b) < 2 || b[0] != '"' {
 		return nil, b, false, syntaxError(b, "expected '\"' at the beginning of a string value")
 	}
 
-	i := bytes.IndexByte(b[1:], '"')
-	if i >= 0 && i < len(b) {
-		if i++; bytes.IndexByte(b[1:i], '\\') < 0 && ascii.Valid(b[1:i]) {
-			if c, ok := isPrint(b[1:i]); !ok {
-				return nil, b, false, syntaxError(b[:i+1], "invalid character '%c' in string literal", c)
-			}
+	if i := bytes.IndexByte(b[1:], '"') + 1; i > 0 && i < len(b) {
+		if bytes.IndexByte(b[1:i], '\\') < 0 && ascii.ValidPrint(b[1:i]) {
 			return b[:i+1], b[i+1:], false, nil
 		}
 	}
 
-	offset := 1
-
-	for offset < len(b) {
-		i := bytes.IndexByte(b[offset:], '"')
-		if i < 0 {
+	for i := 1; i < len(b); {
+		quoteIndex := bytes.IndexByte(b[i:], '"')
+		if quoteIndex < 0 {
 			break
 		}
-		i += offset
-		if c, ok := isPrint(b[offset:i]); !ok {
-			return nil, b, false, syntaxError(b[offset:i], "invalid character '%c' in string literal", c)
+		quoteIndex += i
+
+		var c byte
+		var s = b[i:quoteIndex]
+		for i := range s {
+			if c = s[i]; c < 0x20 {
+				return nil, b, false, syntaxError(b[i:quoteIndex], "invalid character '%c' in string literal", c)
+			}
 		}
-		j := bytes.IndexByte(b[offset:i], '\\')
-		if j < 0 {
-			return b[:i+1], b[i+1:], true, nil
+
+		escapeIndex := bytes.IndexByte(b[i:quoteIndex], '\\')
+		if escapeIndex < 0 {
+			return b[:quoteIndex+1], b[quoteIndex+1:], true, nil
 		}
-		offset += j + 1
-		if offset < len(b) {
-			switch b[offset] {
+
+		if i += escapeIndex + 1; i < len(b) {
+			switch b[i] {
 			case '"', '\\', '/', 'n', 'r', 't', 'f', 'b':
-				offset++
+				i++
 			case 'u':
-				offset++
-				_, n, err := parseUnicode(b[offset:])
+				i++
+				_, n, err := parseUnicode(b[i:])
 				if err != nil {
 					return nil, b, false, err
 				}
-				offset += n
+				i += n
 			default:
-				return nil, b, false, syntaxError(b[offset:i], "invalid character '%c' in string escape code", b[offset])
+				return nil, b, false, syntaxError(b[i:i], "invalid character '%c' in string escape code", b[i])
 			}
 		}
 	}
 
-	return nil, b, false, syntaxError(b, "missing '\"' at the end of a string value")
+	return nil, b[len(b):], false, syntaxError(b, "missing '\"' at the end of a string value")
 }
 
 func parseString(b []byte) ([]byte, []byte, error) {
