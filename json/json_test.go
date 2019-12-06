@@ -20,6 +20,15 @@ import (
 	"time"
 )
 
+// The encoding/json package does not export the msg field of json.SyntaxError,
+// so we use this replacement type in tests.
+type testSyntaxError struct {
+	msg    string
+	Offset int64
+}
+
+func (e *testSyntaxError) Error() string { return e.msg }
+
 var (
 	marshal    func([]byte, interface{}) ([]byte, error)
 	unmarshal  func([]byte, interface{}) error
@@ -838,21 +847,15 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode single-element slice into []byte field
 			input: "{\"f\":[0],\"0\":[0]}",
-			value: struct {
-				F []byte
-			}{F: []byte{0}},
+			value: struct{ F []byte }{F: []byte{0}},
 		},
 		{ // decode multi-element slice into []byte field
 			input: "{\"F\":[3,1,1,1,9,9]}",
-			value: struct {
-				F []byte
-			}{F: []byte{3, 1, 1, 1, 9, 9}},
+			value: struct{ F []byte }{F: []byte{3, 1, 1, 1, 9, 9}},
 		},
 		{ // decode string with escape sequence into []byte field
 			input: "{\"F\":\"0p00\\r\"}",
-			value: struct {
-				F []byte
-			}{F: []byte("ҝ4")},
+			value: struct{ F []byte }{F: []byte("ҝ4")},
 		},
 		{ // decode unicode code points which fold into ascii characters
 			input: "{\"ſ\":\"8\"}",
@@ -862,37 +865,326 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode unicode code points which don't fold into ascii characters
 			input: "{\"İ\":\"\"}",
-			value: struct {
-				I map[string]string
-			}{I: nil},
+			value: struct{ I map[string]string }{I: nil},
 		},
 		{ // override pointer-to-pointer field clears the inner pointer only
 			input: "{\"o\":0,\"o\":null}",
-			value: struct {
-				O **int
-			}{O: new(*int)},
+			value: struct{ O **int }{O: new(*int)},
 		},
 		{ // subsequent occurrences of a map field retain keys previously loaded
 			input: "{\"i\":{\"\":null},\"i\":{}}",
-			value: struct {
-				I map[string]string
-			}{I: map[string]string{"": ""}},
+			value: struct{ I map[string]string }{I: map[string]string{"": ""}},
 		},
+		{ // an empty string is an invalid JSON input
+			input: "",
+		},
+		{ // ASCII character below 0x20 are invalid JSON input
+			input: "[\"\b\"]",
+		},
+		{ // random byte before any value
+			input: "\xad",
+		},
+		{ // cloud be the beginning of a false value but not
+			input: "f",
+			value: false,
+		},
+		{ // random ASCII character
+			input: "}",
+			value: []interface{}{},
+		},
+		{ // random byte after valid JSON, decoded to a nil type
+			input: "0\x93",
+		},
+		{ // random byte after valid JSON, decoded to a int type
+			input: "0\x93",
+			value: 0,
+		},
+		{ // random byte after valid JSON, decoded to a slice type
+			input: "0\x93",
+			value: []interface{}{},
+		},
+		{ // decode integer into slice
+			input: "0",
+			value: []interface{}{},
+		},
+		{ // decode integer with trailing space into slice
+			input: "0\t",
+			value: []interface{}{},
+		},
+		{ // decode integer with leading random bytes into slice
+			input: "\b0",
+			value: []interface{}{},
+		},
+		{ // decode string into slice followed by number
+			input: "\"\"0",
+			value: []interface{}{},
+		},
+		{ // decode what looks like an object followed by a number into a string
+			input: "{0",
+			value: "",
+		},
+		{ // decode what looks like an object followed by a number into a map
+			input: "{0",
+			value: map[string]string{},
+		},
+		{ // decode string into string with trailing random byte
+			input: "\"\"\f",
+			value: "",
+		},
+		{ // decode weird number value into nil
+			input: "-00",
+		},
+		{ // decode an invalid escaped sequence
+			input: "\"\\0\"",
+			value: "",
+		},
+		{ // decode what looks like an array followed by a number into a slice
+			input: "[9E600",
+			value: []interface{}{},
+		},
+		{ // decode a number which is too large to fit in a float64
+			input: "[1e900]",
+			value: []interface{}{},
+		},
+		{ // many nested arrays openings
+			input: "[[[[[[",
+			value: []interface{}{},
+		},
+		{ // decode a map with value type mismatch and missing closing character
+			input: "{\"\":0",
+			value: map[string]string{},
+		},
+		{ // decode a struct with value type mismatch and missing closing character
+			input: "{\"E\":\"\"",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode a map with value type mismatch
+			input: "{\"\":0}",
+			value: map[string]string{},
+		},
+		{ // decode number with exponent into integer field
+			input: "{\"e\":0e0}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode invalid integer representation into integer field
+			input: "{\"e\":00}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode unterminated array into byte slice
+			input: "{\"F\":[",
+			value: struct{ F []byte }{},
+		},
+		{ // attempt to decode string into in
+			input: "{\"S\":\"\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode object with null key into map
+			input: "{null:0}",
+			value: map[string]interface{}{},
+		},
+		{ // decode unquoted integer into struct field with string tag
+			input: "{\"S\":0}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // invalid base64 content when decoding string into byte slice
+			input: "{\"F\":\"0\"}",
+			value: struct{ F []byte }{},
+		},
+		{ // decode an object with a "null" string as key
+			input: "{\"null\":null}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode an invalid floating point number representation into an integer field with string tag
+			input: "{\"s\":8e800}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a string with leading zeroes into an integer field with string tag
+			input: "{\"S\":\"00\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a string with invalid leading sign and zeroes into an integer field with string tag
+			input: "{\"S\":\"+00\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a string with valid leading sign and zeroes into an integer field with string tag
+			input: "{\"S\":\"-00\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode non-ascii string into integer field with string tag
+			input: "{\"ſ\":\"\xbf\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a valid floating point number representation into an integer field with string tag
+			input: "{\"S\":0.0}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with invalid leading sign to integer field with string tag
+			input: "{\"S\":\"+0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with valid leading sign to integer field with string tag
+			input: "{\"S\":\"-0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with object representation to integer field with string tag
+			input: "{\"s\":{}}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decoding integer with leading zeroes
+			input: "{\"o\":00}",
+			value: struct{ O **int }{},
+		},
+		{ // codeding string with invalid float representation into integer field with string tag
+			input: "{\"s\":\"0.\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // malformed negative integer in object value
+			input: "{\"N\":-00}",
+			value: struct{ N *int }{},
+		},
+		{ // integer overflow
+			input: "{\"a\":9223372036854775808}",
+			value: struct {
+				A int `json:",omitempty"`
+			}{},
+		},
+		{ // decode string with number followed by random byte into integer field with string tag
+			input: "{\"s\":\"0]\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode object into integer field
+			input: "{\"n\":{}}",
+			value: struct{ N *int }{},
+		},
+		{ // decode negative integer into unsigned type
+			input: "{\"E\":-0}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode string with number followed by random byte into integer field with string tag
+			input: "{\"s\":\"03�\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with leading zeroes into integer field with string tag
+			input: "{\"s\":\"03\"}",
+			value: struct {
+				S int `json:",string"`
+			}{S: 3},
+		},
+		{ // decode string containing what looks like an object into integer field with string tag
+			input: "{\"S\":\"{}\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode an empty string followed by the same field with a null value into a byte slice
+			input: "{\"F\":\"\",\"F\":null}",
+			value: struct{ F []byte }{},
+		},
+		{ // decode string containing a float into an integer field with string tag
+			input: "{\"S\":\"0e0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with negative sign into a an integer field with string tag
+			input: "{\"s\":\"-\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with positive sign into a an integer field with string tag
+			input: "{\"s\":\"+\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode an integer into a json unmarshaler
+			input: "{\"q\":0}",
+			value: struct {
+				Q testMarshaller
+			}{},
+		},
+		// This test fails because it appears that the encoding/json package
+		// will decode "q" before "s", so it returns an error about "q" being of
+		// the wrong type while this package will prase object keys in the order
+		// that they appear in the JSON input, so it detects the error from "s"
+		// first.
+		//
+		//{
+		//	input: "{\"s\":0,\"q\":0}",
+		//	value: struct {
+		//		Q testMarshaller
+		//		S int `json:",string"`
+		//	}{},
+		//},
 	}
 
 	for _, test := range tests {
 		t.Run("", func(t *testing.T) {
-			ptr := reflect.New(reflect.TypeOf(test.value)).Interface()
+			var ptr1 interface{}
+			var ptr2 interface{}
 
-			if err := Unmarshal([]byte(test.input), ptr); err != nil {
-				t.Fatal(err)
+			if test.value != nil {
+				ptr1 = reflect.New(reflect.TypeOf(test.value)).Interface()
+				ptr2 = reflect.New(reflect.TypeOf(test.value)).Interface()
 			}
 
-			if value := reflect.ValueOf(ptr).Elem().Interface(); !reflect.DeepEqual(test.value, value) {
-				t.Error("values mismatch")
-				t.Logf("expected: %#v", test.value)
-				t.Logf("found:    %#v", value)
+			err1 := json.Unmarshal([]byte(test.input), ptr1)
+			err2 := Unmarshal([]byte(test.input), ptr2)
+
+			if reflect.TypeOf(err1) != reflect.TypeOf(err2) {
+				t.Error("errors mismatch")
+				t.Logf("expected: %T: %v", err1, err1)
+				t.Logf("found:    %T: %v", err2, err2)
+			} else if err1 == nil && test.value != nil {
+				if value := reflect.ValueOf(ptr2).Elem().Interface(); !reflect.DeepEqual(test.value, value) {
+					t.Error("values mismatch")
+					t.Logf("expected: %#v", test.value)
+					t.Logf("found:    %#v", value)
+				}
 			}
 		})
 	}
+}
+
+type testMarshaller struct {
+	v string
+}
+
+func (m *testMarshaller) MarshalJSON() ([]byte, error) {
+	return Marshal(m.v)
+}
+
+func (m *testMarshaller) UnmarshalJSON(data []byte) error {
+	return Unmarshal(data, &m.v)
 }

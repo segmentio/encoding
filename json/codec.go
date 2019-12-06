@@ -221,6 +221,12 @@ func constructStringDecodeFunc(decode decodeFunc) decodeFunc {
 	}
 }
 
+func constructStringToIntDecodeFunc(t reflect.Type, decode decodeFunc) decodeFunc {
+	return func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
+		return d.decodeFromStringToInt(b, p, t, decode)
+	}
+}
+
 func constructArrayCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
 	e := t.Elem()
 	c := constructCodec(e, seen)
@@ -586,8 +592,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 			}
 
 			switch typ.Kind() {
-			case reflect.Bool,
-				reflect.Int,
+			case reflect.Int,
 				reflect.Int8,
 				reflect.Int16,
 				reflect.Int32,
@@ -597,7 +602,10 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				reflect.Uint8,
 				reflect.Uint16,
 				reflect.Uint32,
-				reflect.Uint64,
+				reflect.Uint64:
+				codec.encode = constructStringEncodeFunc(codec.encode)
+				codec.decode = constructStringToIntDecodeFunc(typ, codec.decode)
+			case reflect.Bool,
 				reflect.Float32,
 				reflect.Float64,
 				reflect.String:
@@ -905,19 +913,53 @@ func unmarshalOverflow(b []byte, t reflect.Type) error {
 	return &UnmarshalTypeError{Value: "number " + prefix(b) + " overflows", Type: t}
 }
 
-func syntaxError(b []byte, msg string, args ...interface{}) error {
-	e := new(SyntaxError)
-	t := reflect.TypeOf(e).Elem()
-	p := unsafe.Pointer(e)
+func unexpectedEOF(b []byte) error {
+	return syntaxError(b, "unexpected end of JSON input")
+}
 
+var syntaxErrorMsgOffset = ^uintptr(0)
+
+func init() {
+	t := reflect.TypeOf(SyntaxError{})
 	for i, n := 0, t.NumField(); i < n; i++ {
 		if f := t.Field(i); f.Type.Kind() == reflect.String {
-			// Hack to set the unexported `msg` field.
-			*(*string)(unsafe.Pointer(uintptr(p) + f.Offset)) = "json: " + fmt.Sprintf(msg, args...) + ": " + prefix(b)
+			syntaxErrorMsgOffset = f.Offset
 		}
 	}
+}
 
+func syntaxError(b []byte, msg string, args ...interface{}) error {
+	e := new(SyntaxError)
+	i := syntaxErrorMsgOffset
+	if i != ^uintptr(0) {
+		s := "json: " + fmt.Sprintf(msg, args...) + ": " + prefix(b)
+		p := unsafe.Pointer(e)
+		// Hack to set the unexported `msg` field.
+		*(*string)(unsafe.Pointer(uintptr(p) + i)) = s
+	}
 	return e
+}
+
+func inputError(b []byte, t reflect.Type) ([]byte, error) {
+	if len(b) == 0 {
+		return nil, unexpectedEOF(b)
+	}
+	_, r, err := parseValue(b)
+	if err != nil {
+		return r, err
+	}
+	return skipSpaces(r), unmarshalTypeError(b, t)
+}
+
+func objectKeyError(b []byte, err error) ([]byte, error) {
+	if len(b) == 0 {
+		return nil, unexpectedEOF(b)
+	}
+	switch err.(type) {
+	case *UnmarshalTypeError:
+		err = syntaxError(b, "invalid character '%c' looking for beginning of object key", b[0])
+	}
+	return b, err
 }
 
 func prefix(b []byte) string {
@@ -946,11 +988,12 @@ var (
 	int32Type = reflect.TypeOf(int32(0))
 	int64Type = reflect.TypeOf(int64(0))
 
-	uintType   = reflect.TypeOf(uint(0))
-	uint8Type  = reflect.TypeOf(uint8(0))
-	uint16Type = reflect.TypeOf(uint16(0))
-	uint32Type = reflect.TypeOf(uint32(0))
-	uint64Type = reflect.TypeOf(uint64(0))
+	uintType    = reflect.TypeOf(uint(0))
+	uint8Type   = reflect.TypeOf(uint8(0))
+	uint16Type  = reflect.TypeOf(uint16(0))
+	uint32Type  = reflect.TypeOf(uint32(0))
+	uint64Type  = reflect.TypeOf(uint64(0))
+	uintptrType = reflect.TypeOf(uintptr(0))
 
 	float32Type = reflect.TypeOf(float32(0))
 	float64Type = reflect.TypeOf(float64(0))

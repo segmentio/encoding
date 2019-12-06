@@ -456,20 +456,20 @@ var unmarshalTests = []unmarshalTest{
 	{in: `{"alphabet": "xyz"}`, ptr: new(U), err: fmt.Errorf("json: unknown field \"alphabet\""), disallowUnknownFields: true},
 
 	// syntax errors
-	{in: `{"X": "foo", "Y"}`, err: &SyntaxError{"invalid character '}' after object key", 17}},
-	{in: `[1, 2, 3+]`, err: &SyntaxError{"invalid character '+' after array element", 9}},
-	{in: `{"X":12x}`, err: &SyntaxError{"invalid character 'x' after object key:value pair", 8}, useNumber: true},
-	{in: `[2, 3`, err: &SyntaxError{msg: "unexpected end of JSON input", Offset: 5}},
+	{in: `{"X": "foo", "Y"}`, err: &testSyntaxError{"invalid character '}' after object key", 17}},
+	{in: `[1, 2, 3+]`, err: &testSyntaxError{"invalid character '+' after array element", 9}},
+	{in: `{"X":12x}`, err: &testSyntaxError{"invalid character 'x' after object key:value pair", 8}, useNumber: true},
+	{in: `[2, 3`, err: &testSyntaxError{msg: "unexpected end of JSON input", Offset: 5}},
 
 	// raw value errors
-	{in: "\x01 42", err: &SyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
-	{in: " 42 \x01", err: &SyntaxError{"invalid character '\\x01' after top-level value", 5}},
-	{in: "\x01 true", err: &SyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
-	{in: " false \x01", err: &SyntaxError{"invalid character '\\x01' after top-level value", 8}},
-	{in: "\x01 1.2", err: &SyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
-	{in: " 3.4 \x01", err: &SyntaxError{"invalid character '\\x01' after top-level value", 6}},
-	{in: "\x01 \"string\"", err: &SyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
-	{in: " \"string\" \x01", err: &SyntaxError{"invalid character '\\x01' after top-level value", 11}},
+	{in: "\x01 42", err: &testSyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
+	{in: " 42 \x01", err: &testSyntaxError{"invalid character '\\x01' after top-level value", 5}},
+	{in: "\x01 true", err: &testSyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
+	{in: " false \x01", err: &testSyntaxError{"invalid character '\\x01' after top-level value", 8}},
+	{in: "\x01 1.2", err: &testSyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
+	{in: " 3.4 \x01", err: &testSyntaxError{"invalid character '\\x01' after top-level value", 6}},
+	{in: "\x01 \"string\"", err: &testSyntaxError{"invalid character '\\x01' looking for beginning of value", 1}},
+	{in: " \"string\" \x01", err: &testSyntaxError{"invalid character '\\x01' after top-level value", 11}},
 
 	// array tests
 	{in: `[1, 2, 3]`, ptr: new([3]int), out: [3]int{1, 2, 3}},

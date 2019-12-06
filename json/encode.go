@@ -129,10 +129,9 @@ func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 	s := *(*string)(p)
 	i := 0
 	j := 0
+	escapeHTML := (e.flags & EscapeHTML) != 0
 
 	b = append(b, '"')
-
-	escapeHTML := (e.flags & EscapeHTML) != 0
 
 	for j < len(s) {
 		c := s[j]
