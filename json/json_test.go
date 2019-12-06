@@ -1110,6 +1110,12 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			input: "{\"F\":\"\",\"F\":null}",
 			value: struct{ F []byte }{},
 		},
+		{ // decode string containing a flow into an integer field with string tag
+			input: "{\"S\":\"0e0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
 	}
 
 	for _, test := range tests {

@@ -377,8 +377,14 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		if _, isSyntaxError := err.(*SyntaxError); isSyntaxError {
 			return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
 		}
-		if _, _, err := parseValue(v); err == nil {
-			return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
+		// When the input value was a valid number representation we retain the
+		// error returned by the decoder.
+		if _, _, err := parseNumber(v); err != nil {
+			// When the input value valid JSON we mirror the behavior of the
+			// encoding/json package and return a generic error.
+			if _, _, err := parseValue(v); err == nil {
+				return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
+			}
 		}
 		return b, err
 	} else if len(r) != 0 {
