@@ -1204,3 +1204,48 @@ func TestGithubIssue11(t *testing.T) {
 		t.Log(s)
 	}
 }
+
+type Issue13 struct {
+	Stringer fmt.Stringer
+	Field    int `json:"MyInt"`
+}
+
+type S string
+
+func (s S) String() string { return string(s) }
+
+func TestGithubIssue13(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/13
+	v := Issue13{}
+
+	b, err := Marshal(v)
+	if err != nil {
+		t.Error("unexpected errror:", err)
+	} else {
+		t.Log(string(b))
+	}
+
+	v = Issue13{Stringer: S("")}
+	if err := Unmarshal([]byte(`{"Stringer":null}`), &v); err != nil {
+		t.Error("unexpected error:", err)
+	}
+	if v.Stringer != nil {
+		t.Error("Stringer field was not overwritten")
+	}
+
+	v = Issue13{}
+	if err := Unmarshal([]byte(`{"Stringer":"whatever"}`), &v); err == nil {
+		t.Error("expected error but decoding string value into nil fmt.Stringer but got <nil>")
+	}
+
+	v = Issue13{Stringer: S("")}
+	if err := Unmarshal([]byte(`{"Stringer":"whatever"}`), &v); err == nil {
+		t.Error("expected error but decoding string value into non-pointer fmt.Stringer but got <nil>")
+	}
+
+	s := S("")
+	v = Issue13{Stringer: &s}
+	if err := Unmarshal([]byte(`{"Stringer":"whatever"}`), &v); err != nil {
+		t.Error("unexpected error decoding string value into pointer fmt.Stringer:", err)
+	}
+}

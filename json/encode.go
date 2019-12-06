@@ -592,7 +592,7 @@ func (e encoder) encodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 	return Append(b, *(*interface{})(p), e.flags)
 }
 
-func (e encoder) encodeUnsupportedType(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
+func (e encoder) encodeUnsupportedTypeError(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
 	return b, &UnsupportedTypeError{Type: t}
 }
 
