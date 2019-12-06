@@ -373,11 +373,13 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		v = append(u, v[i:]...)
 	}
 
-	if _, err := decode(d, v, p); err != nil {
+	if r, err := decode(d, v, p); err != nil {
 		if _, isSyntaxError := err.(*SyntaxError); isSyntaxError {
 			return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
 		}
 		return b, err
+	} else if len(r) != 0 {
+		return r, unmarshalTypeError(v, t)
 	}
 
 	return b, nil

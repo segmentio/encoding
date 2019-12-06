@@ -1074,6 +1074,16 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				A int `json:",omitempty"`
 			}{},
 		},
+		{ // decode string with number followed by random byte into integer field with string tag
+			input: "{\"s\":\"0]\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode object into integer field
+			input: "{\"n\":{}}",
+			value: struct{ N *int }{},
+		},
 	}
 
 	for _, test := range tests {
