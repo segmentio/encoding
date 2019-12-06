@@ -1188,3 +1188,19 @@ func (m *testMarshaller) MarshalJSON() ([]byte, error) {
 func (m *testMarshaller) UnmarshalJSON(data []byte) error {
 	return Unmarshal(data, &m.v)
 }
+
+func TestGithubIssue11(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/11
+	v := struct{ F float64 }{
+		F: math.NaN(),
+	}
+
+	_, err := Marshal(v)
+	if err == nil {
+		t.Error("no error returned when marshalling NaN value")
+	} else if s := err.Error(); !strings.Contains(s, "NaN") {
+		t.Error("error returned when marshalling NaN value does not mention 'NaN':", s)
+	} else {
+		t.Log(s)
+	}
+}
