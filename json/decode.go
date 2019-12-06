@@ -354,18 +354,30 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		return inputError(v, t)
 	}
 
-	// In this context the encoding/json package accepts leading zeroes because
-	// it is not constrained by the JSON syntax, remove them so the parsing
-	// functions don't return syntax errors.
-	for len(v) > 1 && v[0] == '0' && '0' <= v[1] && v[1] <= '9' {
-		v = v[1:]
+	if t.Kind() != reflect.Bool && len(v) > 0 && v[0] == '-' || v[0] == '+' || v[0] == '0' {
+		// In this context the encoding/json package accepts leading zeroes because
+		// it is not constrained by the JSON syntax, remove them so the parsing
+		// functions don't return syntax errors.
+		u := make([]byte, 0, len(v))
+		i := 0
+
+		if i < len(v) && v[i] == '-' || v[i] == '+' {
+			u = append(u, v[i])
+			i++
+		}
+
+		for (i+1) < len(v) && v[i] == '0' && v[i+1] == '0' {
+			i++
+		}
+
+		v = append(u, v[i:]...)
 	}
 
-	if r, err := decode(d, v, p); err != nil {
+	if _, err := decode(d, v, p); err != nil {
 		if _, isSyntaxError := err.(*SyntaxError); isSyntaxError {
 			return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", v)
 		}
-		return r, err
+		return b, err
 	}
 
 	return b, nil
@@ -861,6 +873,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 	if hasPrefix(b, "null") {
 		return b[4:], nil
 	}
+
 	if len(b) < 2 || b[0] != '{' {
 		return inputError(b, st.typ)
 	}

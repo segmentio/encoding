@@ -62,7 +62,7 @@ func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 			return 0, b, syntaxError(b, "cannot decode integer from '-'")
 		}
 
-		if len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+		if len(b) > 2 && b[1] == '0' && '0' <= b[2] && b[2] <= '9' {
 			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 		}
 

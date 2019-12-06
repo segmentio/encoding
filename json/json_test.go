@@ -1064,11 +1064,11 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				S int `json:",string"`
 			}{},
 		},
-		{
+		{ // malformed negative integer in object value
 			input: "{\"N\":-00}",
 			value: struct{ N *int }{},
 		},
-		{
+		{ // integer overflow
 			input: "{\"a\":9223372036854775808}",
 			value: struct {
 				A int `json:",omitempty"`
