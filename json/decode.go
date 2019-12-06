@@ -14,7 +14,7 @@ import (
 )
 
 func (d decoder) decodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 	return b, unmarshalTypeError(b, nullType)
@@ -22,15 +22,15 @@ func (d decoder) decodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 func (d decoder) decodeBool(b []byte, p unsafe.Pointer) ([]byte, error) {
 	switch {
-	case hasPrefix(b, "true"):
+	case hasTruePrefix(b):
 		*(*bool)(p) = true
 		return b[4:], nil
 
-	case hasPrefix(b, "false"):
+	case hasFalsePrefix(b):
 		*(*bool)(p) = false
 		return b[5:], nil
 
-	case hasPrefix(b, "null"):
+	case hasNullPrefix(b):
 		return b[4:], nil
 
 	default:
@@ -39,7 +39,7 @@ func (d decoder) decodeBool(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeInt(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -53,7 +53,7 @@ func (d decoder) decodeInt(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeInt8(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -71,7 +71,7 @@ func (d decoder) decodeInt8(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeInt16(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -89,7 +89,7 @@ func (d decoder) decodeInt16(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeInt32(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -107,7 +107,7 @@ func (d decoder) decodeInt32(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeInt64(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -121,7 +121,7 @@ func (d decoder) decodeInt64(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeUint(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -135,7 +135,7 @@ func (d decoder) decodeUint(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeUintptr(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -149,7 +149,7 @@ func (d decoder) decodeUintptr(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeUint8(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -167,7 +167,7 @@ func (d decoder) decodeUint8(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeUint16(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -185,7 +185,7 @@ func (d decoder) decodeUint16(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeUint32(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -203,7 +203,7 @@ func (d decoder) decodeUint32(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeUint64(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -217,7 +217,7 @@ func (d decoder) decodeUint64(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeFloat32(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -236,7 +236,7 @@ func (d decoder) decodeFloat32(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeFloat64(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -255,7 +255,7 @@ func (d decoder) decodeFloat64(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -274,7 +274,7 @@ func (d decoder) decodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -293,7 +293,7 @@ func (d decoder) decodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeFromString(b []byte, p unsafe.Pointer, decode decodeFunc) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return decode(d, b, p)
 	}
 
@@ -314,7 +314,7 @@ func (d decoder) decodeFromString(b []byte, p unsafe.Pointer, decode decodeFunc)
 }
 
 func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -345,7 +345,7 @@ func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeDuration(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -388,7 +388,7 @@ func (d decoder) decodeDuration(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeTime(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -413,7 +413,7 @@ func (d decoder) decodeTime(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t reflect.Type, decode decodeFunc) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 
@@ -474,7 +474,7 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 }
 
 func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect.Type, decode decodeFunc) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		*(*slice)(p) = slice{}
 		return b[4:], nil
 	}
@@ -543,7 +543,7 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 }
 
 func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, kz, vz reflect.Value, decodeKey, decodeValue decodeFunc) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		*(*unsafe.Pointer)(p) = nil
 		return b[4:], nil
 	}
@@ -614,7 +614,7 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 }
 
 func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		*(*unsafe.Pointer)(p) = nil
 		return b[4:], nil
 	}
@@ -685,7 +685,7 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 }
 
 func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		*(*unsafe.Pointer)(p) = nil
 		return b[4:], nil
 	}
@@ -756,7 +756,7 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 }
 
 func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
 	if len(b) < 2 || b[0] != '{' {
@@ -846,7 +846,7 @@ func (d decoder) decodeEmbeddedStructPointer(b []byte, p unsafe.Pointer, t refle
 }
 
 func (d decoder) decodePointer(b []byte, p unsafe.Pointer, t reflect.Type, decode decodeFunc) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		pp := *(*unsafe.Pointer)(p)
 		if pp != nil && t.Kind() == reflect.Ptr {
 			return decode(d, b, pp)
@@ -873,7 +873,7 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 			// If the destination is nil the only value that is OK to decode is
 			// `null`, and the encoding/json package always nils the destination
 			// interface value in this case.
-			if hasPrefix(b, "null") {
+			if hasNullPrefix(b) {
 				*(*interface{})(p) = nil
 				return b[4:], nil
 			}
