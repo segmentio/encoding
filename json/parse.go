@@ -25,17 +25,14 @@ const (
 )
 
 func skipSpaces(b []byte) []byte {
-	i := 0
-skipLoop:
-	for _, c := range b {
-		switch c {
+	for i := range b {
+		switch b[i] {
 		case sp, ht, nl, cr:
-			i++
 		default:
-			break skipLoop
+			return b[i:]
 		}
 	}
-	return b[i:]
+	return nil
 }
 
 // parseInt parses a decimanl representation of an int64 from b.
