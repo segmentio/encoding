@@ -1088,6 +1088,18 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			input: "{\"E\":-0}",
 			value: struct{ E uint8 }{},
 		},
+		{ // decode string with number followed by random byte into integer field with string tag
+			input: "{\"s\":\"03�\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with leading zeroes into integer field with string tag
+			input: "{\"s\":\"03\"}",
+			value: struct {
+				S int `json:",string"`
+			}{S: 3},
+		},
 	}
 
 	for _, test := range tests {
