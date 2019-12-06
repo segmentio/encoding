@@ -1110,8 +1110,20 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			input: "{\"F\":\"\",\"F\":null}",
 			value: struct{ F []byte }{},
 		},
-		{ // decode string containing a flow into an integer field with string tag
+		{ // decode string containing a float into an integer field with string tag
 			input: "{\"S\":\"0e0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with negative sign into a an integer field with string tag
+			input: "{\"s\":\"-\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with positive sign into a an integer field with string tag
+			input: "{\"s\":\"+\"}",
 			value: struct {
 				S int `json:",string"`
 			}{},
