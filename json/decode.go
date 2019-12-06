@@ -354,7 +354,7 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		return inputError(v, t)
 	}
 
-	if len(v) > 0 && (v[0] == '-' || v[0] == '+' || v[0] == '0') {
+	if hasLeadingZeroes(v) {
 		// In this context the encoding/json package accepts leading zeroes because
 		// it is not constrained by the JSON syntax, remove them so the parsing
 		// functions don't return syntax errors.

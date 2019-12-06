@@ -668,6 +668,17 @@ func hasPrefix(b []byte, s string) bool {
 	return len(b) >= len(s) && s == string(b[:len(s)])
 }
 
+func hasLeadingSign(b []byte) bool {
+	return len(b) > 0 && (b[0] == '+' || b[0] == '-')
+}
+
+func hasLeadingZeroes(b []byte) bool {
+	if hasLeadingSign(b) {
+		b = b[1:]
+	}
+	return len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9'
+}
+
 func appendToLower(b, s []byte) []byte {
 	if ascii.Valid(s) { // fast path for ascii strings
 		i := 0
