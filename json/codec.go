@@ -155,6 +155,9 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 	case reflect.String:
 		c = codec{encode: encoder.encodeString, decode: decoder.decodeString}
 
+	case reflect.Interface:
+		c = codec{encode: encoder.encodeInterface, decode: constructNonEmptyInterfaceDecoderFunc(t)}
+
 	case reflect.Array:
 		c = constructArrayCodec(t, seen)
 
@@ -169,9 +172,6 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 
 	case reflect.Ptr:
 		c = constructPointerCodec(t, seen)
-
-	default:
-		c = constructUnmarshalTypeErrorCodec(t)
 	}
 
 	p := reflect.PtrTo(t)
@@ -196,6 +196,14 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 
 	case p.Implements(textUnmarshalerType):
 		c.decode = constructTextUnmarshalerDecodeFunc(t, true)
+	}
+
+	if c.encode == nil {
+		c.encode = constructUnsupportedTypeEncodeFunc(t)
+	}
+
+	if c.decode == nil {
+		c.decode = constructUnsupportedTypeDecodeFunc(t)
 	}
 
 	return
@@ -388,7 +396,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 			}
 
 		default:
-			return constructUnmarshalTypeErrorCodec(t)
+			return constructUnsupportedTypeCodec(t)
 		}
 	}
 
@@ -708,20 +716,26 @@ func constructPointerDecodeFunc(t reflect.Type, decode decodeFunc) decodeFunc {
 	}
 }
 
-func constructUnmarshalTypeErrorCodec(t reflect.Type) codec {
+func constructNonEmptyInterfaceDecoderFunc(t reflect.Type) decodeFunc {
+	return func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
+		return d.decodeNonEmptyInterface(b, p, t)
+	}
+}
+
+func constructUnsupportedTypeCodec(t reflect.Type) codec {
 	return codec{
-		encode: constructUnmarshalTypeErrorEncodeFunc(t),
-		decode: constructUnmarshalTypeErrorDecodeFunc(t),
+		encode: constructUnsupportedTypeEncodeFunc(t),
+		decode: constructUnsupportedTypeDecodeFunc(t),
 	}
 }
 
-func constructUnmarshalTypeErrorEncodeFunc(t reflect.Type) encodeFunc {
+func constructUnsupportedTypeEncodeFunc(t reflect.Type) encodeFunc {
 	return func(e encoder, b []byte, p unsafe.Pointer) ([]byte, error) {
-		return e.encodeUnsupportedType(b, p, t)
+		return e.encodeUnsupportedTypeError(b, p, t)
 	}
 }
 
-func constructUnmarshalTypeErrorDecodeFunc(t reflect.Type) decodeFunc {
+func constructUnsupportedTypeDecodeFunc(t reflect.Type) decodeFunc {
 	return func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
 		return d.decodeUnmarshalTypeError(b, p, t)
 	}
