@@ -1128,6 +1128,25 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 				S int `json:",string"`
 			}{},
 		},
+		{ // decode an integer into a json unmarshaler
+			input: "{\"q\":0}",
+			value: struct {
+				Q testMarshaller
+			}{},
+		},
+		// This test fails because it appears that the encoding/json package
+		// will decode "q" before "s", so it returns an error about "q" being of
+		// the wrong type while this package will prase object keys in the order
+		// that they appear in the JSON input, so it detects the error from "s"
+		// first.
+		//
+		//{
+		//	input: "{\"s\":0,\"q\":0}",
+		//	value: struct {
+		//		Q testMarshaller
+		//		S int `json:",string"`
+		//	}{},
+		//},
 	}
 
 	for _, test := range tests {
@@ -1156,4 +1175,16 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			}
 		})
 	}
+}
+
+type testMarshaller struct {
+	v string
+}
+
+func (m *testMarshaller) MarshalJSON() ([]byte, error) {
+	return Marshal(m.v)
+}
+
+func (m *testMarshaller) UnmarshalJSON(data []byte) error {
+	return Unmarshal(data, &m.v)
 }

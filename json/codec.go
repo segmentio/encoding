@@ -592,8 +592,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 			}
 
 			switch typ.Kind() {
-			case reflect.Bool,
-				reflect.Int,
+			case reflect.Int,
 				reflect.Int8,
 				reflect.Int16,
 				reflect.Int32,
@@ -603,12 +602,15 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				reflect.Uint8,
 				reflect.Uint16,
 				reflect.Uint32,
-				reflect.Uint64,
+				reflect.Uint64:
+				codec.encode = constructStringEncodeFunc(codec.encode)
+				codec.decode = constructStringToIntDecodeFunc(typ, codec.decode)
+			case reflect.Bool,
 				reflect.Float32,
 				reflect.Float64,
 				reflect.String:
 				codec.encode = constructStringEncodeFunc(codec.encode)
-				codec.decode = constructStringToIntDecodeFunc(typ, codec.decode)
+				codec.decode = constructStringDecodeFunc(codec.decode)
 			}
 		}
 
