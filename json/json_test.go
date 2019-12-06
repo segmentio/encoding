@@ -992,7 +992,7 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // invalid base64 content when decoding string into byte slice
 			input: "{\"F\":\"0\"}",
-			value: struct{ F []uint8 }{},
+			value: struct{ F []byte }{},
 		},
 		{ // decode an object with a "null" string as key
 			input: "{\"null\":null}",
@@ -1099,6 +1099,16 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			value: struct {
 				S int `json:",string"`
 			}{S: 3},
+		},
+		{ // decode string containing what looks like an object into integer field with string tag
+			input: "{\"S\":\"{}\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode an empty string followed by the same field with a null value into a byte slice
+			input: "{\"F\":\"\",\"F\":null}",
+			value: struct{ F []byte }{},
 		},
 	}
 
