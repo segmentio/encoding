@@ -1084,6 +1084,10 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 			input: "{\"n\":{}}",
 			value: struct{ N *int }{},
 		},
+		{ // decode negative integer into unsigned type
+			input: "{\"E\":-0}",
+			value: struct{ E uint8 }{},
+		},
 	}
 
 	for _, test := range tests {
