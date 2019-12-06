@@ -172,6 +172,9 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 
 	case reflect.Ptr:
 		c = constructPointerCodec(t, seen)
+
+	default:
+		c = constructUnsupportedTypeCodec(t)
 	}
 
 	p := reflect.PtrTo(t)
@@ -196,14 +199,6 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 
 	case p.Implements(textUnmarshalerType):
 		c.decode = constructTextUnmarshalerDecodeFunc(t, true)
-	}
-
-	if c.encode == nil {
-		c.encode = constructUnsupportedTypeEncodeFunc(t)
-	}
-
-	if c.decode == nil {
-		c.decode = constructUnsupportedTypeDecodeFunc(t)
 	}
 
 	return
