@@ -1249,3 +1249,29 @@ func TestGithubIssue13(t *testing.T) {
 		t.Error("unexpected error decoding string value into pointer fmt.Stringer:", err)
 	}
 }
+
+type jsonMarshalerA []byte
+
+func (m jsonMarshalerA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type textMarhsalerB []byte
+
+func (m textMarhsalerB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+func TestGithubIssue16(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/16
+	v1 := jsonMarshalerA(nil)
+	v2 := textMarhsalerB(nil)
+
+	if b1, _ := Marshal(v1); string(b1) != `"A"` {
+		t.Errorf(`%s != "A"`, string(b1))
+	}
+
+	if b2, _ := Marshal(v2); string(b2) != `"B"` {
+		t.Errorf(`%s != "B"`, string(b2))
+	}
+}

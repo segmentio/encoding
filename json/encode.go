@@ -623,7 +623,7 @@ func (e encoder) encodeJSONMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 	}
 
 	switch v.Kind() {
-	case reflect.Ptr, reflect.Map, reflect.Interface, reflect.Slice:
+	case reflect.Ptr, reflect.Map, reflect.Interface:
 		if v.IsNil() {
 			return append(b, "null"...), nil
 		}
@@ -654,7 +654,7 @@ func (e encoder) encodeTextMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 	}
 
 	switch v.Kind() {
-	case reflect.Ptr, reflect.Map, reflect.Interface, reflect.Slice:
+	case reflect.Ptr, reflect.Map, reflect.Interface:
 		if v.IsNil() {
 			return append(b, `""`...), nil
 		}
