@@ -1250,28 +1250,45 @@ func TestGithubIssue13(t *testing.T) {
 	}
 }
 
-type jsonMarshalerA []byte
+type sliceA []byte
 
-func (m jsonMarshalerA) MarshalJSON() ([]byte, error) {
+func (m sliceA) MarshalJSON() ([]byte, error) {
 	return []byte(`"A"`), nil
 }
 
-type textMarhsalerB []byte
+type sliceB []byte
 
-func (m textMarhsalerB) MarshalText() ([]byte, error) {
+func (m sliceB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type mapA map[string]string
+
+func (m mapA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type mapB map[string]string
+
+func (m mapB) MarshalText() ([]byte, error) {
 	return []byte("B"), nil
 }
 
 func TestGithubIssue16(t *testing.T) {
 	// https://github.com/segmentio/encoding/issues/16
-	v1 := jsonMarshalerA(nil)
-	v2 := textMarhsalerB(nil)
-
-	if b1, _ := Marshal(v1); string(b1) != `"A"` {
-		t.Errorf(`%s != "A"`, string(b1))
+	tests := []struct {
+		value  interface{}
+		output string
+	}{
+		{value: sliceA(nil), output: `"A"`},
+		{value: sliceB(nil), output: `"B"`},
+		{value: mapA(nil), output: `"A"`},
+		{value: mapB(nil), output: `"B"`},
 	}
 
-	if b2, _ := Marshal(v2); string(b2) != `"B"` {
-		t.Errorf(`%s != "B"`, string(b2))
+	for _, test := range tests {
+		if b, _ := Marshal(test.value); string(b) != test.output {
+			t.Errorf(`%s != %s`, string(b), test.output)
+		}
 	}
 }
