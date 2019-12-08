@@ -1288,6 +1288,8 @@ func (*intPtrB) MarshalText() ([]byte, error) {
 
 type structA struct{ I intPtrA }
 type structB struct{ I intPtrB }
+type structC struct{ M Marshaler }
+type structD struct{ M encoding.TextMarshaler }
 
 func TestGithubIssue16(t *testing.T) {
 	// https://github.com/segmentio/encoding/issues/16
@@ -1307,8 +1309,12 @@ func TestGithubIssue16(t *testing.T) {
 		{value: (*intPtrB)(nil), output: `null`},
 		{value: structA{I: 1}, output: `{"I":1}`},
 		{value: structB{I: 2}, output: `{"I":2}`},
+		{value: structC{}, output: `{"M":null}`},
+		{value: structD{}, output: `{"M":null}`},
 		{value: &structA{I: 1}, output: `{"I":"A"}`},
 		{value: &structB{I: 2}, output: `{"I":"B"}`},
+		{value: &structC{}, output: `{"M":null}`},
+		{value: &structD{}, output: `{"M":null}`},
 	}
 
 	for _, test := range tests {
