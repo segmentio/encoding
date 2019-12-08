@@ -183,14 +183,8 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 	case t.Implements(jsonMarshalerType):
 		c.encode = constructJSONMarshalerEncodeFunc(t, false)
 
-	case p.Implements(jsonMarshalerType):
-		c.encode = constructJSONMarshalerEncodeFunc(t, true)
-
 	case t.Implements(textMarshalerType):
 		c.encode = constructTextMarshalerEncodeFunc(t, false)
-
-	case p.Implements(textMarshalerType):
-		c.encode = constructTextMarshalerEncodeFunc(t, true)
 	}
 
 	switch {

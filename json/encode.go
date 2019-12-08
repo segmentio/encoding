@@ -656,7 +656,7 @@ func (e encoder) encodeTextMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 	switch v.Kind() {
 	case reflect.Ptr, reflect.Interface:
 		if v.IsNil() {
-			return append(b, `""`...), nil
+			return append(b, `null`...), nil
 		}
 	}
 
