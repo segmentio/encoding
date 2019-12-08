@@ -1286,6 +1286,9 @@ func (*intPtrB) MarshalText() ([]byte, error) {
 	return []byte("B"), nil
 }
 
+type structA struct{ I intPtrA }
+type structB struct{ I intPtrB }
+
 func TestGithubIssue16(t *testing.T) {
 	// https://github.com/segmentio/encoding/issues/16
 	tests := []struct {
@@ -1302,6 +1305,10 @@ func TestGithubIssue16(t *testing.T) {
 		{value: new(intPtrB), output: `"B"`},
 		{value: (*intPtrA)(nil), output: `null`},
 		{value: (*intPtrB)(nil), output: `null`},
+		{value: structA{I: 1}, output: `{"I":1}`},
+		{value: structB{I: 2}, output: `{"I":2}`},
+		{value: &structA{I: 1}, output: `{"I":"A"}`},
+		{value: &structB{I: 2}, output: `{"I":"B"}`},
 	}
 
 	for _, test := range tests {
