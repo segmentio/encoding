@@ -1252,25 +1252,37 @@ func TestGithubIssue13(t *testing.T) {
 
 type sliceA []byte
 
-func (m sliceA) MarshalJSON() ([]byte, error) {
+func (sliceA) MarshalJSON() ([]byte, error) {
 	return []byte(`"A"`), nil
 }
 
 type sliceB []byte
 
-func (m sliceB) MarshalText() ([]byte, error) {
+func (sliceB) MarshalText() ([]byte, error) {
 	return []byte("B"), nil
 }
 
 type mapA map[string]string
 
-func (m mapA) MarshalJSON() ([]byte, error) {
+func (mapA) MarshalJSON() ([]byte, error) {
 	return []byte(`"A"`), nil
 }
 
 type mapB map[string]string
 
-func (m mapB) MarshalText() ([]byte, error) {
+func (mapB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type intPtrA int
+
+func (*intPtrA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type intPtrB int
+
+func (*intPtrB) MarshalText() ([]byte, error) {
 	return []byte("B"), nil
 }
 
@@ -1284,11 +1296,19 @@ func TestGithubIssue16(t *testing.T) {
 		{value: sliceB(nil), output: `"B"`},
 		{value: mapA(nil), output: `"A"`},
 		{value: mapB(nil), output: `"B"`},
+		{value: intPtrA(1), output: `1`},
+		{value: intPtrB(2), output: `2`},
+		{value: new(intPtrA), output: `"A"`},
+		{value: new(intPtrB), output: `"B"`},
+		{value: (*intPtrA)(nil), output: `null`},
+		{value: (*intPtrB)(nil), output: `null`},
 	}
 
 	for _, test := range tests {
-		if b, _ := Marshal(test.value); string(b) != test.output {
-			t.Errorf(`%s != %s`, string(b), test.output)
-		}
+		t.Run(fmt.Sprintf("%T", test.value), func(t *testing.T) {
+			if b, _ := Marshal(test.value); string(b) != test.output {
+				t.Errorf(`%s != %s`, string(b), test.output)
+			}
+		})
 	}
 }
