@@ -59,7 +59,7 @@ func typeid(t reflect.Type) unsafe.Pointer {
 }
 
 func constructCachedCodec(t reflect.Type, cache map[unsafe.Pointer]codec) codec {
-	c := constructCodec(t, map[reflect.Type]*structType{})
+	c := constructCodec(t, map[reflect.Type]*structType{}, t.Kind() == reflect.Ptr)
 
 	if inlined(t) {
 		c.encode = constructInlineValueEncodeFunc(c.encode)
@@ -69,7 +69,7 @@ func constructCachedCodec(t reflect.Type, cache map[unsafe.Pointer]codec) codec 
 	return c
 }
 
-func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec) {
+func constructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) (c codec) {
 	switch t {
 	case nullType, nil:
 		c = codec{encode: encoder.encodeNull, decode: decoder.decodeNull}
@@ -159,7 +159,7 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 		c = codec{encode: encoder.encodeInterface, decode: constructNonEmptyInterfaceDecoderFunc(t)}
 
 	case reflect.Array:
-		c = constructArrayCodec(t, seen)
+		c = constructArrayCodec(t, seen, canAddr)
 
 	case reflect.Slice:
 		c = constructSliceCodec(t, seen)
@@ -168,7 +168,7 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 		c = constructMapCodec(t, seen)
 
 	case reflect.Struct:
-		c = constructStructCodec(t, seen)
+		c = constructStructCodec(t, seen, canAddr)
 
 	case reflect.Ptr:
 		c = constructPointerCodec(t, seen)
@@ -179,24 +179,25 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 
 	p := reflect.PtrTo(t)
 
+	if canAddr {
+		switch {
+		case p.Implements(jsonMarshalerType):
+			c.encode = constructJSONMarshalerEncodeFunc(t, true)
+		case p.Implements(textMarshalerType):
+			c.encode = constructTextMarshalerEncodeFunc(t, true)
+		}
+	}
+
 	switch {
 	case t.Implements(jsonMarshalerType):
 		c.encode = constructJSONMarshalerEncodeFunc(t, false)
-
-	case p.Implements(jsonMarshalerType):
-		c.encode = constructJSONMarshalerEncodeFunc(t, true)
-
 	case t.Implements(textMarshalerType):
 		c.encode = constructTextMarshalerEncodeFunc(t, false)
-
-	case p.Implements(textMarshalerType):
-		c.encode = constructTextMarshalerEncodeFunc(t, true)
 	}
 
 	switch {
 	case p.Implements(jsonUnmarshalerType):
 		c.decode = constructJSONUnmarshalerDecodeFunc(t, true)
-
 	case p.Implements(textUnmarshalerType):
 		c.decode = constructTextUnmarshalerDecodeFunc(t, true)
 	}
@@ -204,8 +205,8 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType) (c codec)
 	return
 }
 
-func constructStringCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
-	c := constructCodec(t, seen)
+func constructStringCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) codec {
+	c := constructCodec(t, seen, canAddr)
 	return codec{
 		encode: constructStringEncodeFunc(c.encode),
 		decode: constructStringDecodeFunc(c.decode),
@@ -230,9 +231,9 @@ func constructStringToIntDecodeFunc(t reflect.Type, decode decodeFunc) decodeFun
 	}
 }
 
-func constructArrayCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
+func constructArrayCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) codec {
 	e := t.Elem()
-	c := constructCodec(e, seen)
+	c := constructCodec(e, seen, canAddr)
 	s := alignedSize(e)
 	return codec{
 		encode: constructArrayEncodeFunc(s, t, c.encode),
@@ -259,12 +260,12 @@ func constructSliceCodec(t reflect.Type, seen map[reflect.Type]*structType) code
 	s := alignedSize(e)
 
 	if e.Kind() == reflect.Uint8 {
-		p := reflect.PtrTo(e)
-		c := codec{}
-
 		// Go 1.7+ behavior: slices of byte types (and aliases) may override the
 		// default encoding and decoding behaviors by implementing marshaler and
 		// unmarshaler interfaces.
+		p := reflect.PtrTo(e)
+		c := codec{}
+
 		switch {
 		case e.Implements(jsonMarshalerType):
 			c.encode = constructJSONMarshalerEncodeFunc(e, false)
@@ -302,7 +303,7 @@ func constructSliceCodec(t reflect.Type, seen map[reflect.Type]*structType) code
 		return c
 	}
 
-	c := constructCodec(e, seen)
+	c := constructCodec(e, seen, true)
 	return codec{
 		encode: constructSliceEncodeFunc(s, t, c.encode),
 		decode: constructSliceDecodeFunc(s, t, c.decode),
@@ -342,7 +343,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 	}
 
 	kc := codec{}
-	vc := constructCodec(v, seen)
+	vc := constructCodec(v, seen, false)
 
 	if k.Implements(textMarshalerType) || reflect.PtrTo(k).Implements(textUnmarshalerType) {
 		kc.encode = constructTextMarshalerEncodeFunc(k, false)
@@ -372,7 +373,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 			reflect.Int16,
 			reflect.Int32,
 			reflect.Int64:
-			kc = constructStringCodec(k, seen)
+			kc = constructStringCodec(k, seen, false)
 
 			sortKeys = func(keys []reflect.Value) {
 				sort.Slice(keys, func(i, j int) bool { return keys[i].Int() < keys[j].Int() })
@@ -384,7 +385,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 			reflect.Uint16,
 			reflect.Uint32,
 			reflect.Uint64:
-			kc = constructStringCodec(k, seen)
+			kc = constructStringCodec(k, seen, false)
 
 			sortKeys = func(keys []reflect.Value) {
 				sort.Slice(keys, func(i, j int) bool { return keys[i].Uint() < keys[j].Uint() })
@@ -422,15 +423,15 @@ func constructMapDecodeFunc(t reflect.Type, decodeKey, decodeValue decodeFunc) d
 	}
 }
 
-func constructStructCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
-	st := constructStructType(t, seen)
+func constructStructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) codec {
+	st := constructStructType(t, seen, canAddr)
 	return codec{
 		encode: constructStructEncodeFunc(st),
 		decode: constructStructDecodeFunc(st),
 	}
 }
 
-func constructStructType(t reflect.Type, seen map[reflect.Type]*structType) *structType {
+func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) *structType {
 	// Used for preventing infinite recursion on types that have pointers to
 	// themselves.
 	st := seen[t]
@@ -444,7 +445,7 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType) *str
 		}
 
 		seen[t] = st
-		st.fields = appendStructFields(st.fields, t, 0, seen)
+		st.fields = appendStructFields(st.fields, t, 0, seen, canAddr)
 
 		for i := range st.fields {
 			f := &st.fields[i]
@@ -492,7 +493,7 @@ func constructEmbeddedStructPointerDecodeFunc(t reflect.Type, unexported bool, o
 	}
 }
 
-func appendStructFields(fields []structField, t reflect.Type, offset uintptr, seen map[reflect.Type]*structType) []structField {
+func appendStructFields(fields []structField, t reflect.Type, offset uintptr, seen map[reflect.Type]*structType, canAddr bool) []structField {
 	type embeddedField struct {
 		index      int
 		offset     uintptr
@@ -557,7 +558,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				// up by offset from the address of the wrapping object, so we
 				// simply add the embedded struct fields to the list of fields
 				// of the current struct type.
-				subtype := constructStructType(typ, seen)
+				subtype := constructStructType(typ, seen, canAddr)
 
 				for j := range subtype.fields {
 					embedded = append(embedded, embeddedField{
@@ -578,7 +579,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 			}
 		}
 
-		codec := constructCodec(f.Type, seen)
+		codec := constructCodec(f.Type, seen, canAddr)
 
 		if stringify {
 			// https://golang.org/pkg/encoding/json/#Marshal
@@ -692,7 +693,7 @@ func encodeString(s string, flags AppendFlags) string {
 
 func constructPointerCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
 	e := t.Elem()
-	c := constructCodec(e, seen)
+	c := constructCodec(e, seen, true)
 	return codec{
 		encode: constructPointerEncodeFunc(e, c.encode),
 		decode: constructPointerDecodeFunc(e, c.decode),

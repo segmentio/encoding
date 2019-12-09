@@ -1249,3 +1249,79 @@ func TestGithubIssue13(t *testing.T) {
 		t.Error("unexpected error decoding string value into pointer fmt.Stringer:", err)
 	}
 }
+
+type sliceA []byte
+
+func (sliceA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type sliceB []byte
+
+func (sliceB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type mapA map[string]string
+
+func (mapA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type mapB map[string]string
+
+func (mapB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type intPtrA int
+
+func (*intPtrA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type intPtrB int
+
+func (*intPtrB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type structA struct{ I intPtrA }
+type structB struct{ I intPtrB }
+type structC struct{ M Marshaler }
+type structD struct{ M encoding.TextMarshaler }
+
+func TestGithubIssue16(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/16
+	tests := []struct {
+		value  interface{}
+		output string
+	}{
+		{value: sliceA(nil), output: `"A"`},
+		{value: sliceB(nil), output: `"B"`},
+		{value: mapA(nil), output: `"A"`},
+		{value: mapB(nil), output: `"B"`},
+		{value: intPtrA(1), output: `1`},
+		{value: intPtrB(2), output: `2`},
+		{value: new(intPtrA), output: `"A"`},
+		{value: new(intPtrB), output: `"B"`},
+		{value: (*intPtrA)(nil), output: `null`},
+		{value: (*intPtrB)(nil), output: `null`},
+		{value: structA{I: 1}, output: `{"I":1}`},
+		{value: structB{I: 2}, output: `{"I":2}`},
+		{value: structC{}, output: `{"M":null}`},
+		{value: structD{}, output: `{"M":null}`},
+		{value: &structA{I: 1}, output: `{"I":"A"}`},
+		{value: &structB{I: 2}, output: `{"I":"B"}`},
+		{value: &structC{}, output: `{"M":null}`},
+		{value: &structD{}, output: `{"M":null}`},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%T", test.value), func(t *testing.T) {
+			if b, _ := Marshal(test.value); string(b) != test.output {
+				t.Errorf(`%s != %s`, string(b), test.output)
+			}
+		})
+	}
+}
