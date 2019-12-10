@@ -106,3 +106,30 @@ func BenchmarkAppendToLower(b *testing.B) {
 		a = appendToLower(a[:0], s)
 	}
 }
+
+var benchmarkHasPrefixString = []byte("some random string")
+var benchmarkHasPrefixResult = false
+
+func BenchmarkHasPrefix(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		benchmarkHasPrefixResult = hasPrefix(benchmarkHasPrefixString, "null")
+	}
+}
+
+func BenchmarkHasNullPrefix(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		benchmarkHasPrefixResult = hasNullPrefix(benchmarkHasPrefixString)
+	}
+}
+
+func BenchmarkHasTruePrefix(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		benchmarkHasPrefixResult = hasTruePrefix(benchmarkHasPrefixString)
+	}
+}
+
+func BenchmarkHasFalsePrefix(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		benchmarkHasPrefixResult = hasFalsePrefix(benchmarkHasPrefixString)
+	}
+}

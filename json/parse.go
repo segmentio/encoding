@@ -3,6 +3,7 @@ package json
 import (
 	"bytes"
 	"math"
+	"reflect"
 	"unicode"
 	"unicode/utf16"
 	"unicode/utf8"
@@ -16,8 +17,6 @@ const (
 	ht = '\t'
 	nl = '\n'
 	cr = '\r'
-	np = '\f'
-	bs = '\b'
 )
 
 const (
@@ -25,28 +24,15 @@ const (
 	quote  = '"'
 )
 
-// Constants used for the optimized string scanning functions. The values are
-// masks applied to test if a word contains a byte we're looking for.
-const (
-	escapeMask = uint64(escape<<56 | escape<<48 | escape<<40 | escape<<32 |
-		escape<<24 | escape<<16 | escape<<8 | escape)
-
-	quoteMask = uint64(quote<<56 | quote<<48 | quote<<40 | quote<<32 |
-		quote<<24 | quote<<16 | quote<<8 | quote)
-)
-
 func skipSpaces(b []byte) []byte {
-	i := 0
-skipLoop:
-	for _, c := range b {
-		switch c {
-		case sp, ht, nl, cr, np, bs:
-			i++
+	for i := range b {
+		switch b[i] {
+		case sp, ht, nl, cr:
 		default:
-			break skipLoop
+			return b[i:]
 		}
 	}
-	return b[i:]
+	return nil
 }
 
 // parseInt parses a decimanl representation of an int64 from b.
@@ -57,7 +43,7 @@ skipLoop:
 //
 // Because it only works with base 10 the function is also significantly faster
 // than strconv.ParseInt.
-func parseInt(b []byte) (int64, []byte, error) {
+func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 	var value int64
 	var count int
 
@@ -69,23 +55,32 @@ func parseInt(b []byte) (int64, []byte, error) {
 		const max = math.MinInt64
 		const lim = max / 10
 
+		if len(b) == 1 {
+			return 0, b, syntaxError(b, "cannot decode integer from '-'")
+		}
+
+		if len(b) > 2 && b[1] == '0' && '0' <= b[2] && b[2] <= '9' {
+			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
+		}
+
 		for _, d := range b[1:] {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
-					return 0, b, syntaxError(b, "missing digits after negative sign")
+					b, err := inputError(b, t)
+					return 0, b, err
 				}
 				break
 			}
 
 			if value < lim {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			value *= 10
 			x := int64(d - '0')
 
 			if value < (max + x) {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			value -= x
@@ -97,21 +92,26 @@ func parseInt(b []byte) (int64, []byte, error) {
 		const max = math.MaxInt64
 		const lim = max / 10
 
+		if len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
+		}
+
 		for _, d := range b {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
-					return 0, b, syntaxError(b, "expected digit but found '%c'", d)
+					b, err := inputError(b, t)
+					return 0, b, err
 				}
 				break
 			}
 			x := int64(d - '0')
 
 			if value > lim {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			if value *= 10; value > (max - x) {
-				return 0, b, syntaxError(b, "integer value out of range")
+				return 0, b, unmarshalOverflow(b, t)
 			}
 
 			value += x
@@ -119,11 +119,22 @@ func parseInt(b []byte) (int64, []byte, error) {
 		}
 	}
 
+	if count < len(b) {
+		switch b[count] {
+		case '.', 'e', 'E': // was this actually a float?
+			v, r, err := parseNumber(b)
+			if err != nil {
+				v, r = b[:count+1], b[count+1:]
+			}
+			return 0, r, unmarshalTypeError(v, t)
+		}
+	}
+
 	return value, b[count:], nil
 }
 
 // parseUint is like parseInt but for unsigned integers.
-func parseUint(b []byte) (uint64, []byte, error) {
+func parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
 	const max = math.MaxUint64
 	const lim = max / 10
 
@@ -134,25 +145,41 @@ func parseUint(b []byte) (uint64, []byte, error) {
 		return 0, b, syntaxError(b, "cannot decode integer value from an empty input")
 	}
 
+	if len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
+		return 0, b, syntaxError(b, "invalid leading character '0' in integer")
+	}
+
 	for _, d := range b {
 		if !(d >= '0' && d <= '9') {
 			if count == 0 {
-				return 0, b, syntaxError(b, "expected digit but found '%c'", d)
+				b, err := inputError(b, t)
+				return 0, b, err
 			}
 			break
 		}
 		x := uint64(d - '0')
 
 		if value > lim {
-			return 0, b, syntaxError(b, "integer value out of range")
+			return 0, b, unmarshalOverflow(b, t)
 		}
 
 		if value *= 10; value > (max - x) {
-			return 0, b, syntaxError(b, "integer value out of range")
+			return 0, b, unmarshalOverflow(b, t)
 		}
 
 		value += x
 		count++
+	}
+
+	if count < len(b) {
+		switch b[count] {
+		case '.', 'e', 'E': // was this actually a float?
+			v, r, err := parseNumber(b)
+			if err != nil {
+				v, r = b[:count+1], b[count+1:]
+			}
+			return 0, r, unmarshalTypeError(v, t)
+		}
 	}
 
 	return value, b[count:], nil
@@ -235,102 +262,96 @@ func parseFalse(b []byte) ([]byte, []byte, error) {
 }
 
 func parseNumber(b []byte) (v, r []byte, err error) {
-	r = b
-
-	if len(r) == 0 {
-		err = syntaxError(b, "expected number but found no data")
+	if len(b) == 0 {
+		r, err = b, syntaxError(b, "expected number but found no data")
 		return
 	}
 
+	i := 0
 	// sign
-	if r[0] == '-' {
-		r = r[1:]
+	if b[i] == '-' {
+		i++
 	}
 
-	if len(r) == 0 {
-		err = syntaxError(b, "missing number value after sign")
+	if i == len(b) {
+		r, err = b[i:], syntaxError(b, "missing number value after sign")
+		return
+	}
+
+	if b[i] < '0' || b[i] > '9' {
+		r, err = b[i:], syntaxError(b, "expected digit but got '%c'", b[i])
 		return
 	}
 
 	// integer part
-	leadingZero := false
-	integerLength := 0
-
-	for i := 0; len(r) != 0; i++ {
-		c := r[0]
-
-		if i == 0 && c == '0' {
-			leadingZero = true
+	if b[i] == '0' {
+		i++
+		if i == len(b) || (b[i] != '.' && b[i] != 'e' && b[i] != 'E') {
+			v, r = b[:i], b[i:]
+			return
 		}
-
-		if !('0' <= c && c <= '9') {
-			if i == 0 {
-				err = syntaxError(b, "expected digit but found '%c'", c)
-				return
-			}
-			break
+		if '0' <= b[i] && b[i] <= '9' {
+			r, err = b[i:], syntaxError(b, "cannot decode number with leading '0' character")
+			return
 		}
-
-		r = r[1:]
-		integerLength++
 	}
 
-	if leadingZero && integerLength > 1 {
-		err = syntaxError(b, "unexpected leading zero in number")
-		return
+	for i < len(b) && '0' <= b[i] && b[i] <= '9' {
+		i++
 	}
 
 	// decimal part
-	if len(r) != 0 && r[0] == '.' {
-		decimalLength := 0
-		r = r[1:]
+	if i < len(b) && b[i] == '.' {
+		i++
+		decimalStart := i
 
-		for i := 0; len(r) != 0; i++ {
-			if c := r[0]; !('0' <= c && c <= '9') {
-				if i == 0 {
-					err = syntaxError(b, "expected digit but found '%c'", c)
+		for i < len(b) {
+			if c := b[i]; !('0' <= c && c <= '9') {
+				if i == decimalStart {
+					r, err = b[i:], syntaxError(b, "expected digit but found '%c'", c)
 					return
 				}
 				break
 			}
-			r = r[1:]
-			decimalLength++
+			i++
 		}
 
-		if decimalLength == 0 {
-			err = syntaxError(b, "expected decimal part after '.'")
+		if i == decimalStart {
+			r, err = b[i:], syntaxError(b, "expected decimal part after '.'")
 			return
 		}
 	}
 
 	// exponent part
-	if len(r) != 0 && (r[0] == 'e' || r[0] == 'E') {
-		r = r[1:]
+	if i < len(b) && (b[i] == 'e' || b[i] == 'E') {
+		i++
 
-		if len(r) != 0 {
-			if c := r[0]; c == '+' || c == '-' {
-				r = r[1:]
+		if i < len(b) {
+			if c := b[i]; c == '+' || c == '-' {
+				i++
 			}
 		}
 
-		if len(r) == 0 {
-			err = syntaxError(b, "missing exponent in number")
+		if i == len(b) {
+			r, err = b[i:], syntaxError(b, "missing exponent in number")
 			return
 		}
 
-		for i := 0; len(r) != 0; i++ {
-			if c := r[0]; !('0' <= c && c <= '9') {
-				if i == 0 {
+		exponentStart := i
+
+		for i < len(b) {
+			if c := b[i]; !('0' <= c && c <= '9') {
+				if i == exponentStart {
 					err = syntaxError(b, "expected digit but found '%c'", c)
 					return
 				}
 				break
 			}
-			r = r[1:]
+			i++
 		}
 	}
 
-	v = b[:len(b)-len(r)]
+	v, r = b[:i], b[i:]
 	return
 }
 
@@ -356,32 +377,50 @@ func parseStringFast(b []byte) ([]byte, []byte, bool, error) {
 		return nil, b, false, syntaxError(b, "expected '\"' at the beginning of a string value")
 	}
 
-	i := bytes.IndexByte(b[1:], '"')
-	if i >= 0 && i < len(b) {
-		if i++; bytes.IndexByte(b[1:i], '\\') < 0 && ascii.Valid(b[1:i]) {
+	if i := bytes.IndexByte(b[1:], '"') + 1; i > 0 && i < len(b) {
+		if bytes.IndexByte(b[1:i], '\\') < 0 && ascii.ValidPrint(b[1:i]) {
 			return b[:i+1], b[i+1:], false, nil
 		}
 	}
 
-	offset := 1
-
-	for offset < len(b) {
-		i := bytes.IndexByte(b[offset:], '"')
-		if i < 0 {
+	for i := 1; i < len(b); {
+		quoteIndex := bytes.IndexByte(b[i:], '"')
+		if quoteIndex < 0 {
 			break
 		}
-		i += offset
-		j := bytes.IndexByte(b[offset:i], '\\')
-		if j < 0 {
-			return b[:i+1], b[i+1:], true, nil
+		quoteIndex += i
+
+		var c byte
+		var s = b[i:quoteIndex]
+		for i := range s {
+			if c = s[i]; c < 0x20 {
+				return nil, b, false, syntaxError(b[i:quoteIndex], "invalid character '%c' in string literal", c)
+			}
 		}
-		offset += j + 1
-		if offset < len(b) && b[offset] == '\\' || b[offset] == '"' {
-			offset++ // skip escaped sequence
+
+		escapeIndex := bytes.IndexByte(b[i:quoteIndex], '\\')
+		if escapeIndex < 0 {
+			return b[:quoteIndex+1], b[quoteIndex+1:], true, nil
+		}
+
+		if i += escapeIndex + 1; i < len(b) {
+			switch b[i] {
+			case '"', '\\', '/', 'n', 'r', 't', 'f', 'b':
+				i++
+			case 'u':
+				i++
+				_, n, err := parseUnicode(b[i:])
+				if err != nil {
+					return nil, b, false, err
+				}
+				i += n
+			default:
+				return nil, b, false, syntaxError(b[i:i], "invalid character '%c' in string escape code", b[i])
+			}
 		}
 	}
 
-	return nil, b, false, syntaxError(b, "missing '\"' at the end of a string value")
+	return nil, b[len(b):], false, syntaxError(b, "missing '\"' at the end of a string value")
 }
 
 func parseString(b []byte) ([]byte, []byte, error) {
@@ -462,8 +501,7 @@ func parseStringUnquote(b []byte, r []byte) ([]byte, []byte, bool, error) {
 			continue
 
 		default: // not sure what this escape sequence is
-			r = append(r, '\\')
-			continue
+			return r, b, false, syntaxError(s, "invalid character '%c' in string escape code", c)
 		}
 
 		r = append(r, c)
@@ -605,10 +643,10 @@ func parseValue(b []byte) ([]byte, []byte, error) {
 		case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			return parseNumber(b)
 		default:
-			return nil, b, syntaxError(b, "expected token but found '%c'", b[0])
+			return nil, b, syntaxError(b, "invalid character '%c' looking for beginning of value", b[0])
 		}
 	}
-	return nil, b, syntaxError(b, "expected json but found no data")
+	return nil, b, syntaxError(b, "unexpected end of JSON input")
 }
 
 func hasNullPrefix(b []byte) bool {
@@ -625,6 +663,17 @@ func hasFalsePrefix(b []byte) bool {
 
 func hasPrefix(b []byte, s string) bool {
 	return len(b) >= len(s) && s == string(b[:len(s)])
+}
+
+func hasLeadingSign(b []byte) bool {
+	return len(b) > 0 && (b[0] == '+' || b[0] == '-')
+}
+
+func hasLeadingZeroes(b []byte) bool {
+	if hasLeadingSign(b) {
+		b = b[1:]
+	}
+	return len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9'
 }
 
 func appendToLower(b, s []byte) []byte {

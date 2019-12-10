@@ -79,8 +79,11 @@ func (e encoder) encodeFloat64(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeFloat(b []byte, f float64, bits int) ([]byte, error) {
-	if math.IsNaN(f) || math.IsInf(f, 0) {
-		return b, &UnsupportedValueError{Value: reflect.ValueOf(f), Str: "unsupported value"}
+	switch {
+	case math.IsNaN(f):
+		return b, &UnsupportedValueError{Value: reflect.ValueOf(f), Str: "NaN"}
+	case math.IsInf(f, 0):
+		return b, &UnsupportedValueError{Value: reflect.ValueOf(f), Str: "inf"}
 	}
 
 	// Convert as if by ES6 number to string conversion.
@@ -129,10 +132,9 @@ func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 	s := *(*string)(p)
 	i := 0
 	j := 0
+	escapeHTML := (e.flags & EscapeHTML) != 0
 
 	b = append(b, '"')
-
-	escapeHTML := (e.flags & EscapeHTML) != 0
 
 	for j < len(s) {
 		c := s[j]
@@ -590,7 +592,7 @@ func (e encoder) encodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 	return Append(b, *(*interface{})(p), e.flags)
 }
 
-func (e encoder) encodeUnsupportedType(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
+func (e encoder) encodeUnsupportedTypeError(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
 	return b, &UnsupportedTypeError{Type: t}
 }
 
@@ -621,7 +623,7 @@ func (e encoder) encodeJSONMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 	}
 
 	switch v.Kind() {
-	case reflect.Ptr, reflect.Map, reflect.Interface, reflect.Slice:
+	case reflect.Ptr, reflect.Interface:
 		if v.IsNil() {
 			return append(b, "null"...), nil
 		}
@@ -652,9 +654,9 @@ func (e encoder) encodeTextMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 	}
 
 	switch v.Kind() {
-	case reflect.Ptr, reflect.Map, reflect.Interface, reflect.Slice:
+	case reflect.Ptr, reflect.Interface:
 		if v.IsNil() {
-			return append(b, `""`...), nil
+			return append(b, `null`...), nil
 		}
 	}
 

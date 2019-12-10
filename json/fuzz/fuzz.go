@@ -7,6 +7,7 @@ import (
 	"bytes"
 	encodingJSON "encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/dvyukov/go-fuzz-corpus/fuzz"
 	"github.com/segmentio/encoding/json"
@@ -33,12 +34,37 @@ func Fuzz(data []byte) int {
 		// standard encoding/json package, whether it's right or wrong.
 		v1 := ctor()
 		v2 := ctor()
-		if encodingJSON.Unmarshal(data, v1) != nil {
-			continue
+
+		err1 := encodingJSON.Unmarshal(data, v1)
+		err2 := json.Unmarshal(data, v2)
+
+		if err1 != nil {
+			if err2 != nil {
+				// both implementations report an error
+				if reflect.TypeOf(err1) != reflect.TypeOf(err2) {
+					fmt.Printf("input: %s\n", string(data))
+					fmt.Printf("encoding/json.Unmarshal(%T): %T: %s\n", v1, err1, err1)
+					fmt.Printf("segmentio/encoding/json.Unmarshal(%T): %T: %s\n", v2, err2, err2)
+					panic("error types mismatch")
+				}
+				continue
+			} else {
+				fmt.Printf("input: %s\n", string(data))
+				fmt.Printf("encoding/json.Unmarshal(%T): %T: %s\n", v1, err1, err1)
+				fmt.Printf("segmentio/encoding/json.Unmarshal(%T): <nil>\n")
+				panic("error values mismatch")
+			}
+		} else {
+			if err2 != nil {
+				fmt.Printf("input: %s\n", string(data))
+				fmt.Printf("encoding/json.Unmarshal(%T): <nil>\n")
+				fmt.Printf("segmentio/encoding/json.Unmarshal(%T): %T: %s\n", v2, err2, err2)
+				panic("error values mismatch")
+			} else {
+				// both implementations pass
+			}
 		}
-		if err := json.Unmarshal(data, v2); err != nil {
-			panic(err)
-		}
+
 		score = 1
 		fixS(v1)
 		fixS(v2)
