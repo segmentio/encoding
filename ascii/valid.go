@@ -26,41 +26,37 @@ func ValidRune(r rune) bool {
 
 //go:nosplit
 func valid(s unsafe.Pointer, n uintptr) bool {
-	if n == 0 {
-		return true
-	}
-
 	i := uintptr(0)
 	p := *(*unsafe.Pointer)(s)
 
-	for (n - i) >= 8 {
+	for n >= 8 {
 		if ((*(*uint64)(unsafe.Pointer(uintptr(p) + i))) & 0x8080808080808080) != 0 {
 			return false
 		}
 		i += 8
+		n -= 8
 	}
 
-	if (n - i) >= 4 {
+	if n >= 4 {
 		if ((*(*uint32)(unsafe.Pointer(uintptr(p) + i))) & 0x80808080) != 0 {
 			return false
 		}
 		i += 4
+		n -= 4
 	}
 
-	if (n - i) >= 2 {
-		if ((*(*uint16)(unsafe.Pointer(uintptr(p) + i))) & 0x8080) != 0 {
-			return false
-		}
-		i += 2
+	var x uint32
+	switch n {
+	case 3:
+		x = uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i + 1)))<<8
+	case 2:
+		x = uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i)))
+	case 1:
+		x = uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i)))
+	default:
+		return true
 	}
-
-	if i < n {
-		if ((*(*uint8)(unsafe.Pointer(uintptr(p) + i))) & 0x80) != 0 {
-			return false
-		}
-	}
-
-	return true
+	return (x & 0x80808080) == 0
 }
 
 // Valid returns true if b contains only printable ASCII characters.
