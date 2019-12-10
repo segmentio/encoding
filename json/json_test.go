@@ -187,7 +187,7 @@ var testValues = [...]interface{}{
 	makeMapStringInterface(0),
 	makeMapStringInterface(15),
 	makeMapStringInterface(1020),
-	map[int]bool{1: false, 42: true},
+	map[uint]bool{1: false, 42: true},
 	map[textValue]bool{{1, 2}: true, {3, 4}: false},
 	map[string]*point{
 		"A": {1, 2},
@@ -1247,6 +1247,32 @@ func TestGithubIssue13(t *testing.T) {
 	v = Issue13{Stringer: &s}
 	if err := Unmarshal([]byte(`{"Stringer":"whatever"}`), &v); err != nil {
 		t.Error("unexpected error decoding string value into pointer fmt.Stringer:", err)
+	}
+}
+
+func TestGithubIssue15(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/15
+	tests := []struct {
+		m interface{}
+		s string
+	}{
+		{
+			m: map[uint]bool{1: true, 123: true, 333: true, 42: true},
+			s: `{"1":true,"123":true,"333":true,"42":true}`,
+		},
+		{
+			m: map[int]bool{-1: true, -123: true, 333: true, 42: true},
+			s: `{"-1":true,"-123":true,"333":true,"42":true}`,
+		},
+	}
+
+	for _, test := range tests {
+		b, _ := json.Marshal(test.m)
+
+		if string(b) != test.s {
+			t.Error("map with integer keys must be ordered by their string representation, got", string(b))
+		}
+
 	}
 }
 
