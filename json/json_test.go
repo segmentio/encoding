@@ -187,7 +187,7 @@ var testValues = [...]interface{}{
 	makeMapStringInterface(0),
 	makeMapStringInterface(15),
 	makeMapStringInterface(1020),
-	map[uint]bool{1: false, 42: true},
+	map[int]bool{1: false, 42: true},
 	map[textValue]bool{{1, 2}: true, {3, 4}: false},
 	map[string]*point{
 		"A": {1, 2},
