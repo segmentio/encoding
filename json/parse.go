@@ -244,12 +244,18 @@ func parseNull(b []byte) ([]byte, []byte, error) {
 	if hasNullPrefix(b) {
 		return b[:4], b[4:], nil
 	}
+	if len(b) < 4 {
+		return nil, b[len(b):], unexpectedEOF(b)
+	}
 	return nil, b, syntaxError(b, "expected 'null' but found invalid token")
 }
 
 func parseTrue(b []byte) ([]byte, []byte, error) {
 	if hasTruePrefix(b) {
 		return b[:4], b[4:], nil
+	}
+	if len(b) < 4 {
+		return nil, b[len(b):], unexpectedEOF(b)
 	}
 	return nil, b, syntaxError(b, "expected 'true' but found invalid token")
 }
@@ -258,12 +264,15 @@ func parseFalse(b []byte) ([]byte, []byte, error) {
 	if hasFalsePrefix(b) {
 		return b[:5], b[5:], nil
 	}
+	if len(b) < 5 {
+		return nil, b[len(b):], unexpectedEOF(b)
+	}
 	return nil, b, syntaxError(b, "expected 'false' but found invalid token")
 }
 
 func parseNumber(b []byte) (v, r []byte, err error) {
 	if len(b) == 0 {
-		r, err = b, syntaxError(b, "expected number but found no data")
+		r, err = b, unexpectedEOF(b)
 		return
 	}
 
@@ -373,7 +382,11 @@ func parseUnicode(b []byte) (rune, int, error) {
 }
 
 func parseStringFast(b []byte) ([]byte, []byte, bool, error) {
-	if len(b) < 2 || b[0] != '"' {
+	if len(b) < 2 {
+		return nil, b[len(b):], false, unexpectedEOF(b)
+	}
+
+	if b[0] != '"' {
 		return nil, b, false, syntaxError(b, "expected '\"' at the beginning of a string value")
 	}
 
@@ -528,7 +541,11 @@ func appendCoerceInvalidUTF8(b []byte, s []byte) []byte {
 }
 
 func parseObject(b []byte) ([]byte, []byte, error) {
-	if len(b) < 2 || b[0] != '{' {
+	if len(b) < 2 {
+		return nil, b[len(b):], unexpectedEOF(b)
+	}
+
+	if b[0] != '{' {
 		return nil, b, syntaxError(b, "expected '{' at the beginning of an object value")
 	}
 
@@ -558,6 +575,12 @@ func parseObject(b []byte) ([]byte, []byte, error) {
 				return nil, b, syntaxError(b, "expected ',' after object field value but found '%c'", b[0])
 			}
 			b = skipSpaces(b[1:])
+			if len(b) == 0 {
+				return nil, b, unexpectedEOF(b)
+			}
+			if b[0] == '}' {
+				return nil, b, syntaxError(b, "unexpected trailing comma after object field")
+			}
 		}
 
 		_, b, err = parseString(b)
@@ -584,7 +607,11 @@ func parseObject(b []byte) ([]byte, []byte, error) {
 }
 
 func parseArray(b []byte) ([]byte, []byte, error) {
-	if len(b) < 2 || b[0] != '[' {
+	if len(b) < 2 {
+		return nil, b[len(b):], unexpectedEOF(b)
+	}
+
+	if b[0] != '[' {
 		return nil, b, syntaxError(b, "expected '[' at the beginning of array value")
 	}
 
@@ -614,6 +641,12 @@ func parseArray(b []byte) ([]byte, []byte, error) {
 				return nil, b, syntaxError(b, "expected ',' after array element but found '%c'", b[0])
 			}
 			b = skipSpaces(b[1:])
+			if len(b) == 0 {
+				return nil, b, unexpectedEOF(b)
+			}
+			if b[0] == ']' {
+				return nil, b, syntaxError(b, "unexpected trailing comma after object field")
+			}
 		}
 
 		_, b, err = parseValue(b)

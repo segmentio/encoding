@@ -1325,3 +1325,30 @@ func TestGithubIssue16(t *testing.T) {
 		})
 	}
 }
+
+func TestGithubIssue18(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/18
+	b := []byte(`{
+	"userId": "blah",
+	}`)
+
+	d := NewDecoder(bytes.NewReader(b))
+
+	var a struct {
+		UserId string `json:"userId"`
+	}
+	switch err := d.Decode(&a).(type) {
+	case *SyntaxError:
+	default:
+		t.Error("expected syntax error but found:", err)
+	}
+
+	for i := 1; i <= 18; i++ { // up to the invalid ',' character
+		d := NewDecoder(bytes.NewReader(b[:i])) // cut somewhere in the middle
+		switch err := d.Decode(&a); err {
+		case io.ErrUnexpectedEOF:
+		default:
+			t.Error("expected 'unexpected EOF' error but found:", err)
+		}
+	}
+}
