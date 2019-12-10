@@ -49,40 +49,40 @@ alternatives; here's an overview of the results (using Go v1.13):
 
 **Comparing to encoding/json**
 ```
-benchmark                                  old ns/op     new ns/op     delta
-BenchmarkMarshal/*json.codeResponse2       5712642       4128238       -27.74%
-BenchmarkUnmarshal/*json.codeResponse2     26197728      8094932       -69.10%
+name                           old time/op    new time/op     delta
+Marshal/*json.codeResponse2      7.94ms ±27%     4.83ms ± 7%   -39.09%  (p=0.000 n=8+7)
+Unmarshal/*json.codeResponse2    38.1ms ±57%      9.3ms ±16%   -75.61%  (p=0.000 n=8+8)
 
-benchmark                                  old MB/s     new MB/s     speedup
-BenchmarkMarshal/*json.codeResponse2       339.68       470.05       1.38x
-BenchmarkUnmarshal/*json.codeResponse2     74.07        239.71       3.24x
+name                           old speed      new speed       delta
+Marshal/*json.codeResponse2     248MB/s ±22%    393MB/s ±17%   +58.48%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2  54.1MB/s ±40%  209.9MB/s ±14%  +287.69%  (p=0.000 n=8+8)
 
-benchmark                                  old allocs     new allocs     delta
-BenchmarkMarshal/*json.codeResponse2       0              0              +0.00%
-BenchmarkUnmarshal/*json.codeResponse2     76363          32             -99.96%
+name                           old alloc/op   new alloc/op    delta
+Marshal/*json.codeResponse2       0.00B           0.00B           ~     (all equal)
+Unmarshal/*json.codeResponse2    1.86MB ± 0%     0.01MB ± 4%   -99.56%  (p=0.000 n=8+7)
 
-benchmark                                  old bytes     new bytes     delta
-BenchmarkMarshal/*json.codeResponse2       0             0             +0.00%
-BenchmarkUnmarshal/*json.codeResponse2     1849585       7247          -99.61%
+name                           old allocs/op  new allocs/op   delta
+Marshal/*json.codeResponse2        0.00            0.00           ~     (all equal)
+Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 5%   -99.95%  (p=0.000 n=8+7)
 ```
 
 **Comparing to github.com/json-iterator/go**
 ```
-benchmark                                  old ns/op     new ns/op     delta
-BenchmarkMarshal/*json.codeResponse2       17818587      4128238       -76.83%
-BenchmarkUnmarshal/*json.codeResponse2     9928256       8094932       -18.47%
+name                           old time/op    new time/op     delta
+Marshal/*json.codeResponse2      28.1ms ±19%      4.8ms ± 7%   -82.78%  (p=0.000 n=8+7)
+Unmarshal/*json.codeResponse2    10.6ms ±25%      9.3ms ±16%   -11.98%  (p=0.028 n=8+8)
 
-benchmark                                  old MB/s     new MB/s     speedup
-BenchmarkMarshal/*json.codeResponse2       108.90       470.05       4.32x
-BenchmarkUnmarshal/*json.codeResponse2     195.45       239.71       1.23x
+name                           old speed      new speed       delta
+Marshal/*json.codeResponse2    69.9MB/s ±17%  392.6MB/s ±17%  +461.61%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2   186MB/s ±21%    210MB/s ±14%   +12.61%  (p=0.028 n=8+8)
 
-benchmark                                  old allocs     new allocs     delta
-BenchmarkMarshal/*json.codeResponse2       102212         0              -100.00%
-BenchmarkUnmarshal/*json.codeResponse2     37108          32             -99.91%
+name                           old alloc/op   new alloc/op    delta
+Marshal/*json.codeResponse2      3.40MB ± 0%     0.00MB       -100.00%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2    1.02MB ± 0%     0.01MB ± 4%   -99.21%  (p=0.001 n=7+7)
 
-benchmark                                  old bytes     new bytes     delta
-BenchmarkMarshal/*json.codeResponse2       3399408       0             -100.00%
-BenchmarkUnmarshal/*json.codeResponse2     1022140       7247          -99.29%
+name                           old allocs/op  new allocs/op   delta
+Marshal/*json.codeResponse2        102k ± 0%         0k       -100.00%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2     37.1k ± 0%       0.0k ± 5%   -99.90%  (p=0.001 n=7+7)
 ```
 
 Although this package aims to be a drop-in replacement of [`encoding/json`](https://golang.org/pkg/encoding/json/),
