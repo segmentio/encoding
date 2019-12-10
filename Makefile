@@ -18,7 +18,7 @@ test:
 	go run ./json/bugs/issue18/main.go
 
 $(benchstat):
-	GO111MODULE=off go install golang.org/x/perf/cmd/benchstat
+	GO111MODULE=off go get -u golang.org/x/perf/cmd/benchstat
 
 # This compares segmentio/encoding/json to the standard golang encoding/json;
 # for more in-depth benchmarks, see the `benchmarks` directory.
