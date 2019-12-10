@@ -15,6 +15,7 @@ test:
 	go test -v -cover ./json
 	go test -v -cover ./iso8601
 	go run ./json/bugs/issue11/main.go
+	go run ./json/bugs/issue18/main.go
 
 $(benchcmp):
 	GO111MODULE=off go install golang.org/x/tools/cmd/benchcmp
