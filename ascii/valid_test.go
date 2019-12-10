@@ -16,6 +16,8 @@ var testStrings = [...]string{
 	"Hello\tWorld!",
 	"Hello\bWorld!",
 	"Hello\fWorld!",
+	"H~llo World!",
+	"H~llo",
 	"你好",
 	"~",
 	"\x80",
