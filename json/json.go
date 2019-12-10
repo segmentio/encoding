@@ -251,22 +251,12 @@ func (dec *Decoder) Buffered() io.Reader {
 
 // Decode is documented at https://golang.org/pkg/encoding/json/#Decoder.Decode
 func (dec *Decoder) Decode(v interface{}) error {
-	if dec.err != nil {
-		return dec.err
-	}
-
 	raw, err := dec.readValue()
 	if err != nil {
-		dec.err = err
 		return err
 	}
-
 	_, err = Parse(raw, v, dec.flags)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 const (
@@ -287,6 +277,16 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 				dec.remain = skipSpaces(r)
 				return
 			}
+			if len(r) != 0 {
+				// Parsing of the next JSON value stopped at a position other
+				// than the end of the input buffer, which indicaates that a
+				// syntax error was encountered.
+				return
+			}
+		}
+
+		if err = dec.err; err != nil {
+			return
 		}
 
 		if dec.buffer == nil {
@@ -306,10 +306,7 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 		if n > 0 {
 			dec.buffer = dec.buffer[:len(dec.buffer)+n]
 		}
-		if err != nil && !(err == io.EOF && len(dec.buffer) != 0) {
-			return
-		}
-		dec.remain = skipSpaces(dec.buffer)
+		dec.remain, dec.err = skipSpaces(dec.buffer), err
 	}
 }
 
