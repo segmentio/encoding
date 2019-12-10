@@ -49,6 +49,9 @@ alternatives; here's an overview of the results (using Go v1.13):
 
 **Comparing to encoding/json**
 ```
+goos: linux
+goarch: amd64
+
 name                           old time/op    new time/op     delta
 Marshal/*json.codeResponse2      9.05ms ±12%     6.40ms ±23%   -29.34%  (p=0.000 n=8+8)
 Unmarshal/*json.codeResponse2    35.3ms ± 7%      9.6ms ± 0%   -72.83%  (p=0.001 n=7+7)
@@ -68,6 +71,9 @@ Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 0%   -99.95%  (p=0.0
 
 **Comparing to github.com/json-iterator/go**
 ```
+goos: linux
+goarch: amd64
+
 name                           old time/op    new time/op     delta
 Marshal/*json.codeResponse2      29.9ms ± 4%      6.4ms ±23%   -78.61%  (p=0.000 n=7+8)
 Unmarshal/*json.codeResponse2    12.6ms ± 6%      9.6ms ± 0%   -23.77%  (p=0.001 n=7+7)
