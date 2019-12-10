@@ -286,6 +286,9 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 		}
 
 		if err = dec.err; err != nil {
+			if len(dec.remain) != 0 && err == io.EOF {
+				err = io.ErrUnexpectedEOF
+			}
 			return
 		}
 

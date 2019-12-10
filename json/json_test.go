@@ -1342,4 +1342,13 @@ func TestGithubIssue18(t *testing.T) {
 	default:
 		t.Error("expected syntax error but found:", err)
 	}
+
+	for i := 1; i <= 18; i++ { // up to the invalid ',' character
+		d := NewDecoder(bytes.NewReader(b[:i])) // cut somewhere in the middle
+		switch err := d.Decode(&a); err {
+		case io.ErrUnexpectedEOF:
+		default:
+			t.Error("expected 'unexpected EOF' error but found:", err)
+		}
+	}
 }
