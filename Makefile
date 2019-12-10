@@ -4,7 +4,7 @@ golang.version ?= 1.13.3
 golang.tmp.root := /tmp/golang$(golang.version)
 golang.tmp.json.root := $(golang.tmp.root)/go-go$(golang.version)/src/encoding/json
 golang.test.files := $(wildcard json/golang_*_test.go)
-benchcmp := ${GOPATH}/bin/benchcmp
+benchstat := ${GOPATH}/bin/benchstat
 go-fuzz := ${GOPATH}/bin/go-fuzz
 go-fuzz-build := ${GOPATH}/bin/go-fuzz-build
 go-fuzz-corpus := ${GOPATH}/src/github.com/dvyukov/go-fuzz-corpus
@@ -16,24 +16,24 @@ test:
 	go test -v -cover ./iso8601
 	go run ./json/bugs/issue11/main.go
 
-$(benchcmp):
-	GO111MODULE=off go install golang.org/x/tools/cmd/benchcmp
+$(benchstat):
+	GO111MODULE=off go install golang.org/x/perf/cmd/benchstat
 
 # This compares segmentio/encoding/json to the standard golang encoding/json;
 # for more in-depth benchmarks, see the `benchmarks` directory.
-bench-simple: $(benchcmp)
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package encoding/json | tee /tmp/encoding-json.txt
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee /tmp/segmentio-encoding-json.txt
-	benchcmp /tmp/encoding-json.txt /tmp/segmentio-encoding-json.txt
+bench-simple: $(benchstat)
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package encoding/json -count 8 | tee /tmp/encoding-json.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -count 8 | tee /tmp/segmentio-encoding-json.txt
+	benchstat /tmp/encoding-json.txt /tmp/segmentio-encoding-json.txt
 
-bench-master: $(benchcmp)
+bench-master: $(benchstat)
 	git stash
 	git checkout master
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee /tmp/segmentio-encoding-json-master.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -count 8 | tee /tmp/segmentio-encoding-json-master.txt
 	git checkout -
 	git stash pop
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee /tmp/segmentio-encoding-json.txt
-	benchcmp /tmp/segmentio-encoding-json-master.txt /tmp/segmentio-encoding-json.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -count 8 | tee /tmp/segmentio-encoding-json.txt
+	benchstat /tmp/segmentio-encoding-json-master.txt /tmp/segmentio-encoding-json.txt
 
 update-golang-test: $(golang.test.files)
 	@echo "updated golang tests to $(golang.version)"
