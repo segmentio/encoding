@@ -1250,6 +1250,32 @@ func TestGithubIssue13(t *testing.T) {
 	}
 }
 
+func TestGithubIssue15(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/15
+	tests := []struct {
+		m interface{}
+		s string
+	}{
+		{
+			m: map[uint]bool{1: true, 123: true, 333: true, 42: true},
+			s: `{"1":true,"123":true,"333":true,"42":true}`,
+		},
+		{
+			m: map[int]bool{-1: true, -123: true, 333: true, 42: true},
+			s: `{"-1":true,"-123":true,"333":true,"42":true}`,
+		},
+	}
+
+	for _, test := range tests {
+		b, _ := json.Marshal(test.m)
+
+		if string(b) != test.s {
+			t.Error("map with integer keys must be ordered by their string representation, got", string(b))
+		}
+
+	}
+}
+
 type sliceA []byte
 
 func (sliceA) MarshalJSON() ([]byte, error) {

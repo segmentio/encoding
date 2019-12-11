@@ -376,7 +376,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 			kc = constructStringCodec(k, seen, false)
 
 			sortKeys = func(keys []reflect.Value) {
-				sort.Slice(keys, func(i, j int) bool { return keys[i].Int() < keys[j].Int() })
+				sort.Slice(keys, func(i, j int) bool { return intStringsAreSorted(keys[i].Int(), keys[j].Int()) })
 			}
 
 		case reflect.Uint,
@@ -388,7 +388,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 			kc = constructStringCodec(k, seen, false)
 
 			sortKeys = func(keys []reflect.Value) {
-				sort.Slice(keys, func(i, j int) bool { return keys[i].Uint() < keys[j].Uint() })
+				sort.Slice(keys, func(i, j int) bool { return uintStringsAreSorted(keys[i].Uint(), keys[j].Uint()) })
 			}
 
 		default:
@@ -977,6 +977,16 @@ func prefix(b []byte) string {
 		return string(b)
 	}
 	return string(b[:32]) + "..."
+}
+
+func intStringsAreSorted(i0, i1 int64) bool {
+	var b0, b1 [32]byte
+	return string(strconv.AppendInt(b0[:0], i0, 10)) < string(strconv.AppendInt(b1[:0], i1, 10))
+}
+
+func uintStringsAreSorted(u0, u1 uint64) bool {
+	var b0, b1 [32]byte
+	return string(strconv.AppendUint(b0[:0], u0, 10)) < string(strconv.AppendUint(b1[:0], u1, 10))
 }
 
 //go:nosplit
