@@ -127,10 +127,10 @@ var testValues = [...]interface{}{
 	float64(math.MaxFloat64),
 
 	// number
-	json.Number("0"),
-	json.Number("1234567890"),
-	json.Number("-0.5"),
-	json.Number("-1e+2"),
+	Number("0"),
+	Number("1234567890"),
+	Number("-0.5"),
+	Number("-1e+2"),
 
 	// string
 	"",
@@ -237,7 +237,7 @@ var testValues = [...]interface{}{
 	(*string)(nil),
 	new(int),
 
-	// json.Marshaler/json.Unmarshaler
+	// Marshaler/Unmarshaler
 	jsonValue{},
 	jsonValue{1, 2},
 
@@ -245,8 +245,8 @@ var testValues = [...]interface{}{
 	textValue{},
 	textValue{1, 2},
 
-	// json.RawMessage
-	json.RawMessage(`{
+	// RawMessage
+	RawMessage(`{
 	"answer": 42,
 	"hello": "world"
 }`),
@@ -336,7 +336,7 @@ func TestCodec(t *testing.T) {
 		t.Run(testName(v1), func(t *testing.T) {
 			v2 := newValue(v1)
 
-			a, err := json.MarshalIndent(v1, "", "\t")
+			a, err := MarshalIndent(v1, "", "\t")
 			if err != nil {
 				t.Error(err)
 				return
@@ -499,7 +499,7 @@ func BenchmarkUnmarshal(b *testing.B) {
 				x = duration(d)
 			}
 
-			j, _ := json.Marshal(x)
+			j, _ := Marshal(x)
 			x = newValue(v).Interface()
 
 			for i := 0; i != b.N; i++ {
@@ -571,13 +571,13 @@ func (d *duration) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	_ json.Marshaler = jsonValue{}
-	_ json.Marshaler = duration(0)
+	_ Marshaler = jsonValue{}
+	_ Marshaler = duration(0)
 
 	_ encoding.TextMarshaler = textValue{}
 
-	_ json.Unmarshaler = (*jsonValue)(nil)
-	_ json.Unmarshaler = (*duration)(nil)
+	_ Unmarshaler = (*jsonValue)(nil)
+	_ Unmarshaler = (*duration)(nil)
 
 	_ encoding.TextUnmarshaler = (*textValue)(nil)
 )
@@ -588,7 +588,7 @@ func TestDecodeStructFieldCaseInsensitive(t *testing.T) {
 		Type string
 	}{"unchanged"}
 
-	if err := json.Unmarshal(b, &s); err != nil {
+	if err := Unmarshal(b, &s); err != nil {
 		t.Error(err)
 	}
 
@@ -730,7 +730,7 @@ func TestDecodeLines(t *testing.T) {
 					}
 
 					switch err.(type) {
-					case *json.SyntaxError, *json.UnmarshalTypeError, *json.UnmarshalFieldError:
+					case *SyntaxError, *UnmarshalTypeError, *UnmarshalFieldError:
 						t.Log("unmarshal error", err)
 						continue
 					}
@@ -1267,7 +1267,7 @@ func TestGithubIssue15(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		b, _ := json.Marshal(test.m)
+		b, _ := Marshal(test.m)
 
 		if string(b) != test.s {
 			t.Error("map with integer keys must be ordered by their string representation, got", string(b))
