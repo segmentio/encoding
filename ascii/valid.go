@@ -26,41 +26,37 @@ func ValidRune(r rune) bool {
 
 //go:nosplit
 func valid(s unsafe.Pointer, n uintptr) bool {
-	if n == 0 {
-		return true
-	}
-
 	i := uintptr(0)
 	p := *(*unsafe.Pointer)(s)
 
-	for (n - i) >= 8 {
+	for n >= 8 {
 		if ((*(*uint64)(unsafe.Pointer(uintptr(p) + i))) & 0x8080808080808080) != 0 {
 			return false
 		}
 		i += 8
+		n -= 8
 	}
 
-	if (n - i) >= 4 {
+	if n >= 4 {
 		if ((*(*uint32)(unsafe.Pointer(uintptr(p) + i))) & 0x80808080) != 0 {
 			return false
 		}
 		i += 4
+		n -= 4
 	}
 
-	if (n - i) >= 2 {
-		if ((*(*uint16)(unsafe.Pointer(uintptr(p) + i))) & 0x8080) != 0 {
-			return false
-		}
-		i += 2
+	var x uint32
+	switch n {
+	case 3:
+		x = uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i + 1)))<<8
+	case 2:
+		x = uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i)))
+	case 1:
+		x = uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i)))
+	default:
+		return true
 	}
-
-	if i < n {
-		if ((*(*uint8)(unsafe.Pointer(uintptr(p) + i))) & 0x80) != 0 {
-			return false
-		}
-	}
-
-	return true
+	return (x & 0x80808080) == 0
 }
 
 // Valid returns true if b contains only printable ASCII characters.
@@ -75,12 +71,12 @@ func ValidPrintString(s string) bool {
 
 // ValidBytes returns true if b is an ASCII character.
 func ValidPrintByte(b byte) bool {
-	return 0x20 <= b && b <= 0x7f
+	return 0x20 <= b && b <= 0x7e
 }
 
 // ValidBytes returns true if b is an ASCII character.
 func ValidPrintRune(r rune) bool {
-	return 0x20 <= r && r <= 0x7f
+	return 0x20 <= r && r <= 0x7e
 }
 
 //go:nosplit
@@ -94,7 +90,7 @@ func validPrint(s unsafe.Pointer, n uintptr) bool {
 
 	for (n - i) >= 8 {
 		x := *(*uint64)(unsafe.Pointer(uintptr(p) + i))
-		if ((x & 0x8080808080808080) != 0) || hasLess64(x, 0x20) {
+		if hasLess64(x, 0x20) || hasMore64(x, 0x7e) {
 			return false
 		}
 		i += 8
@@ -102,28 +98,24 @@ func validPrint(s unsafe.Pointer, n uintptr) bool {
 
 	if (n - i) >= 4 {
 		x := *(*uint32)(unsafe.Pointer(uintptr(p) + i))
-		if ((x & 0x80808080) != 0) || hasLess32(x, 0x20) {
+		if hasLess32(x, 0x20) || hasMore32(x, 0x7e) {
 			return false
 		}
 		i += 4
 	}
 
-	if (n - i) >= 2 {
-		x := *(*uint16)(unsafe.Pointer(uintptr(p) + i))
-		if ((x & 0x8080) != 0) || hasLess16(x, 0x20) {
-			return false
-		}
-		i += 2
+	var x uint32
+	switch n - i {
+	case 3:
+		x = 0x20000000 | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i + 1)))<<8
+	case 2:
+		x = 0x20200000 | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i)))
+	case 1:
+		x = 0x20202000 | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i)))
+	default:
+		return true
 	}
-
-	if i < n {
-		x := *(*uint8)(unsafe.Pointer(uintptr(p) + i))
-		if ((x & 0x80) != 0) || x < 0x20 {
-			return false
-		}
-	}
-
-	return true
+	return !(hasLess32(x, 0x20) || hasMore32(x, 0x7e))
 }
 
 // https://graphics.stanford.edu/~seander/bithacks.html#HasLessInWord
@@ -133,6 +125,12 @@ const (
 
 	hasLessConstL32 = (^uint32(0)) / 255
 	hasLessConstR32 = hasLessConstL32 * 128
+
+	hasMoreConstL64 = (^uint64(0)) / 255
+	hasMoreConstR64 = hasMoreConstL64 * 128
+
+	hasMoreConstL32 = (^uint32(0)) / 255
+	hasMoreConstR32 = hasMoreConstL32 * 128
 )
 
 //go:nosplit
@@ -146,6 +144,11 @@ func hasLess32(x, n uint32) bool {
 }
 
 //go:nosplit
-func hasLess16(x, n uint16) bool {
-	return ((x >> 8) < n) || ((x & 0xff) < n)
+func hasMore64(x, n uint64) bool {
+	return (((x + (hasMoreConstL64 * (127 - n))) | x) & hasMoreConstR64) != 0
+}
+
+//go:nosplit
+func hasMore32(x, n uint32) bool {
+	return (((x + (hasMoreConstL32 * (127 - n))) | x) & hasMoreConstR32) != 0
 }
