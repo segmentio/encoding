@@ -1382,10 +1382,11 @@ func TestGithubIssue18(t *testing.T) {
 func TestGithubIssue23(t *testing.T) {
 	t.Run("", func(t *testing.T) {
 		type d struct {
+			_ struct{}
 			S map[string]string
 		}
 
-		b, _ := json.Marshal(map[string]d{
+		b, _ := Marshal(map[string]d{
 			"1": d{
 				S: map[string]string{"2": "3"},
 			},
@@ -1398,17 +1399,19 @@ func TestGithubIssue23(t *testing.T) {
 
 	t.Run("", func(t *testing.T) {
 		type testInner struct {
+			_        struct{}
 			InnerMap map[string]string `json:"inner_map"`
 		}
 
 		type testOuter struct {
+			_        struct{}
 			OuterMap map[string]testInner `json:"outer_map"`
 		}
 
-		b, _ := json.Marshal(testOuter{
-			map[string]testInner{
+		b, _ := Marshal(testOuter{
+			OuterMap: map[string]testInner{
 				"outer": {
-					map[string]string{
+					InnerMap: map[string]string{
 						"inner": "value",
 					},
 				},
