@@ -1378,3 +1378,45 @@ func TestGithubIssue18(t *testing.T) {
 		}
 	}
 }
+
+func TestGithubIssue23(t *testing.T) {
+	t.Run("", func(t *testing.T) {
+		type d struct {
+			S map[string]string
+		}
+
+		b, _ := json.Marshal(map[string]d{
+			"1": d{
+				S: map[string]string{"2": "3"},
+			},
+		})
+
+		if string(b) != `{"1":{"S":{"2":"3"}}}` {
+			t.Error(string(b))
+		}
+	})
+
+	t.Run("", func(t *testing.T) {
+		type testInner struct {
+			InnerMap map[string]string `json:"inner_map"`
+		}
+
+		type testOuter struct {
+			OuterMap map[string]testInner `json:"outer_map"`
+		}
+
+		b, _ := json.Marshal(testOuter{
+			map[string]testInner{
+				"outer": {
+					map[string]string{
+						"inner": "value",
+					},
+				},
+			},
+		})
+
+		if string(b) != `{"outer_map":{"outer":{"inner_map":{"inner":"value"}}}}` {
+			t.Error(string(b))
+		}
+	})
+}
