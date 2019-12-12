@@ -564,6 +564,13 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 	}
 }
 
+//go:linkname unsafe_NewArray reflect.unsafe_NewArray
+func unsafe_NewArray(rtype unsafe.Pointer, length int) unsafe.Pointer
+
+//go:linkname typedslicecopy reflect.typedslicecopy
+//go:noescape
+func typedslicecopy(elemType unsafe.Pointer, dst, src slice) int
+
 var (
 	// This is a placeholder used to consturct non-nil empty slices.
 	empty struct{}
@@ -625,12 +632,17 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 				c *= 2
 			}
 
-			arrayType := reflect.ArrayOf(c, t.Elem())
-			arrayData := reflect.New(arrayType)
-			reflect.Copy(arrayData.Elem(), reflect.NewAt(t, p).Elem())
+			elemTypeRef := t.Elem()
+			elemTypePtr := ((*iface)(unsafe.Pointer(&elemTypeRef))).ptr
 
-			s.data = unsafe.Pointer(arrayData.Pointer())
-			s.cap = c
+			d := slice{
+				data: unsafe_NewArray(elemTypePtr, c),
+				len:  s.len,
+				cap:  c,
+			}
+
+			typedslicecopy(elemTypePtr, d, *s)
+			*s = d
 		}
 
 		b, err = decode(d, b, unsafe.Pointer(uintptr(s.data)+(uintptr(s.len)*size)))
