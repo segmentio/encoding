@@ -1177,6 +1177,30 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 	}
 }
 
+func BenchmarkEasyjsonUnmarshalSmallStruct(b *testing.B) {
+	type Hashtag struct {
+		Indices []int  `json:"indices"`
+		Text    string `json:"text"`
+	}
+
+	//easyjson:json
+	type Entities struct {
+		Hashtags     []Hashtag `json:"hashtags"`
+		Urls         []*string `json:"urls"`
+		UserMentions []*string `json:"user_mentions"`
+	}
+
+	//var json = []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
+	var json = []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
+
+	for i := 0; i < b.N; i++ {
+		var value Entities
+		if err := Unmarshal(json, &value); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 type testMarshaller struct {
 	v string
 }
