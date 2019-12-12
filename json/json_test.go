@@ -1383,7 +1383,7 @@ func TestGithubIssue23(t *testing.T) {
 	t.Run("marshal-1", func(t *testing.T) {
 		type d struct{ S map[string]string }
 
-		b, _ := Marshal(map[string]d{"1": d{S: map[string]string{"2": "3"}}})
+		b, _ := Marshal(map[string]d{"1": {S: map[string]string{"2": "3"}}})
 		if string(b) != `{"1":{"S":{"2":"3"}}}` {
 			t.Error(string(b))
 		}
