@@ -127,10 +127,10 @@ var testValues = [...]interface{}{
 	float64(math.MaxFloat64),
 
 	// number
-	json.Number("0"),
-	json.Number("1234567890"),
-	json.Number("-0.5"),
-	json.Number("-1e+2"),
+	Number("0"),
+	Number("1234567890"),
+	Number("-0.5"),
+	Number("-1e+2"),
 
 	// string
 	"",
@@ -237,7 +237,7 @@ var testValues = [...]interface{}{
 	(*string)(nil),
 	new(int),
 
-	// json.Marshaler/json.Unmarshaler
+	// Marshaler/Unmarshaler
 	jsonValue{},
 	jsonValue{1, 2},
 
@@ -245,8 +245,8 @@ var testValues = [...]interface{}{
 	textValue{},
 	textValue{1, 2},
 
-	// json.RawMessage
-	json.RawMessage(`{
+	// RawMessage
+	RawMessage(`{
 	"answer": 42,
 	"hello": "world"
 }`),
@@ -571,13 +571,13 @@ func (d *duration) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	_ json.Marshaler = jsonValue{}
-	_ json.Marshaler = duration(0)
+	_ Marshaler = jsonValue{}
+	_ Marshaler = duration(0)
 
 	_ encoding.TextMarshaler = textValue{}
 
-	_ json.Unmarshaler = (*jsonValue)(nil)
-	_ json.Unmarshaler = (*duration)(nil)
+	_ Unmarshaler = (*jsonValue)(nil)
+	_ Unmarshaler = (*duration)(nil)
 
 	_ encoding.TextUnmarshaler = (*textValue)(nil)
 )
@@ -588,7 +588,7 @@ func TestDecodeStructFieldCaseInsensitive(t *testing.T) {
 		Type string
 	}{"unchanged"}
 
-	if err := json.Unmarshal(b, &s); err != nil {
+	if err := Unmarshal(b, &s); err != nil {
 		t.Error(err)
 	}
 
@@ -730,7 +730,7 @@ func TestDecodeLines(t *testing.T) {
 					}
 
 					switch err.(type) {
-					case *json.SyntaxError, *json.UnmarshalTypeError, *json.UnmarshalFieldError:
+					case *SyntaxError, *UnmarshalTypeError, *UnmarshalFieldError:
 						t.Log("unmarshal error", err)
 						continue
 					}
@@ -1267,7 +1267,7 @@ func TestGithubIssue15(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		b, _ := json.Marshal(test.m)
+		b, _ := Marshal(test.m)
 
 		if string(b) != test.s {
 			t.Error("map with integer keys must be ordered by their string representation, got", string(b))
@@ -1377,4 +1377,67 @@ func TestGithubIssue18(t *testing.T) {
 			t.Error("expected 'unexpected EOF' error but found:", err)
 		}
 	}
+}
+
+func TestGithubIssue23(t *testing.T) {
+	t.Run("marshal-1", func(t *testing.T) {
+		type d struct{ S map[string]string }
+
+		b, _ := Marshal(map[string]d{"1": {S: map[string]string{"2": "3"}}})
+		if string(b) != `{"1":{"S":{"2":"3"}}}` {
+			t.Error(string(b))
+		}
+	})
+
+	t.Run("marshal-2", func(t *testing.T) {
+		type testInner struct {
+			InnerMap map[string]string `json:"inner_map"`
+		}
+
+		type testOuter struct {
+			OuterMap map[string]testInner `json:"outer_map"`
+		}
+
+		b, _ := Marshal(testOuter{
+			OuterMap: map[string]testInner{
+				"outer": {
+					InnerMap: map[string]string{"inner": "value"},
+				},
+			},
+		})
+
+		if string(b) != `{"outer_map":{"outer":{"inner_map":{"inner":"value"}}}}` {
+			t.Error(string(b))
+		}
+	})
+
+	t.Run("marshal-3", func(t *testing.T) {
+		type A struct{ A map[string]string }
+		type B struct{ B map[string]A }
+		type C struct{ C map[string]B }
+
+		b, _ := Marshal(C{
+			C: map[string]B{
+				"1": B{
+					B: map[string]A{
+						"2": A{
+							A: map[string]string{"3": "!"},
+						},
+					},
+				},
+			},
+		})
+
+		if string(b) != `{"C":{"1":{"B":{"2":{"A":{"3":"!"}}}}}}` {
+			t.Error(string(b))
+		}
+	})
+
+	t.Run("unmarshal-1", func(t *testing.T) {
+		var d struct{ S map[string]string }
+
+		if err := Unmarshal([]byte(`{"1":{"S":{"2":"3"}}}`), &d); err != nil {
+			t.Error(err)
+		}
+	})
 }

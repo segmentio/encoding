@@ -396,8 +396,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 		}
 	}
 
-	switch v.Kind() {
-	case reflect.Ptr, reflect.Map:
+	if inlined(v) {
 		vc.encode = constructInlineValueEncodeFunc(vc.encode)
 	}
 
