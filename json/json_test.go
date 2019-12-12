@@ -336,7 +336,7 @@ func TestCodec(t *testing.T) {
 		t.Run(testName(v1), func(t *testing.T) {
 			v2 := newValue(v1)
 
-			a, err := MarshalIndent(v1, "", "\t")
+			a, err := json.MarshalIndent(v1, "", "\t")
 			if err != nil {
 				t.Error(err)
 				return
@@ -499,7 +499,7 @@ func BenchmarkUnmarshal(b *testing.B) {
 				x = duration(d)
 			}
 
-			j, _ := Marshal(x)
+			j, _ := json.Marshal(x)
 			x = newValue(v).Interface()
 
 			for i := 0; i != b.N; i++ {
@@ -1380,46 +1380,43 @@ func TestGithubIssue18(t *testing.T) {
 }
 
 func TestGithubIssue23(t *testing.T) {
-	t.Run("", func(t *testing.T) {
-		type d struct {
-			_ struct{}
-			S map[string]string
-		}
-
-		b, _ := Marshal(map[string]d{
-			"1": d{
-				S: map[string]string{"2": "3"},
-			},
-		})
-
+	t.Run("marshal-1", func(t *testing.T) {
+		type d struct{ S map[string]string }
+		b, _ := Marshal(map[string]d{"1": d{S: map[string]string{"2": "3"}}})
 		if string(b) != `{"1":{"S":{"2":"3"}}}` {
 			t.Error(string(b))
 		}
 	})
 
-	t.Run("", func(t *testing.T) {
+	t.Run("marshal-2", func(t *testing.T) {
 		type testInner struct {
-			_        struct{}
 			InnerMap map[string]string `json:"inner_map"`
 		}
 
 		type testOuter struct {
-			_        struct{}
 			OuterMap map[string]testInner `json:"outer_map"`
 		}
 
 		b, _ := Marshal(testOuter{
 			OuterMap: map[string]testInner{
 				"outer": {
-					InnerMap: map[string]string{
-						"inner": "value",
-					},
+					InnerMap: map[string]string{"inner": "value"},
 				},
 			},
 		})
 
 		if string(b) != `{"outer_map":{"outer":{"inner_map":{"inner":"value"}}}}` {
 			t.Error(string(b))
+		}
+	})
+
+	t.Run("unmarshal-1", func(t *testing.T) {
+		var d struct {
+			S map[string]string
+		}
+
+		if err := Unmarshal([]byte(`{"1":{"S":{"2":"3"}}}`), &d); err != nil {
+			t.Error(err)
 		}
 	})
 }
