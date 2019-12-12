@@ -1411,6 +1411,28 @@ func TestGithubIssue23(t *testing.T) {
 		}
 	})
 
+	t.Run("marshal-3", func(t *testing.T) {
+		type A struct{ A map[string]string }
+		type B struct{ B map[string]A }
+		type C struct{ C map[string]B }
+
+		b, _ := Marshal(C{
+			C: map[string]B{
+				"1": B{
+					B: map[string]A{
+						"2": A{
+							A: map[string]string{"3": "!"},
+						},
+					},
+				},
+			},
+		})
+
+		if string(b) != `{"C":{"1":{"B":{"2":{"A":{"3":"!"}}}}}}` {
+			t.Error(string(b))
+		}
+	})
+
 	t.Run("unmarshal-1", func(t *testing.T) {
 		var d struct{ S map[string]string }
 
