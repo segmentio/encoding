@@ -1190,7 +1190,6 @@ func BenchmarkEasyjsonUnmarshalSmallStruct(b *testing.B) {
 		UserMentions []*string `json:"user_mentions"`
 	}
 
-	//var json = []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
 	var json = []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
 
 	for i := 0; i < b.N; i++ {
