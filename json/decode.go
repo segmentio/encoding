@@ -564,6 +564,11 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 	}
 }
 
+var (
+	// This is a placeholder used to consturct non-nil empty slices.
+	empty struct{}
+)
+
 func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect.Type, decode decodeFunc) ([]byte, error) {
 	if hasNullPrefix(b) {
 		*(*slice)(p) = slice{}
@@ -620,10 +625,7 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 				c *= 2
 			}
 
-			v := reflect.MakeSlice(t, s.len, c)
-			reflect.Copy(v, reflect.NewAt(t, p).Elem())
-
-			*s = *(*slice)((*iface)(unsafe.Pointer(&v)).ptr)
+			*s = extendSlice(t, s, c)
 		}
 
 		b, err = decode(d, b, unsafe.Pointer(uintptr(s.data)+(uintptr(s.len)*size)))
@@ -1189,8 +1191,3 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 
 	return b, &UnmarshalTypeError{Value: value, Type: reflect.PtrTo(t)}
 }
-
-var (
-	// This is a placeholder used to consturct non-nil empty slices.
-	empty struct{}
-)
