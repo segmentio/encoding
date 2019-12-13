@@ -8,9 +8,9 @@ import (
 )
 
 func extendSlice(t reflect.Type, s *slice, n int) slice {
-	arrayType := reflect.ArrayOf(t.Elem(), n)
+	arrayType := reflect.ArrayOf(n, t.Elem())
 	arrayData := reflect.New(arrayType)
-	reflect.Copy(arrayData.Elem(), reflect.NewAt(t, unsafe.Pointer(s)))
+	reflect.Copy(arrayData.Elem(), reflect.NewAt(t, unsafe.Pointer(s)).Elem())
 	return slice{
 		data: unsafe.Pointer(arrayData.Pointer()),
 		len:  s.len,

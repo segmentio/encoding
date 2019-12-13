@@ -13,6 +13,7 @@ go-fuzz-dep := ${GOPATH}/src/github.com/dvyukov/go-fuzz/go-fuzz-dep
 test:
 	go test -v -cover ./ascii
 	go test -v -cover ./json
+	go test -v -cover -tags go1.14 ./json
 	go test -v -cover ./iso8601
 	go run ./json/bugs/issue11/main.go
 	go run ./json/bugs/issue18/main.go
