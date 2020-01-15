@@ -1087,7 +1087,7 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 	return b, nil
 }
 
-func (d decoder) decodeNonEmptyInterface(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
+func (d decoder) decodeMaybeEmptyInterface(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
 	if hasNullPrefix(b) {
 		*(*interface{})(p) = nil
 		return b[4:], nil
@@ -1097,6 +1097,8 @@ func (d decoder) decodeNonEmptyInterface(b []byte, p unsafe.Pointer, t reflect.T
 		if e := x.Elem(); e.Kind() == reflect.Ptr {
 			return Parse(b, e.Interface(), d.flags)
 		}
+	} else if t.NumMethod() == 0 { // empty interface
+		return Parse(b, (*interface{})(p), d.flags)
 	}
 
 	return d.decodeUnmarshalTypeError(b, p, t)

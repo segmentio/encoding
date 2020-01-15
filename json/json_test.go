@@ -1464,3 +1464,14 @@ func TestGithubIssue23(t *testing.T) {
 		}
 	})
 }
+
+func TestGithubIssue26(t *testing.T) {
+	type interfaceType interface{}
+
+	var value interfaceType
+	var data = []byte(`{}`)
+
+	if err := Unmarshal(data, &value); err != nil {
+		t.Error(err)
+	}
+}
