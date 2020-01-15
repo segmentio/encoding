@@ -156,7 +156,7 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr b
 		c = codec{encode: encoder.encodeString, decode: decoder.decodeString}
 
 	case reflect.Interface:
-		c = codec{encode: encoder.encodeInterface, decode: constructNonEmptyInterfaceDecoderFunc(t)}
+		c = codec{encode: encoder.encodeInterface, decode: constructMaybeEmptyInterfaceDecoderFunc(t)}
 
 	case reflect.Array:
 		c = constructArrayCodec(t, seen, canAddr)
@@ -711,9 +711,9 @@ func constructPointerDecodeFunc(t reflect.Type, decode decodeFunc) decodeFunc {
 	}
 }
 
-func constructNonEmptyInterfaceDecoderFunc(t reflect.Type) decodeFunc {
+func constructMaybeEmptyInterfaceDecoderFunc(t reflect.Type) decodeFunc {
 	return func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
-		return d.decodeNonEmptyInterface(b, p, t)
+		return d.decodeMaybeEmptyInterface(b, p, t)
 	}
 }
 
