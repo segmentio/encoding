@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -1474,4 +1475,17 @@ func TestGithubIssue26(t *testing.T) {
 	if err := Unmarshal(data, &value); err != nil {
 		t.Error(err)
 	}
+}
+
+func TestGithubIssue28(t *testing.T) {
+	type A struct {
+		Err error `json:"err"`
+	}
+
+	if b, err := Marshal(&A{Err: errors.New("ABC")}); err != nil {
+		t.Error(err)
+	} else if string(b) != `{"err":{}}` {
+		t.Error(string(b))
+	}
+
 }
