@@ -592,6 +592,10 @@ func (e encoder) encodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 	return Append(b, *(*interface{})(p), e.flags)
 }
 
+func (e encoder) encodeMaybeEmptyInterface(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
+	return Append(b, reflect.NewAt(t, p).Elem().Interface(), e.flags)
+}
+
 func (e encoder) encodeUnsupportedTypeError(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
 	return b, &UnsupportedTypeError{Type: t}
 }
