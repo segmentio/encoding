@@ -64,6 +64,11 @@ const (
 	// encoding JSON (this matches the behavior of the standard encoding/json
 	// package).
 	SortMapKeys
+
+	// StringifyLargeInts is a formatting flag used to encode integers bigger
+	// than 9007199254740991 as a JSON-encoded string. This extra level
+	// of encoding is sometimes used when communicating with JavaScript programs.
+	StringifyLargeInts
 )
 
 // ParseFlags is a type used to represent configuration options that can be
@@ -420,6 +425,17 @@ func (enc *Encoder) SetSortMapKeys(on bool) {
 		enc.flags |= SortMapKeys
 	} else {
 		enc.flags &= ^SortMapKeys
+	}
+}
+
+// SetSortMapKeys is an extension to the standard encoding/json package which
+// allows the program to toggle encoding integers bigger than 9007199254740991
+// as strings on and off.
+func (enc *Encoder) SetStringifyLargeInts(on bool) {
+	if on {
+		enc.flags |= StringifyLargeInts
+	} else {
+		enc.flags &= ^StringifyLargeInts
 	}
 }
 

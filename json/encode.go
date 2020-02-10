@@ -15,6 +15,31 @@ import (
 
 const hex = "0123456789abcdef"
 
+// jsMaxSafeInt is the maximum safe integer in JavaScript.
+//
+// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+const jsMaxSafeInt = 1<<53 - 1
+
+func (e encoder) appendInt(b []byte, n int64) []byte {
+	if (e.flags&StringifyLargeInts) != 0 && n > jsMaxSafeInt {
+		b = append(b, '"')
+		b = strconv.AppendInt(b, n, 10)
+		b = append(b, '"')
+		return b
+	}
+	return strconv.AppendInt(b, n, 10)
+}
+
+func (e encoder) appendUint(b []byte, n uint64) []byte {
+	if (e.flags&StringifyLargeInts) != 0 && n > jsMaxSafeInt {
+		b = append(b, '"')
+		b = strconv.AppendUint(b, n, 10)
+		b = append(b, '"')
+		return b
+	}
+	return strconv.AppendUint(b, n, 10)
+}
+
 func (e encoder) encodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
 	return append(b, "null"...), nil
 }
@@ -27,7 +52,7 @@ func (e encoder) encodeBool(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeInt(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendInt(b, int64(*(*int)(p)), 10), nil
+	return e.appendInt(b, int64(*(*int)(p))), nil
 }
 
 func (e encoder) encodeInt8(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -43,15 +68,15 @@ func (e encoder) encodeInt32(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeInt64(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendInt(b, *(*int64)(p), 10), nil
+	return e.appendInt(b, *(*int64)(p)), nil
 }
 
 func (e encoder) encodeUint(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendUint(b, uint64(*(*uint)(p)), 10), nil
+	return e.appendUint(b, uint64(*(*uint)(p))), nil
 }
 
 func (e encoder) encodeUintptr(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendUint(b, uint64(*(*uintptr)(p)), 10), nil
+	return e.appendUint(b, uint64(*(*uintptr)(p))), nil
 }
 
 func (e encoder) encodeUint8(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -67,7 +92,7 @@ func (e encoder) encodeUint32(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeUint64(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendUint(b, *(*uint64)(p), 10), nil
+	return e.appendUint(b, *(*uint64)(p)), nil
 }
 
 func (e encoder) encodeFloat32(b []byte, p unsafe.Pointer) ([]byte, error) {

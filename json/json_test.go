@@ -1489,3 +1489,34 @@ func TestGithubIssue28(t *testing.T) {
 	}
 
 }
+
+func TestStringifyLargeInts(t *testing.T) {
+	// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+	if jsMaxSafeInt != 9007199254740991 {
+		t.Errorf("got %d, wanted %d", jsMaxSafeInt, 9007199254740991)
+	}
+
+	nn := []interface{}{
+		int(jsMaxSafeInt + 2),
+		uint(jsMaxSafeInt + 2),
+		int64(jsMaxSafeInt + 2),
+		uint64(jsMaxSafeInt + 2),
+	}
+
+	for _, n := range nn {
+		var buf bytes.Buffer
+		enc := NewEncoder(&buf)
+		enc.SetStringifyLargeInts(true)
+
+		err := enc.Encode(n)
+		if err != nil {
+			t.Error(err)
+		}
+
+		got := buf.String()
+		wanted := fmt.Sprintf(`"%d"`+"\n", n)
+		if got != wanted {
+			t.Errorf("got %s, wanted %s", got, wanted)
+		}
+	}
+}
