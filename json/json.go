@@ -69,6 +69,10 @@ const (
 	// than 9007199254740991 as a JSON-encoded string. This extra level
 	// of encoding is sometimes used when communicating with JavaScript programs.
 	StringifyLargeInts
+
+	// stringifyInts is an internal flag like StringifyLargeInts, but is used to
+	// always encode integers as a JSON-encoded string.
+	stringifyInts
 )
 
 // ParseFlags is a type used to represent configuration options that can be

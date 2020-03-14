@@ -21,7 +21,8 @@ const hex = "0123456789abcdef"
 const jsMaxSafeInt = 1<<53 - 1
 
 func (e encoder) appendInt(b []byte, n int64) []byte {
-	if (e.flags&StringifyLargeInts) != 0 && n > jsMaxSafeInt {
+	if e.flags&stringifyInts != 0 ||
+		(e.flags&StringifyLargeInts != 0 && n > jsMaxSafeInt) {
 		b = append(b, '"')
 		b = strconv.AppendInt(b, n, 10)
 		b = append(b, '"')
@@ -31,7 +32,8 @@ func (e encoder) appendInt(b []byte, n int64) []byte {
 }
 
 func (e encoder) appendUint(b []byte, n uint64) []byte {
-	if (e.flags&StringifyLargeInts) != 0 && n > jsMaxSafeInt {
+	if e.flags&stringifyInts != 0 ||
+		(e.flags&StringifyLargeInts != 0 && n > jsMaxSafeInt) {
 		b = append(b, '"')
 		b = strconv.AppendUint(b, n, 10)
 		b = append(b, '"')
@@ -56,15 +58,15 @@ func (e encoder) encodeInt(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeInt8(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendInt(b, int64(*(*int8)(p)), 10), nil
+	return e.appendInt(b, int64(*(*int8)(p))), nil
 }
 
 func (e encoder) encodeInt16(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendInt(b, int64(*(*int16)(p)), 10), nil
+	return e.appendInt(b, int64(*(*int16)(p))), nil
 }
 
 func (e encoder) encodeInt32(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendInt(b, int64(*(*int32)(p)), 10), nil
+	return e.appendInt(b, int64(*(*int32)(p))), nil
 }
 
 func (e encoder) encodeInt64(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -80,15 +82,15 @@ func (e encoder) encodeUintptr(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeUint8(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendUint(b, uint64(*(*uint8)(p)), 10), nil
+	return e.appendUint(b, uint64(*(*uint8)(p))), nil
 }
 
 func (e encoder) encodeUint16(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendUint(b, uint64(*(*uint16)(p)), 10), nil
+	return e.appendUint(b, uint64(*(*uint16)(p))), nil
 }
 
 func (e encoder) encodeUint32(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return strconv.AppendUint(b, uint64(*(*uint32)(p)), 10), nil
+	return e.appendUint(b, uint64(*(*uint32)(p))), nil
 }
 
 func (e encoder) encodeUint64(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -270,6 +272,16 @@ func (e encoder) encodeToString(b []byte, p unsafe.Pointer, encode encodeFunc) (
 
 	n := copy(b[i:], b[j:])
 	return b[:i+n], nil
+}
+
+func (e encoder) encodeIntToString(b []byte, p unsafe.Pointer, encode encodeFunc) ([]byte, error) {
+	e.flags |= stringifyInts
+
+	b, err := encode(e, b, p)
+	if err != nil {
+		return b, err
+	}
+	return b, nil
 }
 
 func (e encoder) encodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {

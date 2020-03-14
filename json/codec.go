@@ -225,6 +225,12 @@ func constructStringDecodeFunc(decode decodeFunc) decodeFunc {
 	}
 }
 
+func constructIntToStringEncodeFunc(encode encodeFunc) encodeFunc {
+	return func(e encoder, b []byte, p unsafe.Pointer) ([]byte, error) {
+		return e.encodeIntToString(b, p, encode)
+	}
+}
+
 func constructStringToIntDecodeFunc(t reflect.Type, decode decodeFunc) decodeFunc {
 	return func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
 		return d.decodeFromStringToInt(b, p, t, decode)
@@ -606,7 +612,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				reflect.Uint16,
 				reflect.Uint32,
 				reflect.Uint64:
-				codec.encode = constructStringEncodeFunc(codec.encode)
+				codec.encode = constructIntToStringEncodeFunc(codec.encode)
 				codec.decode = constructStringToIntDecodeFunc(typ, codec.decode)
 			case reflect.Bool,
 				reflect.Float32,
