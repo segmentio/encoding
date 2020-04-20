@@ -307,9 +307,12 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 			dec.buffer = buf
 		}
 
-		n, err = dec.reader.Read(dec.buffer[len(dec.buffer):cap(dec.buffer)])
+		n, err = io.ReadFull(dec.reader, dec.buffer[len(dec.buffer):cap(dec.buffer)])
 		if n > 0 {
 			dec.buffer = dec.buffer[:len(dec.buffer)+n]
+		}
+		if err == io.ErrUnexpectedEOF {
+			err = io.EOF
 		}
 		dec.remain, n = skipSpacesN(dec.buffer)
 		dec.inputOffset += int64(n)
