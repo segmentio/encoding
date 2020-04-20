@@ -234,11 +234,12 @@ func Valid(data []byte) bool {
 
 // Decoder is documented at https://golang.org/pkg/encoding/json/#Decoder
 type Decoder struct {
-	reader io.Reader
-	buffer []byte
-	remain []byte
-	err    error
-	flags  ParseFlags
+	reader      io.Reader
+	buffer      []byte
+	remain      []byte
+	inputOffset int64
+	err         error
+	flags       ParseFlags
 }
 
 // NewDecoder is documented at https://golang.org/pkg/encoding/json/#NewDecoder
@@ -274,7 +275,8 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 		if len(dec.remain) != 0 {
 			v, r, err = parseValue(dec.remain)
 			if err == nil {
-				dec.remain = skipSpaces(r)
+				dec.remain, n = skipSpacesN(r)
+				dec.inputOffset += int64(len(v) + n)
 				return
 			}
 			if len(r) != 0 {
@@ -312,7 +314,9 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 		if err == io.ErrUnexpectedEOF {
 			err = io.EOF
 		}
-		dec.remain, dec.err = skipSpaces(dec.buffer), err
+		dec.remain, n = skipSpacesN(dec.buffer)
+		dec.inputOffset += int64(n)
+		dec.err = err
 	}
 }
 
@@ -349,6 +353,13 @@ func (dec *Decoder) DontMatchCaseInsensitiveStructFields() {
 // ZeroCopy is an extension to the standard encoding/json package which enables
 // all the copy optimizations of the decoder.
 func (dec *Decoder) ZeroCopy() { dec.flags |= ZeroCopy }
+
+// InputOffset returns the input stream byte offset of the current decoder position.
+// The offset gives the location of the end of the most recently returned token
+// and the beginning of the next token.
+func (dec *Decoder) InputOffset() int64 {
+	return dec.inputOffset
+}
 
 // Encoder is documented at https://golang.org/pkg/encoding/json/#Encoder
 type Encoder struct {
