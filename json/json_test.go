@@ -1376,6 +1376,52 @@ func TestGithubIssue16(t *testing.T) {
 	}
 }
 
+func TestDecoderInputOffset(t *testing.T) {
+	checkOffset := func(o, expected int64) {
+		if o != expected {
+			t.Error("unexpected input offset", o, expected)
+		}
+	}
+
+	b := []byte(`{"userId": "blah"}{"userId": "blah"}
+	{"userId": "blah"}{"num": 0}`)
+	d := NewDecoder(bytes.NewReader(b))
+
+	var expected int64
+	checkOffset(d.InputOffset(), expected)
+
+	var a struct {
+		UserId string `json:"userId"`
+	}
+
+	if err := d.Decode(&a); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(18)
+	checkOffset(d.InputOffset(), expected)
+
+	if err := d.Decode(&a); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(38)
+	checkOffset(d.InputOffset(), expected)
+
+	if err := d.Decode(&a); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(56)
+	checkOffset(d.InputOffset(), expected)
+
+	var z struct {
+		Num int64 `json:"num"`
+	}
+	if err := d.Decode(&z); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(66)
+	checkOffset(d.InputOffset(), expected)
+}
+
 func TestGithubIssue18(t *testing.T) {
 	// https://github.com/segmentio/encoding/issues/18
 	b := []byte(`{
