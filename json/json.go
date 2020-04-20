@@ -235,7 +235,7 @@ func Valid(data []byte) bool {
 // Decoder is documented at https://golang.org/pkg/encoding/json/#Decoder
 type Decoder struct {
 	reader      io.Reader
-	buffer      []byte
+	buffer      bytes.Buffer
 	remain      []byte
 	inputOffset int64
 	err         error
@@ -294,24 +294,13 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 			return
 		}
 
-		if dec.buffer == nil {
-			dec.buffer = make([]byte, 0, minBufferSize)
-		} else {
-			dec.buffer = dec.buffer[:copy(dec.buffer[:cap(dec.buffer)], dec.remain)]
+		if dec.remain != nil {
+			dec.buffer.Write(dec.remain)
 			dec.remain = nil
 		}
 
-		if (cap(dec.buffer) - len(dec.buffer)) < minReadSize {
-			buf := make([]byte, len(dec.buffer), 2*cap(dec.buffer))
-			copy(buf, dec.buffer)
-			dec.buffer = buf
-		}
-
-		n, err = dec.reader.Read(dec.buffer[len(dec.buffer):cap(dec.buffer)])
-		if n > 0 {
-			dec.buffer = dec.buffer[:len(dec.buffer)+n]
-		}
-		dec.remain, n = skipSpacesN(dec.buffer)
+		_, err = dec.buffer.ReadFrom(dec.reader)
+		dec.remain, n = skipSpacesN(dec.buffer.Bytes())
 		dec.inputOffset += int64(n)
 		dec.err = err
 	}
