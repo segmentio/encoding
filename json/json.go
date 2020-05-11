@@ -64,6 +64,11 @@ const (
 	// encoding JSON (this matches the behavior of the standard encoding/json
 	// package).
 	SortMapKeys
+
+	// TrustRawMessage is a performance optimization flag to skip value
+	// checking of raw messages. It should only be used if the values are
+	// known to be valid json (e.g., they were created by json.Unmarshal).
+	TrustRawMessage
 )
 
 // ParseFlags is a type used to represent configuration options that can be
@@ -434,6 +439,17 @@ func (enc *Encoder) SetSortMapKeys(on bool) {
 		enc.flags |= SortMapKeys
 	} else {
 		enc.flags &= ^SortMapKeys
+	}
+}
+
+// SetTrustRawMessage skips value checking when encoding a raw json message. It should only
+// be used if the values are known to be valid json, e.g. because they were originally created
+// by json.Unmarshal.
+func (enc *Encoder) SetTrustRawMessage(on bool) {
+	if on {
+		enc.flags |= TrustRawMessage
+	} else {
+		enc.flags &= ^TrustRawMessage
 	}
 }
 

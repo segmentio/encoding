@@ -607,9 +607,16 @@ func (e encoder) encodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return append(b, "null"...), nil
 	}
 
-	s, _, err := parseValue(v)
-	if err != nil {
-		return b, &UnsupportedValueError{Value: reflect.ValueOf(v), Str: err.Error()}
+	var s []byte
+
+	if (e.flags & TrustRawMessage) != 0 {
+		s = v
+	} else {
+		var err error
+		s, _, err = parseValue(v)
+		if err != nil {
+			return b, &UnsupportedValueError{Value: reflect.ValueOf(v), Str: err.Error()}
+		}
 	}
 
 	if (e.flags & EscapeHTML) != 0 {
