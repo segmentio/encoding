@@ -1535,3 +1535,48 @@ func TestGithubIssue28(t *testing.T) {
 	}
 
 }
+
+func TestSetTrustRawMessage(t *testing.T) {
+	buf := &bytes.Buffer{}
+	enc := NewEncoder(buf)
+	enc.SetTrustRawMessage(true)
+
+	// "Good" values are encoded in the regular way
+	m := map[string]json.RawMessage{
+		"k": json.RawMessage(`"value"`),
+	}
+	if err := enc.Encode(m); err != nil {
+		t.Error(err)
+	}
+
+	b := buf.Bytes()
+	exp := []byte(`{"k":"value"}`)
+	exp = append(exp, '\n')
+	if bytes.Compare(exp, b) != 0 {
+		t.Error(
+			"unexpected encoding:",
+			"expected", exp,
+			"got", b,
+		)
+	}
+
+	// "Bad" values are encoded without checking and throwing an error
+	buf.Reset()
+	m = map[string]json.RawMessage{
+		"k": json.RawMessage(`bad"value`),
+	}
+	if err := enc.Encode(m); err != nil {
+		t.Error(err)
+	}
+
+	b = buf.Bytes()
+	exp = []byte(`{"k":bad"value}`)
+	exp = append(exp, '\n')
+	if bytes.Compare(exp, b) != 0 {
+		t.Error(
+			"unexpected encoding:",
+			"expected", exp,
+			"got", b,
+		)
+	}
+}
