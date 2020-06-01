@@ -315,8 +315,10 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 		n, err = io.ReadFull(dec.reader, dec.buffer[len(dec.buffer):cap(dec.buffer)])
 		if n > 0 {
 			dec.buffer = dec.buffer[:len(dec.buffer)+n]
-		}
-		if err == io.ErrUnexpectedEOF {
+			if err != nil {
+				err = nil
+			}
+		} else if err == io.ErrUnexpectedEOF {
 			err = io.EOF
 		}
 		dec.remain, n = skipSpacesN(dec.buffer)
