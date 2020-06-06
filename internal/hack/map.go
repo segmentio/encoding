@@ -1,0 +1,87 @@
+package hack
+
+import "unsafe"
+
+func Assign(typ, dst, src unsafe.Pointer) {
+	typedmemmove(typ, dst, src)
+}
+
+func MapAssign(t, m, k unsafe.Pointer) uintptr {
+	return uintptr(mapassign(t, m, k))
+}
+
+func MakeMap(t unsafe.Pointer, cap int) uintptr {
+	return uintptr(makemap(t, cap))
+}
+
+type MapIter struct{ hiter }
+
+func (it *MapIter) Init(t unsafe.Pointer, m unsafe.Pointer) {
+	mapiterinit(t, m, &it.hiter)
+}
+
+func (it *MapIter) Done() {
+	if it.h != nil {
+		it.key = nil
+		mapiternext(&it.hiter)
+	}
+}
+
+func (it *MapIter) Next() {
+	mapiternext(&it.hiter)
+}
+
+func (it *MapIter) HasNext() bool {
+	return it.key != nil
+}
+
+func (it *MapIter) Key() uintptr { return uintptr(it.key) }
+
+func (it *MapIter) Value() uintptr { return uintptr(it.value) }
+
+// copied from src/runtime/map.go, all pointer types replaced with
+// unsafe.Pointer.
+//
+// Alternatively we could get away with a heap allocation and only
+// defining key and val if we were using reflect.mapiterinit instead,
+// which returns a heap-allocated *hiter.
+type hiter struct {
+	key         unsafe.Pointer // nil when iteration is done
+	value       unsafe.Pointer
+	t           unsafe.Pointer
+	h           unsafe.Pointer
+	buckets     unsafe.Pointer // bucket ptr at hash_iter initialization time
+	bptr        unsafe.Pointer // current bucket
+	overflow    unsafe.Pointer // keeps overflow buckets of hmap.buckets alive
+	oldoverflow unsafe.Pointer // keeps overflow buckets of hmap.oldbuckets alive
+	startBucket uintptr        // bucket iteration started at
+	offset      uint8          // intra-bucket offset to start from during iteration (should be big enough to hold bucketCnt-1)
+	wrapped     bool           // already wrapped around from end of bucket array to beginning
+	B           uint8
+	i           uint8
+	bucket      uintptr
+	checkBucket uintptr
+}
+
+//go:noescape
+//go:linkname makemap reflect.makemap
+func makemap(t unsafe.Pointer, cap int) unsafe.Pointer
+
+// m escapes into the return value, but the caller of mapiterinit
+// doesn't let the return value escape.
+//go:noescape
+//go:linkname mapiterinit runtime.mapiterinit
+func mapiterinit(t unsafe.Pointer, m unsafe.Pointer, it *hiter)
+
+//go:noescape
+//go:linkname mapiternext runtime.mapiternext
+func mapiternext(it *hiter)
+
+//go:noescape
+//go:linkname mapassign runtime.mapassign
+func mapassign(t, m, k unsafe.Pointer) unsafe.Pointer
+
+//go:nosplit
+//go:noescape
+//go:linkname typedmemmove runtime.typedmemmove
+func typedmemmove(typ, dst, src unsafe.Pointer)
