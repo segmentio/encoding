@@ -18,7 +18,6 @@ type structField struct {
 	flags   uint8
 	offset  uint32
 	codec   *codec
-	gotype  reflect.Type
 }
 
 func (f *structField) String() string {
@@ -64,7 +63,6 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 			number:  uint16(number),
 			tagsize: uint8(sizeOfTag(number)),
 			offset:  uint32(f.Offset),
-			gotype:  f.Type,
 		}
 
 		switch kindOf(f.Type) {
