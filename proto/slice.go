@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/segmentio/encoding/internal/hack"
+	. "github.com/segmentio/encoding/internal/runtime_reflect"
 )
 
 type repeatedField struct {
@@ -39,7 +39,7 @@ func sliceSizeFuncOf(t reflect.Type, r *repeatedField) sizeFunc {
 	return func(p unsafe.Pointer, _ flags) int {
 		n := 0
 
-		if v := (*hack.Slice)(p); v != nil {
+		if v := (*Slice)(p); v != nil {
 			for i := 0; i < v.Len(); i++ {
 				elem := unsafe.Pointer(v.Index(i, elemSize))
 				size := r.codec.size(elem, wantzero)
@@ -62,7 +62,7 @@ func sliceEncodeFuncOf(t reflect.Type, r *repeatedField) encodeFunc {
 	return func(b []byte, p unsafe.Pointer, _ flags) (int, error) {
 		offset := 0
 
-		if s := (*hack.Slice)(p); s != nil {
+		if s := (*Slice)(p); s != nil {
 			for i := 0; i < s.Len(); i++ {
 				elem := unsafe.Pointer(s.Index(i, elemSize))
 				size := r.codec.size(elem, wantzero)
@@ -101,7 +101,7 @@ func sliceDecodeFuncOf(t reflect.Type, r *repeatedField) decodeFunc {
 	elemType := t.Elem()
 	elemSize := alignedSize(elemType)
 	return func(b []byte, p unsafe.Pointer, _ flags) (int, error) {
-		s := (*hack.Slice)(p)
+		s := (*Slice)(p)
 		i := s.Len()
 
 		if i == s.Cap() {
@@ -129,13 +129,13 @@ func align(align, size uintptr) uintptr {
 	return size
 }
 
-func growSlice(t reflect.Type, s *hack.Slice) hack.Slice {
+func growSlice(t reflect.Type, s *Slice) Slice {
 	cap := 2 * s.Cap()
 	if cap == 0 {
 		cap = 10
 	}
 	p := pointer(t)
-	d := hack.MakeSlice(p, s.Len(), cap)
-	hack.CopySlice(p, d, *s)
+	d := MakeSlice(p, s.Len(), cap)
+	CopySlice(p, d, *s)
 	return d
 }

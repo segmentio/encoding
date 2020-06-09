@@ -6,7 +6,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/segmentio/encoding/internal/hack"
+	. "github.com/segmentio/encoding/internal/runtime_reflect"
 )
 
 const (
@@ -46,7 +46,7 @@ func mapSizeFuncOf(t reflect.Type, f *mapField) sizeFunc {
 		}
 
 		n := 0
-		m := hack.MapIter{}
+		m := MapIter{}
 		defer m.Done()
 
 		for m.Init(pointer(t), p); m.HasNext(); m.Next() {
@@ -101,7 +101,7 @@ func mapEncodeFuncOf(t reflect.Type, f *mapField) encodeFunc {
 		}
 
 		offset := 0
-		m := hack.MapIter{}
+		m := MapIter{}
 		defer m.Done()
 
 		for m.Init(pointer(t), p); m.HasNext(); m.Next() {
@@ -220,7 +220,7 @@ func mapDecodeFuncOf(t reflect.Type, f *mapField, seen map[reflect.Type]*codec) 
 	return func(b []byte, p unsafe.Pointer, _ flags) (int, error) {
 		m := (*unsafe.Pointer)(p)
 		if *m == nil {
-			*m = unsafe.Pointer(hack.MakeMap(mtype, 10))
+			*m = unsafe.Pointer(MakeMap(mtype, 10))
 		}
 		if len(b) == 0 {
 			return 0, nil
@@ -233,11 +233,11 @@ func mapDecodeFuncOf(t reflect.Type, f *mapField, seen map[reflect.Type]*codec) 
 
 		n, err := structCodec.decode(b, s, noflags)
 		if err == nil {
-			v := unsafe.Pointer(hack.MapAssign(mtype, *m, s))
-			hack.Assign(vtype, v, unsafe.Pointer(uintptr(s)+valueOffset))
+			v := unsafe.Pointer(MapAssign(mtype, *m, s))
+			Assign(vtype, v, unsafe.Pointer(uintptr(s)+valueOffset))
 		}
 
-		hack.Assign(stype, s, structZero)
+		Assign(stype, s, structZero)
 		structPool.Put(s)
 		return n, err
 	}

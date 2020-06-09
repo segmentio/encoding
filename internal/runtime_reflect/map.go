@@ -1,4 +1,4 @@
-package hack
+package runtime_reflect
 
 import "unsafe"
 
