@@ -69,7 +69,7 @@ and therefore are not as approachable as typical Go programs. Basically, we put
 a bigger burden on maintainers to achieve better runtime cost without
 sacrificing developer productivity.
 
-For these reasons, we also don't believe that this code should be ported upsteam
+For these reasons, we also don't believe that this code should be ported upstream
 to the standard `encoding/json` package. The standard library has to remain
 readable and approachable to maximize stability and maintainability, and make
 projects like this one possible because a high quality reference implementation
