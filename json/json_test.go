@@ -1536,6 +1536,29 @@ func TestGithubIssue28(t *testing.T) {
 
 }
 
+func TestGithubIssue41(t *testing.T) {
+	expectedString := `{"Zero":0,"Three":3}`
+	type M struct {
+		One int
+		Two int
+	}
+	type N struct {
+		Zero int
+		*M
+		Three int
+	}
+
+	if b, err := Marshal(N{Three: 3}); err != nil {
+		t.Error(err)
+	} else if string(b) != expectedString {
+		t.Error(
+			"got: ", string(b),
+			"expected: ", expectedString,
+		)
+	}
+
+}
+
 func TestSetTrustRawMessage(t *testing.T) {
 	buf := &bytes.Buffer{}
 	enc := NewEncoder(buf)
