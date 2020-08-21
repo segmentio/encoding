@@ -540,10 +540,6 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 			continue
 		}
 
-		if n != 0 {
-			b = append(b, ',')
-		}
-
 		if (e.flags & EscapeHTML) != 0 {
 			k = f.html
 		} else {
@@ -551,6 +547,11 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 
 		lengthBeforeKey := len(b)
+
+		if n != 0 {
+			b = append(b, ',')
+		}
+
 		b = append(b, k...)
 		b = append(b, ':')
 
