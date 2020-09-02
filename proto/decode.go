@@ -7,6 +7,16 @@ import (
 	"unsafe"
 )
 
+// DecodeTag reverses the encoding applied by EncodeTag.
+func DecodeTag(tag uint64) (FieldNumber, WireType) {
+	return FieldNumber(tag >> 3), WireType(tag & 7)
+}
+
+// DecodeZigZag reverses the encoding applied by EncodeZigZag.
+func DecodeZigZag(v uint64) int64 {
+	return int64(v>>1) ^ -(int64(v) & 1)
+}
+
 type decodeFunc = func([]byte, unsafe.Pointer, flags) (int, error)
 
 var (
@@ -41,7 +51,7 @@ func decodeVarint(b []byte) (uint64, int, error) {
 
 func decodeVarintZigZag(b []byte) (int64, int, error) {
 	v, n, err := decodeVarint(b)
-	return int64(v>>1) ^ -(int64(v) & 1), n, err
+	return DecodeZigZag(v), n, err
 }
 
 func decodeFixed32(b []byte) (uint32, int, error) {
