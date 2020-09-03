@@ -6,10 +6,10 @@
 protobuf.sources := \
     $(wildcard ./*.proto)
 
-generated.sources := $(protobuf.sources:.proto=.pb.go)
-
-generate: $(generated.sources)
+generate: protobuf
 	go run ./generate
 
 clean:
 	rm -f *.pb.go
+
+protobuf: $(protobuf.sources:.proto=.pb.go)
