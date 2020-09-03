@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"bytes"
 	"math"
 	"testing"
 )
@@ -119,5 +120,45 @@ func TestDecodeFromAppend(t *testing.T) {
 	}
 	if x.F64 != 1234 {
 		t.Errorf("x.F64=%g", x.F64)
+	}
+}
+
+func TestDecodeFixture(t *testing.T) {
+	m := loadProtobuf(t, "message.pb")
+	m = assertParse(t, m, 1, Varint, makeVarint(10))
+	m = assertParse(t, m, 2, Fixed32, makeFixed32(20))
+	m = assertParse(t, m, 3, Fixed64, makeFixed64(30))
+	m = assertParse(t, m, 4, Varlen, []byte("Hello World!"))
+	assertEmpty(t, m)
+}
+
+func assertParse(t *testing.T, m RawMessage, f FieldNumber, w WireType, b []byte) RawMessage {
+	t.Helper()
+
+	f0, w0, b0, m, err := Parse(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f0 != f {
+		t.Errorf("field number mismatch, want %d but got %d", f, f0)
+	}
+
+	if w0 != w {
+		t.Errorf("wire type mismatch, want %d but got %d", w, w0)
+	}
+
+	if !bytes.Equal(b0, b) {
+		t.Errorf("value mismatch, want %v but got %v", b, b0)
+	}
+
+	return m
+}
+
+func assertEmpty(t *testing.T, m RawMessage) {
+	t.Helper()
+
+	if len(m) != 0 {
+		t.Errorf("unexpected content remained in the protobuf message: %v", m)
 	}
 }

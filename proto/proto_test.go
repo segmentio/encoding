@@ -1,7 +1,9 @@
 package proto
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"testing"
@@ -309,4 +311,30 @@ func TestMarshalUnmarshal(t *testing.T) {
 			}
 		})
 	}
+}
+
+func loadProtobuf(t *testing.T, fileName string) RawMessage {
+	b, err := ioutil.ReadFile("fixtures/protobuf/" + fileName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return RawMessage(b)
+}
+
+func makeVarint(v uint64) []byte {
+	b := [12]byte{}
+	n := binary.PutUvarint(b[:], v)
+	return b[:n]
+}
+
+func makeFixed32(v uint32) []byte {
+	b := [4]byte{}
+	binary.LittleEndian.PutUint32(b[:], v)
+	return b[:]
+}
+
+func makeFixed64(v uint64) []byte {
+	b := [8]byte{}
+	binary.LittleEndian.PutUint64(b[:], v)
+	return b[:]
 }

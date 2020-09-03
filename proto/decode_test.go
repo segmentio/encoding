@@ -34,6 +34,38 @@ func TestUnarshalFromShortBuffer(t *testing.T) {
 	}
 }
 
+func TestUnmarshalFixture(t *testing.T) {
+	type Message struct {
+		A uint
+		B uint32
+		C uint64
+		D string
+	}
+
+	b := loadProtobuf(t, "message.pb")
+	m := Message{}
+
+	if err := Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+
+	if m.A != 10 {
+		t.Error("m.A mismatch, want 10 but got", m.A)
+	}
+
+	if m.B != 20 {
+		t.Error("m.B mismatch, want 20 but got", m.B)
+	}
+
+	if m.C != 30 {
+		t.Error("m.C mismatch, want 30 but got", m.C)
+	}
+
+	if m.D != "Hello World!" {
+		t.Errorf("m.D mismatch, want \"Hello World!\" but got %q", m.D)
+	}
+}
+
 func BenchmarkDecodeTag(b *testing.B) {
 	c := [8]byte{}
 	n, _ := encodeTag(c[:], 1, varint)
