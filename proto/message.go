@@ -56,8 +56,12 @@ func (wt WireType) String() string {
 }
 
 func Append(m RawMessage, f FieldNumber, t WireType, v []byte) RawMessage {
-	b := [12]byte{}
+	b := [24]byte{}
 	n, _ := encodeVarint(b[:], EncodeTag(f, t))
+	if t == Varlen {
+		n1, _ := encodeVarint(b[n:], uint64(len(v)))
+		n += n1
+	}
 	m = append(m, b[:n]...)
 	m = append(m, v...)
 	return m
@@ -70,11 +74,7 @@ func AppendVarint(m RawMessage, f FieldNumber, v uint64) RawMessage {
 }
 
 func AppendVarlen(m RawMessage, f FieldNumber, v []byte) RawMessage {
-	b := [12]byte{}
-	n, _ := encodeVarint(b[:], uint64(len(v)))
-	m = Append(m, f, Varlen, b[:n])
-	m = append(m, v...)
-	return m
+	return Append(m, f, Varlen, v)
 }
 
 func AppendFixed32(m RawMessage, f FieldNumber, v uint32) RawMessage {
