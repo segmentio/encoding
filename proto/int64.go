@@ -21,7 +21,7 @@ func sizeOfInt64(p unsafe.Pointer, flags flags) int {
 func encodeInt64(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	if p != nil {
 		if v := *(*int64)(p); v != 0 || flags.has(wantzero) {
-			return encodeFixed64(b, uint64(v))
+			return encodeFixed64(b, encodeZigZag64(v))
 		}
 	}
 	return 0, nil
@@ -29,6 +29,6 @@ func encodeInt64(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 
 func decodeInt64(b []byte, p unsafe.Pointer, _ flags) (int, error) {
 	v, n, err := decodeFixed64(b)
-	*(*int64)(p) = int64(v)
+	*(*int64)(p) = decodeZigZag64(v)
 	return n, err
 }

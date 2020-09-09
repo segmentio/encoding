@@ -13,7 +13,15 @@ func EncodeTag(f FieldNumber, t WireType) uint64 {
 
 // EncodeZigZag returns v as a zig-zag encoded value.
 func EncodeZigZag(v int64) uint64 {
+	return encodeZigZag64(v)
+}
+
+func encodeZigZag64(v int64) uint64 {
 	return uint64((v << 1) ^ (v >> 63))
+}
+
+func encodeZigZag32(v int32) uint32 {
+	return uint32((v << 1) ^ (v >> 31))
 }
 
 type encodeFunc = func([]byte, unsafe.Pointer, flags) (int, error)
@@ -36,7 +44,7 @@ func encodeVarint(b []byte, v uint64) (int, error) {
 }
 
 func encodeVarintZigZag(b []byte, v int64) (int, error) {
-	return encodeVarint(b, EncodeZigZag(v))
+	return encodeVarint(b, encodeZigZag64(v))
 }
 
 func encodeFixed32(b []byte, v uint32) (int, error) {

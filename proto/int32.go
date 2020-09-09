@@ -21,7 +21,7 @@ func sizeOfInt32(p unsafe.Pointer, flags flags) int {
 func encodeInt32(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	if p != nil {
 		if v := *(*int32)(p); v != 0 || flags.has(wantzero) {
-			return encodeFixed32(b, uint32(v))
+			return encodeFixed32(b, encodeZigZag32(v))
 		}
 	}
 	return 0, nil
@@ -29,6 +29,6 @@ func encodeInt32(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 
 func decodeInt32(b []byte, p unsafe.Pointer, _ flags) (int, error) {
 	v, n, err := decodeFixed32(b)
-	*(*int32)(p) = int32(v)
+	*(*int32)(p) = decodeZigZag32(v)
 	return n, err
 }

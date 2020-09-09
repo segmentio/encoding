@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 )
 
 // Message is an interface implemented by types that supported being encoded to
@@ -38,8 +39,47 @@ func (m *RawMessage) Unmarshal(b []byte) error {
 	return nil
 }
 
+// Rewrite satisfies the Rewriter interface.
+func (m RawMessage) Rewrite(out, _ []byte) ([]byte, error) {
+	return append(out, m...), nil
+}
+
 // FieldNumber represents a protobuf field number.
 type FieldNumber int
+
+// Value constructs a RawMessage for field number f from v.
+func (f FieldNumber) Value(v interface{}) RawMessage {
+	switch x := v.(type) {
+	case bool:
+		var value uint64
+		if x {
+			value = 1
+		}
+		return AppendVarint(nil, f, value)
+	case int:
+		return AppendVarint(nil, f, encodeZigZag64(int64(x)))
+	case int32:
+		return AppendFixed32(nil, f, encodeZigZag32(x))
+	case int64:
+		return AppendFixed64(nil, f, encodeZigZag64(x))
+	case uint:
+		return AppendVarint(nil, f, uint64(x))
+	case uint32:
+		return AppendFixed32(nil, f, x)
+	case uint64:
+		return AppendFixed64(nil, f, x)
+	case float32:
+		return AppendFixed32(nil, f, math.Float32bits(x))
+	case float64:
+		return AppendFixed64(nil, f, math.Float64bits(x))
+	case string:
+		return AppendVarlen(nil, f, []byte(x))
+	case []byte:
+		return AppendVarlen(nil, f, x)
+	default:
+		panic("cannot rewrite value of unsupported type")
+	}
+}
 
 // The WireType enumeration represents the different protobuf wire types.
 type WireType int
@@ -164,5 +204,6 @@ func (v RawValue) Fixed64() uint64 {
 }
 
 var (
-	_ Message = &RawMessage{}
+	_ Message  = &RawMessage{}
+	_ Rewriter = RawMessage{}
 )
