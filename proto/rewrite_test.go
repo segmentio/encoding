@@ -31,7 +31,7 @@ func TestRewrite(t *testing.T) {
 			in:       message{A: 21},
 			out:      message{A: 42},
 			rw: RewriteFields{
-				1: FieldNumber(1).Value(42),
+				1: FieldNumber(1).Int(42),
 			},
 		},
 
@@ -40,7 +40,7 @@ func TestRewrite(t *testing.T) {
 			in:       message{A: 21, B: 0.125},
 			out:      message{A: 21, B: -1},
 			rw: RewriteFields{
-				2: FieldNumber(2).Value(float32(-1)),
+				2: FieldNumber(2).Float32(-1),
 			},
 		},
 
@@ -49,7 +49,7 @@ func TestRewrite(t *testing.T) {
 			in:       message{A: 21, B: 0.125, C: 0.0},
 			out:      message{A: 21, B: 0.125, C: 1.0},
 			rw: RewriteFields{
-				3: FieldNumber(3).Value(float64(+1)),
+				3: FieldNumber(3).Float64(+1),
 			},
 		},
 
@@ -58,7 +58,7 @@ func TestRewrite(t *testing.T) {
 			in:       message{A: 21, B: 0.125, C: 1.0, D: "A"},
 			out:      message{A: 21, B: 0.125, C: 1.0, D: "Hello World!"},
 			rw: RewriteFields{
-				4: FieldNumber(4).Value("Hello World!"),
+				4: FieldNumber(4).String("Hello World!"),
 			},
 		},
 	}

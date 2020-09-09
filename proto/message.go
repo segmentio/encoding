@@ -47,35 +47,79 @@ func (m RawMessage) Rewrite(out, _ []byte) ([]byte, error) {
 // FieldNumber represents a protobuf field number.
 type FieldNumber int
 
+func (f FieldNumber) Bool(v bool) RawMessage {
+	var x uint64
+	if v {
+		x = 1
+	}
+	return AppendVarint(nil, f, x)
+}
+
+func (f FieldNumber) Int(v int) RawMessage {
+	return AppendVarint(nil, f, encodeZigZag64(int64(v)))
+}
+
+func (f FieldNumber) Int32(v int32) RawMessage {
+	return AppendFixed32(nil, f, encodeZigZag32(v))
+}
+
+func (f FieldNumber) Int64(v int64) RawMessage {
+	return AppendFixed64(nil, f, encodeZigZag64(v))
+}
+
+func (f FieldNumber) Uint(v uint) RawMessage {
+	return AppendVarint(nil, f, uint64(v))
+}
+
+func (f FieldNumber) Uint32(v uint32) RawMessage {
+	return AppendFixed32(nil, f, v)
+}
+
+func (f FieldNumber) Uint64(v uint64) RawMessage {
+	return AppendFixed64(nil, f, v)
+}
+
+func (f FieldNumber) Float32(v float32) RawMessage {
+	return AppendFixed32(nil, f, math.Float32bits(v))
+}
+
+func (f FieldNumber) Float64(v float64) RawMessage {
+	return AppendFixed64(nil, f, math.Float64bits(v))
+}
+
+func (f FieldNumber) String(v string) RawMessage {
+	return AppendVarlen(nil, f, []byte(v))
+}
+
+func (f FieldNumber) Bytes(v []byte) RawMessage {
+	return AppendVarlen(nil, f, v)
+}
+
 // Value constructs a RawMessage for field number f from v.
 func (f FieldNumber) Value(v interface{}) RawMessage {
 	switch x := v.(type) {
 	case bool:
-		var value uint64
-		if x {
-			value = 1
-		}
-		return AppendVarint(nil, f, value)
+		return f.Bool(x)
 	case int:
-		return AppendVarint(nil, f, encodeZigZag64(int64(x)))
+		return f.Int(x)
 	case int32:
-		return AppendFixed32(nil, f, encodeZigZag32(x))
+		return f.Int32(x)
 	case int64:
-		return AppendFixed64(nil, f, encodeZigZag64(x))
+		return f.Int64(x)
 	case uint:
-		return AppendVarint(nil, f, uint64(x))
+		return f.Uint(x)
 	case uint32:
-		return AppendFixed32(nil, f, x)
+		return f.Uint32(x)
 	case uint64:
-		return AppendFixed64(nil, f, x)
+		return f.Uint64(x)
 	case float32:
-		return AppendFixed32(nil, f, math.Float32bits(x))
+		return f.Float32(x)
 	case float64:
-		return AppendFixed64(nil, f, math.Float64bits(x))
+		return f.Float64(x)
 	case string:
-		return AppendVarlen(nil, f, []byte(x))
+		return f.String(x)
 	case []byte:
-		return AppendVarlen(nil, f, x)
+		return f.Bytes(x)
 	default:
 		panic("cannot rewrite value of unsupported type")
 	}
