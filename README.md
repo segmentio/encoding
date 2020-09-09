@@ -18,6 +18,21 @@ performance library, we also aim for very low development and maintenance overhe
 by implementing APIs that can be used as drop-in replacements for the default
 solutions.
 
+## Requirements and Maintenance Schedule
+
+This package has no dependencies outside of the core runtime of Go.  It
+requires a recent version of Go.
+
+This package follows the same maintenance schedule as the [Go
+project](https://github.com/golang/go/wiki/Go-Release-Cycle#release-maintenance),
+meaning that issues relating to versions of Go which aren't supported by the Go
+team, or versions of this package which are older than 1 year, are unlikely to
+be considered.
+
+Additionally, we have fuzz tests which aren't a runtime required dependency but
+will be pulled in when running `go mod tidy`.  Please don't include these go.mod
+updates in change requests.
+
 ## encoding/json [![GoDoc](https://godoc.org/github.com/segmentio/encoding/json?status.svg)](https://godoc.org/github.com/segmentio/encoding/json)
 
 More details about the implementation of this package can be found [here](json/README.md).
