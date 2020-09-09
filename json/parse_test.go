@@ -133,3 +133,42 @@ func BenchmarkHasFalsePrefix(b *testing.B) {
 		benchmarkHasPrefixResult = hasFalsePrefix(benchmarkHasPrefixString)
 	}
 }
+
+func BenchmarkParseStringEscapeNone(b *testing.B) {
+	var j = []byte(`"` + strings.Repeat(`a`, 1000) + `"`)
+	var s string
+	b.SetBytes(int64(len(j)))
+
+	for i := 0; i < b.N; i++ {
+		if err := Unmarshal(j, &s); err != nil {
+			b.Fatal(err)
+		}
+		s = ""
+	}
+}
+
+func BenchmarkParseStringEscapeOne(b *testing.B) {
+	var j = []byte(`"` + strings.Repeat(`a`, 998) + `\n"`)
+	var s string
+	b.SetBytes(int64(len(j)))
+
+	for i := 0; i < b.N; i++ {
+		if err := Unmarshal(j, &s); err != nil {
+			b.Fatal(err)
+		}
+		s = ""
+	}
+}
+
+func BenchmarkParseStringEscapeAll(b *testing.B) {
+	var j = []byte(`"` + strings.Repeat(`\`, 1000) + `"`)
+	var s string
+	b.SetBytes(int64(len(j)))
+
+	for i := 0; i < b.N; i++ {
+		if err := Unmarshal(j, &s); err != nil {
+			b.Fatal(err)
+		}
+		s = ""
+	}
+}
