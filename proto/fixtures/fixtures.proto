@@ -6,7 +6,7 @@ option go_package = "github.com/segmentio/encoding/proto/fixtures";
 
 message Message {
   int64 a = 1;
-  fixed32 b = 2;
-  fixed64 c = 3;
+  uint32 b = 2;
+  uint64 c = 3;
   string d = 4;
 }

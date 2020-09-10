@@ -56,39 +56,47 @@ func (f FieldNumber) Bool(v bool) RawMessage {
 }
 
 func (f FieldNumber) Int(v int) RawMessage {
-	return AppendVarint(nil, f, encodeZigZag64(int64(v)))
+	return f.Int64(int64(v))
 }
 
 func (f FieldNumber) Int32(v int32) RawMessage {
-	return AppendFixed32(nil, f, encodeZigZag32(v))
+	return f.Int64(int64(v))
 }
 
 func (f FieldNumber) Int64(v int64) RawMessage {
-	return AppendFixed64(nil, f, encodeZigZag64(v))
-}
-
-func (f FieldNumber) Uint(v uint) RawMessage {
 	return AppendVarint(nil, f, uint64(v))
 }
 
+func (f FieldNumber) Uint(v uint) RawMessage {
+	return f.Uint64(uint64(v))
+}
+
 func (f FieldNumber) Uint32(v uint32) RawMessage {
-	return AppendFixed32(nil, f, v)
+	return f.Uint64(uint64(v))
 }
 
 func (f FieldNumber) Uint64(v uint64) RawMessage {
+	return AppendVarint(nil, f, v)
+}
+
+func (f FieldNumber) Fixed32(v uint32) RawMessage {
+	return AppendFixed32(nil, f, v)
+}
+
+func (f FieldNumber) Fixed64(v uint64) RawMessage {
 	return AppendFixed64(nil, f, v)
 }
 
 func (f FieldNumber) Float32(v float32) RawMessage {
-	return AppendFixed32(nil, f, math.Float32bits(v))
+	return f.Fixed32(math.Float32bits(v))
 }
 
 func (f FieldNumber) Float64(v float64) RawMessage {
-	return AppendFixed64(nil, f, math.Float64bits(v))
+	return f.Fixed64(math.Float64bits(v))
 }
 
 func (f FieldNumber) String(v string) RawMessage {
-	return AppendVarlen(nil, f, []byte(v))
+	return f.Bytes([]byte(v))
 }
 
 func (f FieldNumber) Bytes(v []byte) RawMessage {

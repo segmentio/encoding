@@ -62,12 +62,12 @@ type Type interface {
 //	Go      | Protobuf
 //	--------+---------
 //	bool    | bool
-//	int     | sint64
-//	int32   | sint32
-//	int64   | sint64
+//	int     | int64
+//	int32   | int32
+//	int64   | int64
 //	uint    | uint64
-//	uint32  | fixed32
-//	uint64  | fixed64
+//	uint32  | uint32
+//	uint64  | uint64
 //	float32 | float
 //	float64 | double
 //	string  | string
@@ -108,17 +108,17 @@ func typeOf(t reflect.Type) Type {
 	case reflect.Bool:
 		return &primitiveTypes[Bool]
 	case reflect.Int:
-		return &primitiveTypes[Sint64]
+		return &primitiveTypes[Int64]
 	case reflect.Int32:
-		return &primitiveTypes[Sint32]
+		return &primitiveTypes[Int32]
 	case reflect.Int64:
-		return &primitiveTypes[Sint64]
+		return &primitiveTypes[Int64]
 	case reflect.Uint:
 		return &primitiveTypes[Uint64]
 	case reflect.Uint32:
-		return &primitiveTypes[Fix32]
+		return &primitiveTypes[Uint32]
 	case reflect.Uint64:
-		return &primitiveTypes[Fix64]
+		return &primitiveTypes[Uint64]
 	case reflect.Float32:
 		return &primitiveTypes[Float]
 	case reflect.Float64:

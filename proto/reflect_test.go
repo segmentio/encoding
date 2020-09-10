@@ -13,19 +13,19 @@ func TestTypeOf(t *testing.T) {
 	}{
 		// primitive types
 		{value: true, proto: "bool"},
-		{value: int(1), proto: "sint64"},
-		{value: int32(1), proto: "sint32"},
-		{value: int64(1), proto: "sint64"},
+		{value: int(1), proto: "int64"},
+		{value: int32(1), proto: "int32"},
+		{value: int64(1), proto: "int64"},
 		{value: uint(1), proto: "uint64"},
-		{value: uint32(1), proto: "fixed32"},
-		{value: uint64(1), proto: "fixed64"},
+		{value: uint32(1), proto: "uint32"},
+		{value: uint64(1), proto: "uint64"},
 		{value: float32(1), proto: "float"},
 		{value: float64(1), proto: "double"},
 		{value: "hello", proto: "string"},
 		{value: []byte("A"), proto: "bytes"},
 
 		// map types
-		{value: map[int]string{}, proto: "map<sint64, string>"},
+		{value: map[int]string{}, proto: "map<int64, string>"},
 
 		// struct types
 		{
@@ -36,7 +36,7 @@ func TestTypeOf(t *testing.T) {
 		{
 			value: struct{ A int }{},
 			proto: `message {
-  sint64 A = 1;
+  int64 A = 1;
 }`,
 		},
 
@@ -46,7 +46,7 @@ func TestTypeOf(t *testing.T) {
 				B string `protobuf:"bytes,3,rep,name=world,proto3"`
 			}{},
 			proto: `message {
-  sint64 hello = 1;
+  int64 hello = 1;
   repeated string world = 3;
 }`,
 		},

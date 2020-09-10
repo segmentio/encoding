@@ -92,7 +92,7 @@ func TestAppendFixed64(t *testing.T) {
 
 func TestDecodeFromAppend(t *testing.T) {
 	m := RawMessage(nil)
-	m = AppendVarint(m, 1, EncodeZigZag(-1))
+	m = AppendVarint(m, 1, math.MaxUint64)
 	m = AppendVarlen(m, 2, []byte("Hello World!"))
 	m = AppendFixed32(m, 3, math.Float32bits(42.0))
 	m = AppendFixed64(m, 4, math.Float64bits(1234.0))
@@ -126,8 +126,8 @@ func TestDecodeFromAppend(t *testing.T) {
 func TestDecodeFixture(t *testing.T) {
 	m := loadProtobuf(t, "message.pb")
 	m = assertParse(t, m, 1, Varint, makeVarint(10))
-	m = assertParse(t, m, 2, Fixed32, makeFixed32(20))
-	m = assertParse(t, m, 3, Fixed64, makeFixed64(30))
+	m = assertParse(t, m, 2, Varint, makeVarint(20))
+	m = assertParse(t, m, 3, Varint, makeVarint(30))
 	m = assertParse(t, m, 4, Varlen, []byte("Hello World!"))
 	assertEmpty(t, m)
 }
