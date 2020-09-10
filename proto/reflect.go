@@ -35,24 +35,58 @@ const (
 
 // Type is an interface similar to reflect.Type. Values implementing this
 // interface represent high level protobuf types.
+//
+// Type values are safe to use concurrently from multiple goroutines.
+//
+// Types are comparable value.
 type Type interface {
+	// Returns a human-readable representation of the type.
 	String() string
 
+	// Returns the name of the type.
+	Name() string
+
+	// Kind returns the kind of protobuf values that are represented.
 	Kind() Kind
 
+	// When the Type represents a protobuf map, calling this method returns the
+	// type of the map keys.
+	//
+	// If the Type is not a map type, the method panics.
 	Key() Type
 
+	// When the Type represents a protobuf map, calling this method returns the
+	// type of the map values.
+	//
+	// If the Type is not a map type, the method panics.
 	Elem() Type
 
+	// Returns the protobuf wire type for the Type it is called on.
 	WireType() WireType
 
+	// Returns the number of fields in the protobuf message.
+	//
+	// If the Type does not represent a struct type, the method returns zero.
 	NumField() int
 
+	// Returns the Field at the given in Type.
+	//
+	// If the Type does not represent a struct type, the method panics.
 	FieldByIndex(int) Field
 
+	// Returns the Field with the given name in Type.
+	//
+	// If the Type does not represent a struct type, or if the field does not
+	// exist, the method panics.
 	FieldByName(string) Field
 
+	// Returns the Field with the given number in Type.
+	//
+	// If the Type does not represent a struct type, or if the field does not
+	// exist, the method panics.
 	FieldByNumber(FieldNumber) Field
+
+	//Parse(string) ([]byte, error)
 }
 
 // TypeOf returns the protobuf type used to represent the go value v.
@@ -76,8 +110,6 @@ type Type interface {
 //	struct  | message
 //
 // Pointer types are also supported and automatically dereferenced.
-//
-// Types are comparable values.
 func TypeOf(v interface{}) Type {
 	t := reflect.TypeOf(v)
 
@@ -162,6 +194,10 @@ func (t *primitiveType) String() string {
 	return t.name
 }
 
+func (t *primitiveType) Name() string {
+	return t.name
+}
+
 func (t *primitiveType) Kind() Kind {
 	return t.kind
 }
@@ -225,7 +261,11 @@ type mapType struct {
 }
 
 func (t *mapType) String() string {
-	return fmt.Sprintf("map<%s, %s>", t.key, t.elem)
+	return fmt.Sprintf("map<%s, %s>", t.key.Name(), t.elem.Name())
+}
+
+func (t *mapType) Name() string {
+	return t.String()
 }
 
 func (t *mapType) Kind() Kind {
@@ -327,6 +367,42 @@ type structType struct {
 }
 
 func (t *structType) String() string {
+	s := strings.Builder{}
+	s.WriteString("message ")
+
+	if t.name != "" {
+		s.WriteString(t.name)
+		s.WriteString(" ")
+	}
+
+	s.WriteString("{")
+
+	for _, f := range t.fieldsByIndex {
+		s.WriteString("\n  ")
+
+		if f.Repeated {
+			s.WriteString("repeated ")
+		} else {
+		}
+
+		s.WriteString(f.Type.Name())
+		s.WriteString(" ")
+		s.WriteString(f.Name)
+		s.WriteString(" = ")
+		s.WriteString(strconv.Itoa(int(f.Number)))
+		s.WriteString(";")
+	}
+
+	if len(t.fieldsByIndex) == 0 {
+		s.WriteString("}")
+	} else {
+		s.WriteString("\n}")
+	}
+
+	return s.String()
+}
+
+func (t *structType) Name() string {
 	return t.name
 }
 
@@ -335,25 +411,7 @@ func (t *structType) Format(w fmt.State, v rune) {
 	case 's':
 		io.WriteString(w, t.name)
 	case 'v':
-		if t.name == "" {
-			io.WriteString(w, "message {")
-		} else {
-			fmt.Fprintf(w, "message %s {", t.name)
-		}
 
-		for _, f := range t.fieldsByIndex {
-			if f.Repeated {
-				fmt.Fprintf(w, "\n  repeated %s %s = %d;", f.Type, f.Name, f.Number)
-			} else {
-				fmt.Fprintf(w, "\n  %s %s = %d;", f.Type, f.Name, f.Number)
-			}
-		}
-
-		if len(t.fieldsByIndex) == 0 {
-			io.WriteString(w, "}")
-		} else {
-			io.WriteString(w, "\n}")
-		}
 	}
 }
 

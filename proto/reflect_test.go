@@ -55,7 +55,7 @@ func TestTypeOf(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%T", test.value), func(t *testing.T) {
 			typ := TypeOf(test.value)
-			str := fmt.Sprint(typ)
+			str := typ.String()
 
 			if str != test.proto {
 				t.Error("protobuf representation mismatch")
