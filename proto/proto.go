@@ -59,6 +59,7 @@ const (
 	noflags  flags = 0
 	inline   flags = 1 << 0
 	wantzero flags = 1 << 1
+	zigzag   flags = 1 << 2
 )
 
 func (f flags) has(x flags) bool {

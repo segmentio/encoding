@@ -65,7 +65,7 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 			offset:  uint32(f.Offset),
 		}
 
-		switch kindOf(f.Type) {
+		switch baseKindOf(f.Type) {
 		case reflect.Struct:
 			field.flags |= embedded
 			field.codec = codecOf(f.Type, seen)
@@ -76,7 +76,7 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 			if elem.Kind() == reflect.Uint8 { // []byte
 				field.codec = codecOf(f.Type, seen)
 			} else {
-				if kindOf(elem) == reflect.Struct {
+				if baseKindOf(elem) == reflect.Struct {
 					field.flags |= embedded
 				}
 				field.flags |= repeated
@@ -93,10 +93,10 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 				keyCodec: k,
 				valCodec: v,
 			}
-			if kindOf(key) == reflect.Struct {
+			if baseKindOf(key) == reflect.Struct {
 				m.keyFlags |= embedded
 			}
-			if kindOf(val) == reflect.Struct {
+			if baseKindOf(val) == reflect.Struct {
 				m.valFlags |= embedded
 			}
 			field.flags |= embedded | repeated
@@ -116,11 +116,11 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 	return c
 }
 
-func kindOf(t reflect.Type) reflect.Kind {
-	return typeOf(t).Kind()
+func baseKindOf(t reflect.Type) reflect.Kind {
+	return baseTypeOf(t).Kind()
 }
 
-func typeOf(t reflect.Type) reflect.Type {
+func baseTypeOf(t reflect.Type) reflect.Type {
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
