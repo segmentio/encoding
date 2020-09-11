@@ -138,8 +138,7 @@ func TestParseRewriteTemplate(t *testing.T) {
 		Field13: nil,
 
 		Subfield: &submessage{
-			Question: "How are you?",
-			Answer:   "Good!",
+			Answer: "Good!",
 		},
 
 		Submessages: []submessage{
@@ -181,11 +180,6 @@ func TestParseRewriteTemplate(t *testing.T) {
 		},
 	}
 
-	b1, err := Marshal(*original)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	rw, err := ParseRewriteTemplate(TypeOf(original), []byte(`{
   "field_1": true,
 
@@ -225,6 +219,11 @@ func TestParseRewriteTemplate(t *testing.T) {
     }
   ]
 }`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b1, err := Marshal(original)
 	if err != nil {
 		t.Fatal(err)
 	}

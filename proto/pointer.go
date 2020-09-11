@@ -42,11 +42,11 @@ func pointerEncodeFuncOf(t reflect.Type, encode encodeFunc) encodeFunc {
 
 func pointerDecodeFuncOf(t reflect.Type, decode decodeFunc) decodeFunc {
 	t = t.Elem()
-	return func(b []byte, p unsafe.Pointer, _ flags) (int, error) {
+	return func(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 		v := (*unsafe.Pointer)(p)
 		if *v == nil {
 			*v = unsafe.Pointer(reflect.New(t).Pointer())
 		}
-		return decode(b, *v, noflags)
+		return decode(b, *v, flags)
 	}
 }

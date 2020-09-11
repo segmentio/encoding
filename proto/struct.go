@@ -176,11 +176,16 @@ func structSizeFuncOf(t reflect.Type, fields []structField) sizeFunc {
 				if f.embedded() {
 					n += sizeOfVarint(uint64(size))
 				}
+				flags = flags.without(wantzero)
 			}
 		}
 
 		for _, f := range repeated {
-			n += f.codec.size(f.pointer(p), f.makeFlags(flags))
+			size := f.codec.size(f.pointer(p), f.makeFlags(flags))
+			if size > 0 {
+				n += size
+				flags = flags.without(wantzero)
+			}
 		}
 
 		return n
@@ -212,9 +217,9 @@ func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
 		offset := 0
 
 		for _, f := range unique {
-			flags := f.makeFlags(flags)
+			fieldFlags := f.makeFlags(flags)
 			elem := f.pointer(p)
-			size := f.codec.size(elem, flags)
+			size := f.codec.size(elem, fieldFlags)
 
 			if size > 0 {
 				n, err := encodeTag(b[offset:], f.fieldNumber(), f.wireType())
@@ -235,11 +240,13 @@ func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
 					return len(b), io.ErrShortBuffer
 				}
 
-				n, err = f.codec.encode(b[offset:offset+size], elem, flags)
+				n, err = f.codec.encode(b[offset:offset+size], elem, fieldFlags)
 				offset += n
 				if err != nil {
 					return offset, err
 				}
+
+				flags = flags.without(wantzero)
 			}
 		}
 
@@ -248,6 +255,9 @@ func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
 			offset += n
 			if err != nil {
 				return offset, err
+			}
+			if n > 0 {
+				flags = flags.without(wantzero)
 			}
 		}
 

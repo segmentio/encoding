@@ -157,23 +157,43 @@ func loadCachedCodec(t reflect.Type) (*codec, map[unsafe.Pointer]*codec) {
 	return cache[pointer(t)], cache
 }
 
-func storeCachedCodec(t reflect.Type, oldCache map[unsafe.Pointer]*codec, newCodec *codec) {
-	newCache := make(map[unsafe.Pointer]*codec, len(oldCache)+1)
-	for p, c := range oldCache {
-		newCache[p] = c
-	}
-	newCache[pointer(t)] = newCodec
+func storeCachedCodec(newCache map[unsafe.Pointer]*codec) {
 	codecCache.Store(newCache)
 }
 
 func cachedCodecOf(t reflect.Type) *codec {
-	c, m := loadCachedCodec(t)
+	c, oldCache := loadCachedCodec(t)
 	if c != nil {
 		return c
 	}
-	c = codecOf(t, make(map[reflect.Type]*codec))
-	storeCachedCodec(t, m, c)
-	return c
+
+	var p reflect.Type
+	isPtr := t.Kind() == reflect.Ptr
+	if isPtr {
+		p = t
+		t = t.Elem()
+	} else {
+		p = reflect.PtrTo(t)
+	}
+
+	seen := make(map[reflect.Type]*codec)
+	c1 := codecOf(t, seen)
+	c2 := codecOf(p, seen)
+
+	newCache := make(map[unsafe.Pointer]*codec, len(oldCache)+2)
+	for p, c := range oldCache {
+		newCache[p] = c
+	}
+
+	newCache[pointer(t)] = c1
+	newCache[pointer(p)] = c2
+	storeCachedCodec(newCache)
+
+	if isPtr {
+		return c2
+	} else {
+		return c1
+	}
 }
 
 func codecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
