@@ -113,6 +113,16 @@ func TestParseRewriteTemplate(t *testing.T) {
 		Field12 string `protobuf:"bytes,12,opt,name=field_12,proto3"`
 		Field13 []byte `protobuf:"bytes,13,opt,name=field_13,proto3"`
 
+		Zero1 bool    `protobuf:"varint,21,opt,name=zero_1,proto3"`
+		Zero2 int     `protobuf:"varint,22,opt,name=zero_2,proto3"`
+		Zero3 int32   `protobuf:"varint,23,opt,name=zero_3,proto3"`
+		Zero4 int64   `protobuf:"varint,24,opt,name=zero_4,proto3"`
+		Zero5 uint    `protobuf:"varint,25,opt,name=zero_5,proto3"`
+		Zero6 uint32  `protobuf:"varint,26,opt,name=zero_6,proto3"`
+		Zero7 uint64  `protobuf:"varint,27,opt,name=zero_7,proto3"`
+		Zero8 float32 `protobuf:"fixed32,28,opt,name=zero_8,proto3"`
+		Zero9 float64 `protobuf:"fixed64,29,opt,name=zero_9,proto3"`
+
 		Subfield    *submessage  `protobuf:"bytes,99,opt,name=subfield,proto3"`
 		Submessages []submessage `protobuf:"bytes,100,rep,name=submessages,proto3"`
 	}
@@ -136,6 +146,16 @@ func TestParseRewriteTemplate(t *testing.T) {
 
 		Field12: "field 12",
 		Field13: nil,
+
+		Zero1: true,
+		Zero2: 102,
+		Zero3: 103,
+		Zero4: 104,
+		Zero5: 105,
+		Zero6: 106,
+		Zero7: 107,
+		Zero8: 0.108,
+		Zero9: 0.109,
 
 		Subfield: &submessage{
 			Answer: "Good!",
@@ -198,7 +218,17 @@ func TestParseRewriteTemplate(t *testing.T) {
   "field_11": 0.5,
 
   "field_12": "Hello!",
-  "field_13": "V29ybGQh",
+  "field_13": "World!",
+
+  "zero_1": null,
+  "zero_2": null,
+  "zero_3": null,
+  "zero_4": null,
+  "zero_5": null,
+  "zero_6": null,
+  "zero_7": null,
+  "zero_8": null,
+  "zero_9": null,
 
   "subfield": {
     "question": "How are you?"

@@ -248,91 +248,136 @@ func parseRewriteTemplate(t Type, f FieldNumber, j json.RawMessage) (Rewriter, e
 func parseRewriteTemplateBool(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v bool
 	err := json.Unmarshal(j, &v)
-	return f.Bool(v), err
+	if !v || err != nil {
+		return nil, err
+	}
+	return f.Bool(v), nil
 }
 
 func parseRewriteTemplateInt32(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v int32
 	err := json.Unmarshal(j, &v)
-	return f.Int32(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Int32(v), nil
 }
 
 func parseRewriteTemplateInt64(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v int64
 	err := json.Unmarshal(j, &v)
-	return f.Int64(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Int64(v), nil
 }
 
 func parseRewriteTemplateSint32(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v int32
 	err := json.Unmarshal(j, &v)
-	return f.Uint32(encodeZigZag32(v)), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Uint32(encodeZigZag32(v)), nil
 }
 
 func parseRewriteTemplateSint64(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v int64
 	err := json.Unmarshal(j, &v)
-	return f.Uint64(encodeZigZag64(v)), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Uint64(encodeZigZag64(v)), nil
 }
 
 func parseRewriteTemplateUint32(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v uint32
 	err := json.Unmarshal(j, &v)
-	return f.Uint32(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Uint32(v), nil
 }
 
 func parseRewriteTemplateUint64(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v uint64
 	err := json.Unmarshal(j, &v)
-	return f.Uint64(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Uint64(v), nil
 }
 
 func parseRewriteTemplateFix32(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v uint32
 	err := json.Unmarshal(j, &v)
-	return f.Fixed32(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Fixed32(v), nil
 }
 
 func parseRewriteTemplateFix64(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v uint64
 	err := json.Unmarshal(j, &v)
-	return f.Fixed64(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Fixed64(v), nil
 }
 
 func parseRewriteTemplateSfix32(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v int32
 	err := json.Unmarshal(j, &v)
-	return f.Fixed32(encodeZigZag32(v)), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Fixed32(encodeZigZag32(v)), nil
 }
 
 func parseRewriteTemplateSfix64(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v int64
 	err := json.Unmarshal(j, &v)
-	return f.Fixed64(encodeZigZag64(v)), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Fixed64(encodeZigZag64(v)), nil
 }
 
 func parseRewriteTemplateFloat(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v float32
 	err := json.Unmarshal(j, &v)
-	return f.Float32(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Float32(v), nil
 }
 
 func parseRewriteTemplateDouble(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v float64
 	err := json.Unmarshal(j, &v)
-	return f.Float64(v), err
+	if v == 0 || err != nil {
+		return nil, err
+	}
+	return f.Float64(v), nil
 }
 
 func parseRewriteTemplateString(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
 	var v string
 	err := json.Unmarshal(j, &v)
-	return f.String(v), err
+	if v == "" || err != nil {
+		return nil, err
+	}
+	return f.String(v), nil
 }
 
 func parseRewriteTemplateBytes(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
-	var v []byte
+	var v string
 	err := json.Unmarshal(j, &v)
-	return f.Bytes(v), err
+	if v == "" || err != nil {
+		return nil, err
+	}
+	return f.Bytes([]byte(v)), nil
 }
 
 func parseRewriteTemplateMap(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
@@ -378,13 +423,15 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", k, err)
 			}
-			rewriters = append(rewriters, rw)
+			if rw != nil {
+				rewriters = append(rewriters, rw)
+			}
 		}
 
 		rewriter[f.Number] = MultiRewriter(rewriters...)
 	}
 
-	if f != 0 {
+	if f != 0 && len(rewriter) != 0 {
 		return &embddedRewriter{number: f, rewriter: rewriter}, nil
 	}
 
@@ -402,6 +449,9 @@ func (f *embddedRewriter) Rewrite(out, in []byte) ([]byte, error) {
 	out, err := f.rewriter.Rewrite(out, in)
 	if err != nil {
 		return nil, err
+	}
+	if len(out) == prefix {
+		return out, nil
 	}
 
 	b := [24]byte{}
