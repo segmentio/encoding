@@ -51,27 +51,17 @@ func (r RewriteFunc) Rewrite(out, in []byte) ([]byte, error) {
 	return r(out, in)
 }
 
-// RewriteFields maps field numbers to rewrite rules, satisfying the Rewriter
-// interace to support copmosing rewrite rules.
-type RewriteFields map[FieldNumber]Rewriter
+// MessageRewriter maps field numbers to rewrite rules, satisfying the Rewriter
+// interace to support composing rewrite rules.
+type MessageRewriter []Rewriter
 
 // Rewrute applies the rewrite rule matching f in r, satisfies the Rewriter
 // interface.
-func (r RewriteFields) Rewrite(out, in []byte) ([]byte, error) {
-	fields := make(fieldset, 4)
+func (r MessageRewriter) Rewrite(out, in []byte) ([]byte, error) {
 	seen := make(fieldset, 4)
 
-	for f := range r {
-		i := int(f) - 1
-		n := fields.len()
-
-		if i >= 0 {
-			if i > n {
-				fields = growFields(fields, i+1)
-				seen = growFields(seen, i+1)
-			}
-			fields.set(i)
-		}
+	if n := seen.len(); len(r) >= n {
+		seen = makeFieldset(len(r) + 1)
 	}
 
 	for len(in) != 0 {
@@ -80,37 +70,34 @@ func (r RewriteFields) Rewrite(out, in []byte) ([]byte, error) {
 			return out, err
 		}
 
-		if i := int(f) - 1; !seen.has(i) {
-			if rw := r[f]; rw != nil && fields.has(i) {
-				if out, err = rw.Rewrite(out, v); err != nil {
+		if i := int(f); i >= 0 && i < len(r) && r[i] != nil {
+			if !seen.has(i) {
+				seen.set(int(f))
+				if out, err = r[i].Rewrite(out, v); err != nil {
 					return out, err
 				}
-			} else {
-				out = Append(out, f, t, v)
 			}
-			seen.set(int(f) - 1)
+		} else {
+			out = Append(out, f, t, v)
 		}
 
 		in = m
 	}
 
-	var err error
-	fields.forEach(func(i int) {
-		if err == nil && !seen.has(i) {
-			out, err = r[FieldNumber(i+1)].Rewrite(out, nil)
+	for i, f := range r {
+		if f != nil && !seen.has(i) {
+			b, err := r[i].Rewrite(out, nil)
+			if err != nil {
+				return b, err
+			}
+			out = b
 		}
-	})
+	}
 
-	return out, nil //err
+	return out, nil
 }
 
 type fieldset []uint64
-
-func growFields(f fieldset, n int) fieldset {
-	g := makeFieldset(n)
-	copy(g, f)
-	return g
-}
 
 func makeFieldset(n int) fieldset {
 	if (n % 64) != 0 {
@@ -142,53 +129,6 @@ func (f fieldset) unset(i int) {
 
 func (f fieldset) index(i int) (int, int) {
 	return i / 64, i % 64
-}
-
-func (f fieldset) forEach(call func(int)) {
-	for n, x := range f {
-		if x != 0 {
-			n *= 64
-			forEachBit64(x, func(i int) { call(n + i) })
-		}
-	}
-}
-
-func forEachBit64(u uint64, f func(int)) {
-	hi, lo := uint32(u>>32), uint32(u)
-	if hi != 0 {
-		forEachBit32(hi, func(i int) { f(i + 32) })
-	}
-	if lo != 0 {
-		forEachBit32(lo, f)
-	}
-}
-
-func forEachBit32(u uint32, f func(int)) {
-	hi, lo := uint16(u>>16), uint16(u)
-	if hi != 0 {
-		forEachBit16(hi, func(i int) { f(i + 16) })
-	}
-	if lo != 0 {
-		forEachBit16(lo, f)
-	}
-}
-
-func forEachBit16(u uint16, f func(int)) {
-	hi, lo := uint8(u>>8), uint8(u)
-	if hi != 0 {
-		forEachBit8(hi, func(i int) { f(i + 8) })
-	}
-	if lo != 0 {
-		forEachBit8(lo, f)
-	}
-}
-
-func forEachBit8(u uint8, f func(int)) {
-	for i := 0; i < 8; i++ {
-		if (u & uint8(1<<i)) != 0 {
-			f(i)
-		}
-	}
 }
 
 // ParseRewriteTemplate constructs a Rewriter for a protobuf type using the
@@ -398,7 +338,7 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 		fieldsByName[f.Name] = f
 	}
 
-	rewriter := make(RewriteFields, len(template))
+	rewriter := MessageRewriter{}
 	rewriters := []Rewriter{}
 
 	for k, v := range template {
@@ -426,6 +366,12 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 			if rw != nil {
 				rewriters = append(rewriters, rw)
 			}
+		}
+
+		if cap(rewriter) <= int(f.Number) {
+			r := make(MessageRewriter, f.Number+1)
+			copy(r, rewriter)
+			rewriter = r
 		}
 
 		rewriter[f.Number] = MultiRewriter(rewriters...)

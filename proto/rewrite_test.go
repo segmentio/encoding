@@ -23,14 +23,14 @@ func TestRewrite(t *testing.T) {
 			scenario: "identity",
 			in:       message{A: 42},
 			out:      message{A: 42},
-			rw:       RewriteFields(nil),
+			rw:       MessageRewriter(nil),
 		},
 
 		{
 			scenario: "rewrite field 1",
 			in:       message{A: 21},
 			out:      message{A: 42},
-			rw: RewriteFields{
+			rw: MessageRewriter{
 				1: FieldNumber(1).Int(42),
 			},
 		},
@@ -39,7 +39,7 @@ func TestRewrite(t *testing.T) {
 			scenario: "rewrite field 2",
 			in:       message{A: 21, B: 0.125},
 			out:      message{A: 21, B: -1},
-			rw: RewriteFields{
+			rw: MessageRewriter{
 				2: FieldNumber(2).Float32(-1),
 			},
 		},
@@ -48,7 +48,7 @@ func TestRewrite(t *testing.T) {
 			scenario: "rewrite field 3",
 			in:       message{A: 21, B: 0.125, C: 0.0},
 			out:      message{A: 21, B: 0.125, C: 1.0},
-			rw: RewriteFields{
+			rw: MessageRewriter{
 				3: FieldNumber(3).Float64(+1),
 			},
 		},
@@ -57,7 +57,7 @@ func TestRewrite(t *testing.T) {
 			scenario: "rewrite field 4",
 			in:       message{A: 21, B: 0.125, C: 1.0, D: "A"},
 			out:      message{A: 21, B: 0.125, C: 1.0, D: "Hello World!"},
-			rw: RewriteFields{
+			rw: MessageRewriter{
 				4: FieldNumber(4).String("Hello World!"),
 			},
 		},
@@ -284,7 +284,7 @@ func BenchmarkRewrite(b *testing.B) {
 	}
 
 	in := message{A: 21, B: 0.125, D: "A"}
-	rw := RewriteFields{
+	rw := MessageRewriter{
 		1: FieldNumber(1).Int(42),
 		2: FieldNumber(2).Float32(-1),
 		3: FieldNumber(3).Float64(+1),
