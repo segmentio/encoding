@@ -72,7 +72,7 @@ func (r MessageRewriter) Rewrite(out, in []byte) ([]byte, error) {
 
 		if i := int(f); i >= 0 && i < len(r) && r[i] != nil {
 			if !seen.has(i) {
-				seen.set(int(f))
+				seen.set(i)
 				if out, err = r[i].Rewrite(out, v); err != nil {
 					return out, err
 				}
@@ -338,7 +338,7 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 		fieldsByName[f.Name] = f
 	}
 
-	rewriter := MessageRewriter{}
+	message := MessageRewriter{}
 	rewriters := []Rewriter{}
 
 	for k, v := range template {
@@ -368,31 +368,31 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 			}
 		}
 
-		if cap(rewriter) <= int(f.Number) {
-			r := make(MessageRewriter, f.Number+1)
-			copy(r, rewriter)
-			rewriter = r
+		if cap(message) <= int(f.Number) {
+			m := make(MessageRewriter, f.Number+1)
+			copy(m, message)
+			message = m
 		}
 
-		rewriter[f.Number] = MultiRewriter(rewriters...)
+		message[f.Number] = MultiRewriter(rewriters...)
 	}
 
-	if f != 0 && len(rewriter) != 0 {
-		return &embddedRewriter{number: f, rewriter: rewriter}, nil
+	if f != 0 && len(message) != 0 {
+		return &embddedRewriter{number: f, message: message}, nil
 	}
 
-	return rewriter, nil
+	return message, nil
 }
 
 type embddedRewriter struct {
-	number   FieldNumber
-	rewriter Rewriter
+	number  FieldNumber
+	message MessageRewriter
 }
 
 func (f *embddedRewriter) Rewrite(out, in []byte) ([]byte, error) {
 	prefix := len(out)
 
-	out, err := f.rewriter.Rewrite(out, in)
+	out, err := f.message.Rewrite(out, in)
 	if err != nil {
 		return nil, err
 	}
