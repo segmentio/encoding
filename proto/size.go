@@ -19,6 +19,6 @@ func sizeOfVarlen(n int) int {
 	return sizeOfVarint(uint64(n)) + n
 }
 
-func sizeOfTag(f fieldNumber) int {
-	return sizeOfVarint(uint64(f << 3))
+func sizeOfTag(f fieldNumber, t wireType) int {
+	return sizeOfVarint(uint64(f)<<3 | uint64(t))
 }

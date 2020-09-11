@@ -94,17 +94,14 @@ func (r RewriteFields) Rewrite(out, in []byte) ([]byte, error) {
 		in = m
 	}
 
-	for i := range fields {
-		if fields.has(i) && !seen.has(i) {
-			b, err := r[FieldNumber(i+1)].Rewrite(out, nil)
-			if err != nil {
-				return b, err
-			}
-			out = b
+	var err error
+	fields.forEach(func(i int) {
+		if err == nil && !seen.has(i) {
+			out, err = r[FieldNumber(i+1)].Rewrite(out, nil)
 		}
-	}
+	})
 
-	return out, nil
+	return out, nil //err
 }
 
 type fieldset []uint64
@@ -145,6 +142,53 @@ func (f fieldset) unset(i int) {
 
 func (f fieldset) index(i int) (int, int) {
 	return i / 64, i % 64
+}
+
+func (f fieldset) forEach(call func(int)) {
+	for n, x := range f {
+		if x != 0 {
+			n *= 64
+			forEachBit64(x, func(i int) { call(n + i) })
+		}
+	}
+}
+
+func forEachBit64(u uint64, f func(int)) {
+	hi, lo := uint32(u>>32), uint32(u)
+	if hi != 0 {
+		forEachBit32(hi, func(i int) { f(i + 32) })
+	}
+	if lo != 0 {
+		forEachBit32(lo, f)
+	}
+}
+
+func forEachBit32(u uint32, f func(int)) {
+	hi, lo := uint16(u>>16), uint16(u)
+	if hi != 0 {
+		forEachBit16(hi, func(i int) { f(i + 16) })
+	}
+	if lo != 0 {
+		forEachBit16(lo, f)
+	}
+}
+
+func forEachBit16(u uint16, f func(int)) {
+	hi, lo := uint8(u>>8), uint8(u)
+	if hi != 0 {
+		forEachBit8(hi, func(i int) { f(i + 8) })
+	}
+	if lo != 0 {
+		forEachBit8(lo, f)
+	}
+}
+
+func forEachBit8(u uint8, f func(int)) {
+	for i := 0; i < 8; i++ {
+		if (u & uint8(1<<i)) != 0 {
+			f(i)
+		}
+	}
 }
 
 // ParseRewriteTemplate constructs a Rewriter for a protobuf type using the

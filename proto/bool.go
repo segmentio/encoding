@@ -1,6 +1,8 @@
 package proto
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 var boolCodec = codec{
 	wire:   varint,

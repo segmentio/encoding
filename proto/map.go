@@ -10,9 +10,7 @@ import (
 )
 
 const (
-	zeroSize   = 1 // sizeOfVarint(0)
-	keyTagSize = 1 // sizeOfTag(1)
-	valTagSize = 1 // sizeOfTag(2)
+	zeroSize = 1 // sizeOfVarint(0)
 )
 
 type mapField struct {
@@ -35,7 +33,9 @@ func mapCodecOf(t reflect.Type, f *mapField, seen map[reflect.Type]*codec) *code
 }
 
 func mapSizeFuncOf(t reflect.Type, f *mapField) sizeFunc {
-	mapTagSize := sizeOfTag(fieldNumber(f.number))
+	mapTagSize := sizeOfTag(fieldNumber(f.number), varlen)
+	keyTagSize := sizeOfTag(1, wireType(f.keyCodec.wire))
+	valTagSize := sizeOfTag(2, wireType(f.valCodec.wire))
 	return func(p unsafe.Pointer, flags flags) int {
 		if p == nil {
 			return 0
@@ -85,7 +85,7 @@ func mapEncodeFuncOf(t reflect.Type, f *mapField) encodeFunc {
 	encodeTag(valTag[:], 2, f.valCodec.wire)
 
 	number := fieldNumber(f.number)
-	mapTag := make([]byte, sizeOfTag(number)+zeroSize)
+	mapTag := make([]byte, sizeOfTag(number, varlen)+zeroSize)
 	encodeTag(mapTag, number, varlen)
 
 	zero := mapTag

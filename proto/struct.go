@@ -65,9 +65,8 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 		}
 
 		field := structField{
-			number:  uint16(number),
-			tagsize: uint8(sizeOfTag(number)),
-			offset:  uint32(f.Offset),
+			number: uint16(number),
+			offset: uint32(f.Offset),
 		}
 
 		if tag, ok := f.Tag.Lookup("protobuf"); ok {
@@ -124,6 +123,7 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 			field.codec = codecOf(f.Type, seen)
 		}
 
+		field.tagsize = uint8(sizeOfTag(fieldNumber(field.number), wireType(field.codec.wire)))
 		fields = append(fields, field)
 		number++
 	}
@@ -212,7 +212,7 @@ func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
 		offset := 0
 
 		for _, f := range unique {
-			flags = f.makeFlags(flags)
+			flags := f.makeFlags(flags)
 			elem := f.pointer(p)
 			size := f.codec.size(elem, flags)
 

@@ -35,7 +35,7 @@ func sliceCodecOf(t reflect.Type, f structField, seen map[reflect.Type]*codec) *
 
 func sliceSizeFuncOf(t reflect.Type, r *repeatedField) sizeFunc {
 	elemSize := alignedSize(t.Elem())
-	tagSize := sizeOfTag(r.fieldNumber)
+	tagSize := sizeOfTag(r.fieldNumber, r.wireType)
 	return func(p unsafe.Pointer, _ flags) int {
 		n := 0
 
@@ -56,7 +56,7 @@ func sliceSizeFuncOf(t reflect.Type, r *repeatedField) sizeFunc {
 
 func sliceEncodeFuncOf(t reflect.Type, r *repeatedField) encodeFunc {
 	elemSize := alignedSize(t.Elem())
-	tagSize := sizeOfTag(r.fieldNumber)
+	tagSize := sizeOfTag(r.fieldNumber, r.wireType)
 	tagData := make([]byte, tagSize)
 	encodeTag(tagData, r.fieldNumber, r.wireType)
 	return func(b []byte, p unsafe.Pointer, _ flags) (int, error) {

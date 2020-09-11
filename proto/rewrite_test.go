@@ -88,12 +88,12 @@ func TestRewrite(t *testing.T) {
 }
 
 func TestParseRewriteTemplate(t *testing.T) {
-	type Submessage struct {
+	type submessage struct {
 		Question string `protobuf:"bytes,1,opt,name=question,proto3"`
 		Answer   string `protobuf:"bytes,2,opt,name=answer,proto3"`
 	}
 
-	type Message struct {
+	type message struct {
 		Field1 bool `protobuf:"varint,1,opt,name=field_1,proto3"`
 
 		Field2 int   `protobuf:"varint,2,opt,name=field_2,proto3"`
@@ -113,10 +113,11 @@ func TestParseRewriteTemplate(t *testing.T) {
 		Field12 string `protobuf:"bytes,12,opt,name=field_12,proto3"`
 		Field13 []byte `protobuf:"bytes,13,opt,name=field_13,proto3"`
 
-		Submessages []Submessage `protobuf:"bytes,100,rep,name=submessages,proto3"`
+		Subfield    *submessage  `protobuf:"bytes,99,opt,name=subfield,proto3"`
+		Submessages []submessage `protobuf:"bytes,100,rep,name=submessages,proto3"`
 	}
 
-	original := &Message{
+	original := &message{
 		Field1: false,
 
 		Field2: -1,
@@ -136,14 +137,19 @@ func TestParseRewriteTemplate(t *testing.T) {
 		Field12: "field 12",
 		Field13: nil,
 
-		Submessages: []Submessage{
+		Subfield: &submessage{
+			Question: "How are you?",
+			Answer:   "Good!",
+		},
+
+		Submessages: []submessage{
 			{Question: "Q1?", Answer: "A1"},
 			{Question: "Q2?", Answer: "A2"},
 			{Question: "Q3?", Answer: "A3"},
 		},
 	}
 
-	expected := &Message{
+	expected := &message{
 		Field1: true,
 
 		Field2: 2,
@@ -163,11 +169,21 @@ func TestParseRewriteTemplate(t *testing.T) {
 		Field12: "Hello!",
 		Field13: []byte("World!"),
 
-		Submessages: []Submessage{
+		Subfield: &submessage{
+			Question: "How are you?",
+			Answer:   "Good!",
+		},
+
+		Submessages: []submessage{
 			{Question: "Q1?", Answer: "A1"},
 			{Question: "Q2?", Answer: "A2"},
 			{Question: "Q3?", Answer: "Hello World!"},
 		},
+	}
+
+	b1, err := Marshal(*original)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	rw, err := ParseRewriteTemplate(TypeOf(original), []byte(`{
@@ -190,6 +206,10 @@ func TestParseRewriteTemplate(t *testing.T) {
   "field_12": "Hello!",
   "field_13": "V29ybGQh",
 
+  "subfield": {
+    "question": "How are you?"
+  },
+
   "submessages": [
     {
       "question": "Q1?",
@@ -209,17 +229,12 @@ func TestParseRewriteTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b1, err := Marshal(original)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	b2, err := rw.Rewrite(nil, b1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	found := &Message{}
+	found := &message{}
 	if err := Unmarshal(b2, &found); err != nil {
 		t.Fatal(err)
 	}
@@ -228,5 +243,33 @@ func TestParseRewriteTemplate(t *testing.T) {
 		t.Error("messages mismatch after rewrite")
 		t.Logf("want:\n%+v", expected)
 		t.Logf("got:\n%+v", found)
+	}
+}
+
+func BenchmarkRewrite(b *testing.B) {
+	type message struct {
+		A int
+		B float32
+		C float64
+		D string
+	}
+
+	in := message{A: 21, B: 0.125, D: "A"}
+	rw := RewriteFields{
+		1: FieldNumber(1).Int(42),
+		2: FieldNumber(2).Float32(-1),
+		3: FieldNumber(3).Float64(+1),
+		4: FieldNumber(4).String("Hello World!"),
+	}
+
+	p, err := Marshal(in)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	out := make([]byte, 0, 2*cap(p))
+
+	for i := 0; i < b.N; i++ {
+		out, err = rw.Rewrite(out[:0], p)
 	}
 }
