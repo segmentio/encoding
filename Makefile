@@ -1,6 +1,6 @@
 .PHONY: test bench-simple clean update-golang-test fuzz fuzz-json
 
-golang.version ?= 1.13.3
+golang.version ?= 1.15.2
 golang.tmp.root := /tmp/golang$(golang.version)
 golang.tmp.json.root := $(golang.tmp.root)/go-go$(golang.version)/src/encoding/json
 golang.test.files := $(wildcard json/golang_*_test.go)
@@ -13,7 +13,8 @@ go-fuzz-dep := ${GOPATH}/src/github.com/dvyukov/go-fuzz/go-fuzz-dep
 test:
 	go test -v -cover ./ascii
 	go test -v -cover ./json
-	go test -v -cover -tags go1.14 ./json
+	go test -v -cover ./proto
+	go test -v -cover -tags go1.15 ./json
 	go test -v -cover ./iso8601
 	go run ./json/bugs/issue11/main.go
 	go run ./json/bugs/issue18/main.go

@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.15
     steps:
       - checkout
       - run: go mod download
@@ -10,7 +10,7 @@ jobs:
 
   benchmark:
     docker:
-      - image: circleci/golang
+      - image: circleci/golang:1.15
     steps:
       - checkout
       - run: go install golang.org/x/tools/cmd/benchcmp
