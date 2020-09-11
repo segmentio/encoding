@@ -2,7 +2,6 @@ package proto
 
 import (
 	"fmt"
-	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -72,7 +71,7 @@ type Type interface {
 	// Returns the Field at the given in Type.
 	//
 	// If the Type does not represent a struct type, the method panics.
-	FieldByIndex(int) Field
+	Field(int) Field
 
 	// Returns the Field with the given name in Type.
 	//
@@ -86,7 +85,21 @@ type Type interface {
 	// exist, the method panics.
 	FieldByNumber(FieldNumber) Field
 
-	//Parse(string) ([]byte, error)
+	// For unsigned types, convert to their zig-zag form.
+	//
+	// The method uses the following table to perform the conversion:
+	//
+	//  base    | zig-zag
+	//	--------+---------
+	//	int32   | sint32
+	//	int64   | sint64
+	//	uint32  | sint32
+	//	uint64  | sint64
+	//	fixed32 | sfixed32
+	//	fixed64 | sfixed64
+	//
+	// If the type cannot be converted to a zig-zag type, the method panics.
+	ZigZag() Type
 }
 
 // TypeOf returns the protobuf type used to represent the go value v.
@@ -185,9 +198,10 @@ type Field struct {
 }
 
 type primitiveType struct {
-	name string
-	kind Kind
-	wire WireType
+	name   string
+	kind   Kind
+	wire   WireType
+	zigzag Kind
 }
 
 func (t *primitiveType) String() string {
@@ -203,11 +217,11 @@ func (t *primitiveType) Kind() Kind {
 }
 
 func (t *primitiveType) Key() Type {
-	panic(fmt.Errorf("proto.Type.Key: called on unsupported type: %s", t.name))
+	panic(fmt.Errorf("proto.Type.Key: called on unsupported type: %s", t))
 }
 
 func (t *primitiveType) Elem() Type {
-	panic(fmt.Errorf("proto.Type.Elem: called on unsupported type: %s", t.name))
+	panic(fmt.Errorf("proto.Type.Elem: called on unsupported type: %s", t))
 }
 
 func (t *primitiveType) WireType() WireType {
@@ -218,28 +232,35 @@ func (t *primitiveType) NumField() int {
 	return 0
 }
 
-func (t *primitiveType) FieldByIndex(int) Field {
-	panic(fmt.Errorf("proto.Type.FieldByIndex: called on unsupported type: %s", t.name))
+func (t *primitiveType) Field(int) Field {
+	panic(fmt.Errorf("proto.Type.Field: called on unsupported type: %s", t))
 }
 
 func (t *primitiveType) FieldByName(string) Field {
-	panic(fmt.Errorf("proto.Type.FieldByName: called on unsupported type: %s", t.name))
+	panic(fmt.Errorf("proto.Type.FieldByName: called on unsupported type: %s", t))
 }
 
 func (t *primitiveType) FieldByNumber(FieldNumber) Field {
-	panic(fmt.Errorf("proto.Type.FieldByNumber: called on unsupported type: %s", t.name))
+	panic(fmt.Errorf("proto.Type.FieldByNumber: called on unsupported type: %s", t))
+}
+
+func (t *primitiveType) ZigZag() Type {
+	if t.zigzag == 0 {
+		panic(fmt.Errorf("proto.Type.ZigZag: called on unsupported type: %s", t))
+	}
+	return &primitiveTypes[t.zigzag]
 }
 
 var primitiveTypes = [...]primitiveType{
 	{name: "bool", kind: Bool, wire: Varint},
-	{name: "int32", kind: Int32, wire: Varint},
-	{name: "int64", kind: Int64, wire: Varint},
+	{name: "int32", kind: Int32, wire: Varint, zigzag: Sint32},
+	{name: "int64", kind: Int64, wire: Varint, zigzag: Sint64},
 	{name: "sint32", kind: Sint32, wire: Varint},
 	{name: "sint64", kind: Sint64, wire: Varint},
-	{name: "uint32", kind: Uint32, wire: Varint},
-	{name: "uint64", kind: Uint64, wire: Varint},
-	{name: "fixed32", kind: Fix32, wire: Fixed32},
-	{name: "fixed64", kind: Fix64, wire: Fixed64},
+	{name: "uint32", kind: Uint32, wire: Varint, zigzag: Sint32},
+	{name: "uint64", kind: Uint64, wire: Varint, zigzag: Sint64},
+	{name: "fixed32", kind: Fix32, wire: Fixed32, zigzag: Sfix32},
+	{name: "fixed64", kind: Fix64, wire: Fixed64, zigzag: Sfix64},
 	{name: "sfixed32", kind: Sfix32, wire: Fixed32},
 	{name: "sfixed64", kind: Sfix64, wire: Fixed64},
 	{name: "float", kind: Float, wire: Fixed32},
@@ -288,8 +309,8 @@ func (t *mapType) NumField() int {
 	return 0
 }
 
-func (t *mapType) FieldByIndex(int) Field {
-	panic(fmt.Errorf("proto.Type.FieldByIndex: called on unsupported type: %s", t))
+func (t *mapType) Field(int) Field {
+	panic(fmt.Errorf("proto.Type.Field: called on unsupported type: %s", t))
 }
 
 func (t *mapType) FieldByName(string) Field {
@@ -298,6 +319,10 @@ func (t *mapType) FieldByName(string) Field {
 
 func (t *mapType) FieldByNumber(FieldNumber) Field {
 	panic(fmt.Errorf("proto.Type.FieldByNumber: called on unsupported type: %s", t))
+}
+
+func (t *mapType) ZigZag() Type {
+	panic(fmt.Errorf("proto.Type.ZigZag: called on unsupported type: %s", t))
 }
 
 func structTypeOf(t reflect.Type) *structType {
@@ -334,18 +359,23 @@ func structTypeOf(t reflect.Type) *structType {
 			if err != nil {
 				panic(err)
 			}
+
 			fieldName = t.name
 			fieldNumber = t.fieldNumber
 			repeated = t.repeated
 			taggedFields = t.fieldNumber
-		} else if fieldNumber == 0 && len(st.fieldsByIndex) != 0 {
+
+			if t.zigzag {
+				fieldType = fieldType.ZigZag()
+			}
+		} else if fieldNumber == 0 && len(st.fields) != 0 {
 			panic("conflicting use of struct tag and naked fields")
 		} else {
 			fieldNumber++
 		}
 
-		index := len(st.fieldsByIndex)
-		st.fieldsByIndex = append(st.fieldsByIndex, Field{
+		index := len(st.fields)
+		st.fields = append(st.fields, Field{
 			Index:    index,
 			Number:   fieldNumber,
 			Name:     fieldName,
@@ -361,7 +391,7 @@ func structTypeOf(t reflect.Type) *structType {
 
 type structType struct {
 	name           string
-	fieldsByIndex  []Field
+	fields         []Field
 	fieldsByName   map[string]int
 	fieldsByNumber map[FieldNumber]int
 }
@@ -377,7 +407,7 @@ func (t *structType) String() string {
 
 	s.WriteString("{")
 
-	for _, f := range t.fieldsByIndex {
+	for _, f := range t.fields {
 		s.WriteString("\n  ")
 
 		if f.Repeated {
@@ -393,7 +423,7 @@ func (t *structType) String() string {
 		s.WriteString(";")
 	}
 
-	if len(t.fieldsByIndex) == 0 {
+	if len(t.fields) == 0 {
 		s.WriteString("}")
 	} else {
 		s.WriteString("\n}")
@@ -404,15 +434,6 @@ func (t *structType) String() string {
 
 func (t *structType) Name() string {
 	return t.name
-}
-
-func (t *structType) Format(w fmt.State, v rune) {
-	switch v {
-	case 's':
-		io.WriteString(w, t.name)
-	case 'v':
-
-	}
 }
 
 func (t *structType) Kind() Kind {
@@ -432,20 +453,20 @@ func (t *structType) WireType() WireType {
 }
 
 func (t *structType) NumField() int {
-	return len(t.fieldsByIndex)
+	return len(t.fields)
 }
 
-func (t *structType) FieldByIndex(index int) Field {
-	if index >= 0 && index < len(t.fieldsByIndex) {
-		return t.fieldsByIndex[index]
+func (t *structType) Field(index int) Field {
+	if index >= 0 && index < len(t.fields) {
+		return t.fields[index]
 	}
-	panic(fmt.Errorf("proto.Type.FieldByIndex: protobuf message field out of bounds: %d/%d", index, len(t.fieldsByIndex)))
+	panic(fmt.Errorf("proto.Type.Field: protobuf message field out of bounds: %d/%d", index, len(t.fields)))
 }
 
 func (t *structType) FieldByName(name string) Field {
 	i, ok := t.fieldsByName[name]
 	if ok {
-		return t.fieldsByIndex[i]
+		return t.fields[i]
 	}
 	panic(fmt.Errorf("proto.Type.FieldByName: protobuf message has not field named %q", name))
 }
@@ -453,9 +474,13 @@ func (t *structType) FieldByName(name string) Field {
 func (t *structType) FieldByNumber(number FieldNumber) Field {
 	i, ok := t.fieldsByNumber[number]
 	if ok {
-		return t.fieldsByIndex[i]
+		return t.fields[i]
 	}
 	panic(fmt.Errorf("proto.Type.FieldByNumber: protobuf message has no field number %d", number))
+}
+
+func (t *structType) ZigZag() Type {
+	panic(fmt.Errorf("proto.Type.ZigZag: called on unsupported type: %s", t.name))
 }
 
 type structTag struct {
@@ -467,6 +492,7 @@ type structTag struct {
 	fieldNumber FieldNumber
 	extensions  map[string]string
 	repeated    bool
+	zigzag      bool
 }
 
 func parseStructTag(tag string) (structTag, error) {
@@ -487,6 +513,12 @@ func parseStructTag(tag string) (structTag, error) {
 				t.wireType = Fixed32
 			case "fixed64":
 				t.wireType = Fixed64
+			case "zigzag32":
+				t.wireType = Varint
+				t.zigzag = true
+			case "zigzag64":
+				t.wireType = Varint
+				t.zigzag = true
 			default:
 				return t, fmt.Errorf("unsupported wire type in struct tag %q: %s", tag, f)
 			}

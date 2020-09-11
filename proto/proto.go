@@ -59,7 +59,8 @@ const (
 	noflags  flags = 0
 	inline   flags = 1 << 0
 	wantzero flags = 1 << 1
-	zigzag   flags = 1 << 2
+	// Shared with structField.flags in struct.go:
+	// zigzag flags = 1 << 2
 )
 
 func (f flags) has(x flags) bool {
@@ -72,6 +73,22 @@ func (f flags) with(x flags) flags {
 
 func (f flags) without(x flags) flags {
 	return f & ^x
+}
+
+func (f flags) uint64(i int64) uint64 {
+	if f.has(zigzag) {
+		return encodeZigZag64(i)
+	} else {
+		return uint64(i)
+	}
+}
+
+func (f flags) int64(u uint64) int64 {
+	if f.has(zigzag) {
+		return decodeZigZag64(u)
+	} else {
+		return int64(u)
+	}
 }
 
 type iface struct {

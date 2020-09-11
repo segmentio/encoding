@@ -10,6 +10,7 @@ import (
 const (
 	embedded = 1 << 0
 	repeated = 1 << 1
+	zigzag   = 1 << 2
 )
 
 type structField struct {
@@ -44,6 +45,10 @@ func (f *structField) pointer(p unsafe.Pointer) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(p) + uintptr(f.offset))
 }
 
+func (f *structField) makeFlags(base flags) flags {
+	return base | flags(f.flags&zigzag)
+}
+
 func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 	c := &codec{wire: varlen}
 	seen[t] = c
@@ -63,6 +68,19 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 			number:  uint16(number),
 			tagsize: uint8(sizeOfTag(number)),
 			offset:  uint32(f.Offset),
+		}
+
+		if tag, ok := f.Tag.Lookup("protobuf"); ok {
+			t, err := parseStructTag(tag)
+			if err == nil {
+				field.number = uint16(t.fieldNumber)
+				if t.repeated {
+					field.flags |= repeated
+				}
+				if t.zigzag {
+					field.flags |= zigzag
+				}
+			}
 		}
 
 		switch baseKindOf(f.Type) {
@@ -152,7 +170,7 @@ func structSizeFuncOf(t reflect.Type, fields []structField) sizeFunc {
 		n := 0
 
 		for _, f := range unique {
-			size := f.codec.size(f.pointer(p), flags)
+			size := f.codec.size(f.pointer(p), f.makeFlags(flags))
 			if size > 0 {
 				n += int(f.tagsize) + size
 				if f.embedded() {
@@ -162,7 +180,7 @@ func structSizeFuncOf(t reflect.Type, fields []structField) sizeFunc {
 		}
 
 		for _, f := range repeated {
-			n += f.codec.size(f.pointer(p), flags)
+			n += f.codec.size(f.pointer(p), f.makeFlags(flags))
 		}
 
 		return n
@@ -194,6 +212,7 @@ func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
 		offset := 0
 
 		for _, f := range unique {
+			flags = f.makeFlags(flags)
 			elem := f.pointer(p)
 			size := f.codec.size(elem, flags)
 
@@ -225,7 +244,7 @@ func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
 		}
 
 		for _, f := range repeated {
-			n, err := f.codec.encode(b[offset:], f.pointer(p), flags)
+			n, err := f.codec.encode(b[offset:], f.pointer(p), f.makeFlags(flags))
 			offset += n
 			if err != nil {
 				return offset, err
@@ -252,7 +271,7 @@ func structDecodeFuncOf(t reflect.Type, fields []structField) decodeFunc {
 		fieldIndex[f.fieldNumber()] = f
 	}
 
-	return func(b []byte, p unsafe.Pointer, _ flags) (int, error) {
+	return func(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 		offset := 0
 
 		for offset < len(b) {
@@ -343,7 +362,7 @@ func structDecodeFuncOf(t reflect.Type, fields []structField) decodeFunc {
 				return offset, fieldError(fieldNumber, wireType, ErrWireTypeUnknown)
 			}
 
-			n, err = f.codec.decode(data, f.pointer(p), noflags)
+			n, err = f.codec.decode(data, f.pointer(p), f.makeFlags(flags))
 			offset += n
 			if err != nil {
 				return offset, fieldError(fieldNumber, wireType, err)

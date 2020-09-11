@@ -14,7 +14,7 @@ var intCodec = codec{
 func sizeOfInt(p unsafe.Pointer, flags flags) int {
 	if p != nil {
 		if v := *(*int)(p); v != 0 || flags.has(wantzero) {
-			return sizeOfVarint(uint64(int64(v)))
+			return sizeOfVarint(flags.uint64(int64(v)))
 		}
 	}
 	return 0
@@ -23,14 +23,14 @@ func sizeOfInt(p unsafe.Pointer, flags flags) int {
 func encodeInt(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	if p != nil {
 		if v := *(*int)(p); v != 0 || flags.has(wantzero) {
-			return encodeVarint(b, uint64(int64(v)))
+			return encodeVarint(b, flags.uint64(int64(v)))
 		}
 	}
 	return 0, nil
 }
 
-func decodeInt(b []byte, p unsafe.Pointer, _ flags) (int, error) {
+func decodeInt(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	v, n, err := decodeVarint(b)
-	*(*int)(p) = int(v)
+	*(*int)(p) = int(flags.int64(v))
 	return n, err
 }
