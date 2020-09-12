@@ -174,7 +174,7 @@ func typeOf(t reflect.Type, seen map[reflect.Type]Type) Type {
 	switch {
 	case implements(t, messageType):
 		return &opaqueMessageType{}
-	case implements(t, customType):
+	case implements(t, customMessageType) && !implements(t, protoMessageType):
 		return &opaqueMessageType{}
 	}
 

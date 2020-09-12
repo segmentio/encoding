@@ -208,7 +208,7 @@ func codecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 	switch {
 	case implements(t, messageType):
 		return messageCodecOf(t)
-	case implements(t, customType):
+	case implements(t, customMessageType) && !implements(t, protoMessageType):
 		return customCodecOf(t)
 	}
 
@@ -261,9 +261,14 @@ type customMessage interface {
 	Unmarshal([]byte) error
 }
 
+type protoMessage interface {
+	ProtoMessage()
+}
+
 var (
-	messageType = reflect.TypeOf((*Message)(nil)).Elem()
-	customType  = reflect.TypeOf((*customMessage)(nil)).Elem()
+	messageType       = reflect.TypeOf((*Message)(nil)).Elem()
+	customMessageType = reflect.TypeOf((*customMessage)(nil)).Elem()
+	protoMessageType  = reflect.TypeOf((*protoMessage)(nil)).Elem()
 )
 
 func implements(t, iface reflect.Type) bool {
