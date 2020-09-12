@@ -1,3 +1,13 @@
+// Package runtime_reflect exposes internal APIs of the Go runtime.
+//
+// This package is internal so it doesn't become part of the exported APIs that
+// users of this package can take dependencies on. There is a risk that these
+// APIs will be implicitly changed by Go, in which case packages that depend on
+// it will break. We use these APIs to have access to optimziations that aren't
+// possible today via the reflect package. Ideally, the reflect package evolves
+// to expose APIs that are efficient enough that we can drop the need for this
+// package, but until then we will be maintaining bridges to these Go runtime
+// functions and types.
 package runtime_reflect
 
 import "unsafe"
