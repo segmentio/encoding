@@ -171,6 +171,13 @@ func typeOf(t reflect.Type, seen map[reflect.Type]Type) Type {
 		return r
 	}
 
+	switch {
+	case implements(t, messageType):
+		return &primitiveTypes[Bytes]
+	case implements(t, customType):
+		return &primitiveTypes[Bytes]
+	}
+
 	switch t.Kind() {
 	case reflect.Bool:
 		return &primitiveTypes[Bool]
@@ -192,7 +199,7 @@ func typeOf(t reflect.Type, seen map[reflect.Type]Type) Type {
 		return &primitiveTypes[Double]
 	case reflect.String:
 		return &primitiveTypes[String]
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
 		if t.Elem().Kind() == reflect.Uint8 {
 			return &primitiveTypes[Bytes]
 		}

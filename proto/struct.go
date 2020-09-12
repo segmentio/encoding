@@ -164,9 +164,10 @@ func structSizeFuncOf(t reflect.Type, fields []structField) sizeFunc {
 		}
 
 		if !inlined {
-			flags = flags.without(inline)
+			flags = flags.without(inline | toplevel)
+		} else {
+			flags = flags.without(toplevel)
 		}
-
 		n := 0
 
 		for _, f := range unique {
@@ -211,9 +212,10 @@ func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
 		}
 
 		if !inlined {
-			flags = flags.without(inline)
+			flags = flags.without(inline | toplevel)
+		} else {
+			flags = flags.without(toplevel)
 		}
-
 		offset := 0
 
 		for _, f := range unique {
@@ -282,6 +284,7 @@ func structDecodeFuncOf(t reflect.Type, fields []structField) decodeFunc {
 	}
 
 	return func(b []byte, p unsafe.Pointer, flags flags) (int, error) {
+		flags = flags.without(toplevel)
 		offset := 0
 
 		for offset < len(b) {

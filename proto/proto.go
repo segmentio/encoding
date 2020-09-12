@@ -10,14 +10,14 @@ import (
 func Size(v interface{}) int {
 	t, p := inspect(v)
 	c := cachedCodecOf(t)
-	return c.size(p, inline)
+	return c.size(p, inline|toplevel)
 }
 
 func Marshal(v interface{}) ([]byte, error) {
 	t, p := inspect(v)
 	c := cachedCodecOf(t)
-	b := make([]byte, c.size(p, inline))
-	_, err := c.encode(b, p, inline)
+	b := make([]byte, c.size(p, inline|toplevel))
+	_, err := c.encode(b, p, inline|toplevel)
 	if err != nil {
 		return nil, fmt.Errorf("proto.Marshal(%T): %w", v, err)
 	}
@@ -27,7 +27,7 @@ func Marshal(v interface{}) ([]byte, error) {
 func MarshalTo(b []byte, v interface{}) (int, error) {
 	t, p := inspect(v)
 	c := cachedCodecOf(t)
-	n, err := c.encode(b, p, inline)
+	n, err := c.encode(b, p, inline|toplevel)
 	if err != nil {
 		err = fmt.Errorf("proto.MarshalTo: %w", err)
 	}
@@ -43,7 +43,7 @@ func Unmarshal(b []byte, v interface{}) error {
 	t = t.Elem() // Unmarshal must be passed a pointer
 	c := cachedCodecOf(t)
 
-	n, err := c.decode(b, p, noflags)
+	n, err := c.decode(b, p, toplevel)
 	if err != nil {
 		return err
 	}
@@ -61,6 +61,7 @@ const (
 	wantzero flags = 1 << 1
 	// Shared with structField.flags in struct.go:
 	// zigzag flags = 1 << 2
+	toplevel flags = 1 << 3
 )
 
 func (f flags) has(x flags) bool {
@@ -201,56 +202,67 @@ func codecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 		return c
 	}
 
+	switch {
+	case implements(t, messageType):
+		return messageCodecOf(t)
+	case implements(t, customType):
+		return customCodecOf(t)
+	}
+
 	switch t.Kind() {
 	case reflect.Bool:
 		return &boolCodec
-
 	case reflect.Int:
 		return &intCodec
-
 	case reflect.Int32:
 		return &int32Codec
-
 	case reflect.Int64:
 		return &int64Codec
-
 	case reflect.Uint:
 		return &uintCodec
-
 	case reflect.Uint32:
 		return &uint32Codec
-
 	case reflect.Uint64:
 		return &uint64Codec
-
 	case reflect.Float32:
 		return &float32Codec
-
 	case reflect.Float64:
 		return &float64Codec
-
 	case reflect.String:
 		return &stringCodec
-
 	case reflect.Array:
 		elem := t.Elem()
 		switch elem.Kind() {
 		case reflect.Uint8:
 			return byteArrayCodecOf(t, seen)
 		}
-
 	case reflect.Slice:
 		elem := t.Elem()
 		switch elem.Kind() {
 		case reflect.Uint8:
 			return &bytesCodec
 		}
-
 	case reflect.Struct:
 		return structCodecOf(t, seen)
-
 	case reflect.Ptr:
 		return pointerCodecOf(t, seen)
 	}
+
 	panic("unsupported type: " + t.String())
+}
+
+// backward compatibility with gogoproto custom types.
+type customMessage interface {
+	Size() int
+	MarshalTo([]byte) (int, error)
+	Unmarshal([]byte) error
+}
+
+var (
+	messageType = reflect.TypeOf((*Message)(nil)).Elem()
+	customType  = reflect.TypeOf((*customMessage)(nil)).Elem()
+)
+
+func implements(t, iface reflect.Type) bool {
+	return t.Implements(iface) || reflect.PtrTo(t).Implements(iface)
 }

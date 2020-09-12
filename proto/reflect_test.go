@@ -61,6 +61,15 @@ func TestTypeOf(t *testing.T) {
   RecursiveMessage next = 1;
 }`,
 		},
+
+		{
+			value: struct {
+				M RawMessage
+			}{},
+			proto: `message {
+  bytes M = 1;
+}`,
+		},
 	}
 
 	for _, test := range tests {

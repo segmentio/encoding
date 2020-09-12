@@ -93,6 +93,27 @@ type structWithMap struct {
 	M map[int]string
 }
 
+type custom [16]byte
+
+func (c *custom) Size() int { return len(c) }
+
+func (c *custom) MarshalTo(b []byte) (int, error) {
+	return copy(b, c[:]), nil
+}
+
+func (c *custom) Unmarshal(b []byte) error {
+	copy(c[:], b)
+	return nil
+}
+
+type messageWithRawMessage struct {
+	Raw RawMessage
+}
+
+type messageWithCustomField struct {
+	Custom custom
+}
+
 func TestMarshalUnmarshal(t *testing.T) {
 	intVal := 42
 	values := []interface{}{
@@ -286,6 +307,30 @@ func TestMarshalUnmarshal(t *testing.T) {
 				M: map[int]string{0: "A", 1: "B", 2: "C"},
 			},
 		},
+
+		// raw messages
+		RawMessage(nil),
+		RawMessage{0x08, 0x96, 0x01},
+		messageWithRawMessage{
+			Raw: RawMessage{1, 2, 3, 4},
+		},
+		struct {
+			A int
+			B string
+			C RawMessage
+		}{A: 42, B: "Hello World!", C: RawMessage{1, 2, 3, 4}},
+
+		// custom messages
+		custom{},
+		custom{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+		messageWithCustomField{
+			Custom: custom{1: 42},
+		},
+		struct {
+			A int
+			B string
+			C custom
+		}{A: 42, B: "Hello World!", C: custom{1: 42}},
 	}
 
 	for _, v := range values {
