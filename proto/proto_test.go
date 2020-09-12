@@ -153,12 +153,12 @@ func TestMarshalUnmarshal(t *testing.T) {
 
 		// float
 		float32(0),
-		float32(-0.0),
+		float32(math.Copysign(0, -1)),
 		float32(0.1234),
 
 		// double
 		float64(0),
-		float64(-0.0),
+		float64(math.Copysign(0, -1)),
 		float64(0.1234),
 
 		// string
