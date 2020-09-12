@@ -201,12 +201,18 @@ func Parse(m RawMessage) (FieldNumber, WireType, RawValue, RawMessage, error) {
 		if err != nil {
 			return f, t, nil, m, fmt.Errorf("decoding varint field %d: %w", f, err)
 		}
+		if len(m) < n {
+			return f, t, nil, m, fmt.Errorf("decoding varint field %d: %w", f, io.ErrUnexpectedEOF)
+		}
 		return f, t, RawValue(m[:n]), m[n:], nil
 
 	case Varlen:
 		l, n, err := decodeVarint(m) // length
 		if err != nil {
 			return f, t, nil, m, fmt.Errorf("decoding varlen field %d: %w", f, err)
+		}
+		if len(m) < (n + int(l)) {
+			return f, t, nil, m, fmt.Errorf("decoding varlen field %d: %w", f, io.ErrUnexpectedEOF)
 		}
 		return f, t, RawValue(m[n : n+int(l)]), m[n+int(l):], nil
 
