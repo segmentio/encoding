@@ -59,7 +59,64 @@ func makeBytes(p unsafe.Pointer, n int) []byte {
 	}))
 }
 
+// isZeroBytes is an optimized version of this loop:
+//
+//	for i := range b {
+//		if b[i] != 0 {
+//			return false
+//		}
+//	}
+//	return true
+//
+// This implementation significantly reduces the CPU footprint of checking for
+// slices to be zero, especially when the length increases (these cases should
+// be rare tho).
+//
+// name            old time/op  new time/op  delta
+// IsZeroBytes0    1.78ns ± 1%  2.29ns ± 4%  +28.65%  (p=0.000 n=8+10)
+// IsZeroBytes4    3.17ns ± 3%  2.37ns ± 3%  -25.21%  (p=0.000 n=10+10)
+// IsZeroBytes7    3.97ns ± 4%  3.26ns ± 3%  -18.02%  (p=0.000 n=10+10)
+// IsZeroBytes64K  14.8µs ± 3%   1.9µs ± 3%  -87.34%  (p=0.000 n=10+10)
 func isZeroBytes(b []byte) bool {
+	if n := len(b) / 8; n != 0 {
+		if !isZeroUint64(*(*[]uint64)(unsafe.Pointer(&reflect.SliceHeader{
+			Data: uintptr(unsafe.Pointer(&b[0])),
+			Len:  n,
+			Cap:  n,
+		}))) {
+			return false
+		}
+		b = b[n*8:]
+	}
+	switch len(b) {
+	case 7:
+		return bto32(b) == 0 && bto16(b[4:]) == 0 && b[6] == 0
+	case 6:
+		return bto32(b) == 0 && bto16(b[4:]) == 0
+	case 5:
+		return bto32(b) == 0 && b[4] == 0
+	case 4:
+		return bto32(b) == 0
+	case 3:
+		return bto16(b) == 0 && b[2] == 0
+	case 2:
+		return bto16(b) == 0
+	case 1:
+		return b[0] == 0
+	default:
+		return true
+	}
+}
+
+func bto32(b []byte) uint32 {
+	return *(*uint32)(unsafe.Pointer(&b[0]))
+}
+
+func bto16(b []byte) uint16 {
+	return *(*uint16)(unsafe.Pointer(&b[0]))
+}
+
+func isZeroUint64(b []uint64) bool {
 	for i := range b {
 		if b[i] != 0 {
 			return false
