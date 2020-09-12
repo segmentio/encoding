@@ -124,8 +124,10 @@ type Type interface {
 //
 // Pointer types are also supported and automatically dereferenced.
 func TypeOf(v interface{}) Type {
-	t := reflect.TypeOf(v)
+	return cachedTypeOf(reflect.TypeOf(v))
+}
 
+func cachedTypeOf(t reflect.Type) Type {
 	typesMutex.RLock()
 	r, ok := typesCache[t]
 	typesMutex.RUnlock()
@@ -134,7 +136,7 @@ func TypeOf(v interface{}) Type {
 		return r
 	}
 
-	r = typeOf(reflect.TypeOf(v))
+	r = typeOf(t)
 
 	typesMutex.Lock()
 	defer typesMutex.Unlock()
@@ -179,7 +181,7 @@ func typeOf(t reflect.Type) Type {
 	case reflect.Struct:
 		return structTypeOf(t)
 	case reflect.Ptr:
-		return typeOf(t.Elem())
+		return cachedTypeOf(t.Elem())
 	}
 	panic(fmt.Errorf("cannot construct protobuf type from go value of type %s", t))
 }
@@ -271,8 +273,8 @@ var primitiveTypes = [...]primitiveType{
 
 func mapTypeOf(t reflect.Type) *mapType {
 	return &mapType{
-		key:  typeOf(t.Key()),
-		elem: typeOf(t.Elem()),
+		key:  cachedTypeOf(t.Key()),
+		elem: cachedTypeOf(t.Elem()),
 	}
 }
 
@@ -349,7 +351,7 @@ func structTypeOf(t reflect.Type) *structType {
 		}
 
 		fieldName := f.Name
-		fieldType := typeOf(f.Type)
+		fieldType := cachedTypeOf(f.Type)
 
 		if tag, ok := f.Tag.Lookup("protobuf"); ok {
 			if fieldNumber != taggedFields {
