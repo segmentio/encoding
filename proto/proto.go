@@ -36,6 +36,9 @@ func MarshalTo(b []byte, v interface{}) (int, error) {
 
 func Unmarshal(b []byte, v interface{}) error {
 	if len(b) == 0 {
+		// An empty input is a valid protobuf message with all fields set to the
+		// zero-value.
+		reflect.ValueOf(v).Elem().Set(reflect.Zero(reflect.TypeOf(v).Elem()))
 		return nil
 	}
 
