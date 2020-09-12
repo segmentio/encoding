@@ -14,7 +14,7 @@ var float64Codec = codec{
 
 func sizeOfFloat64(p unsafe.Pointer, flags flags) int {
 	if p != nil {
-		if v := *(*float64)(p); v != 0 || flags.has(wantzero) {
+		if v := *(*float64)(p); v != 0 || flags.has(wantzero) || math.Signbit(v) {
 			return 8
 		}
 	}
@@ -23,7 +23,7 @@ func sizeOfFloat64(p unsafe.Pointer, flags flags) int {
 
 func encodeFloat64(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	if p != nil {
-		if v := *(*float64)(p); v != 0 || flags.has(wantzero) {
+		if v := *(*float64)(p); v != 0 || flags.has(wantzero) || math.Signbit(v) {
 			return encodeFixed64(b, math.Float64bits(v))
 		}
 	}
