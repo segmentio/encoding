@@ -20,7 +20,11 @@ func sizeOfBool(p unsafe.Pointer, flags flags) int {
 
 func encodeBool(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	if p != nil && *(*bool)(p) || flags.has(wantzero) {
-		return encodeVarint(b, 1)
+		if len(b) == 0 {
+			return 0, io.ErrShortBuffer
+		}
+		b[0] = 1
+		return 1, nil
 	}
 	return 0, nil
 }
