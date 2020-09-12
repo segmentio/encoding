@@ -187,7 +187,7 @@ func AppendFixed64(m RawMessage, f FieldNumber, v uint64) RawMessage {
 	return Append(m, f, Fixed64, b[:])
 }
 
-func Parse(m RawMessage) (FieldNumber, WireType, RawValue, RawMessage, error) {
+func Parse(m []byte) (FieldNumber, WireType, RawValue, RawMessage, error) {
 	tag, n, err := decodeVarint(m)
 	if err != nil {
 		return 0, 0, nil, m, fmt.Errorf("decoding protobuf field number: %w", err)
@@ -233,24 +233,21 @@ func Parse(m RawMessage) (FieldNumber, WireType, RawValue, RawMessage, error) {
 	}
 }
 
-// Scan calls fn for each protobuf field in the message m.
+// Scan calls fn for each protobuf field in the message b.
 //
 // The iteration stops when all fields have been scanned, fn returns false, or
 // an error is seen.
-func Scan(m RawMessage, fn func(FieldNumber, WireType, RawValue) (bool, error)) error {
-	next := m
-
-	for len(next) != 0 {
-		f, t, v, m, err := Parse(next)
+func Scan(b []byte, fn func(FieldNumber, WireType, RawValue) (bool, error)) error {
+	for len(b) != 0 {
+		f, t, v, m, err := Parse(b)
 		if err != nil {
 			return err
 		}
 		if ok, err := fn(f, t, v); !ok {
 			return err
 		}
-		next = m
+		b = m
 	}
-
 	return nil
 }
 
