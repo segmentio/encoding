@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // Kind is an enumeration representing the various data types supported by the
@@ -124,33 +125,52 @@ type Type interface {
 //
 // Pointer types are also supported and automatically dereferenced.
 func TypeOf(v interface{}) Type {
-	return cachedTypeOf(reflect.TypeOf(v))
-}
+	t := reflect.TypeOf(v)
 
-func cachedTypeOf(t reflect.Type) Type {
-	typesMutex.RLock()
-	r, ok := typesCache[t]
-	typesMutex.RUnlock()
-
-	if ok {
+	cache, _ := typesCache.Load().(map[reflect.Type]Type)
+	if r, ok := cache[t]; ok {
 		return r
 	}
-
-	r = typeOf(t)
 
 	typesMutex.Lock()
 	defer typesMutex.Unlock()
 
-	if x, ok := typesCache[t]; ok {
-		r = x
-	} else {
-		typesCache[t] = r
+	cache, _ = typesCache.Load().(map[reflect.Type]Type)
+	if r, ok := cache[t]; ok {
+		return r
 	}
 
+	seen := map[reflect.Type]Type{}
+	r := typeOf(t, seen)
+
+	newCache := make(map[reflect.Type]Type, len(cache)+len(seen))
+	for t, r := range cache {
+		newCache[t] = r
+	}
+
+	for t, r := range seen {
+		if x, ok := newCache[t]; ok {
+			r = x
+		} else {
+			newCache[t] = r
+		}
+	}
+
+	if x, ok := newCache[t]; ok {
+		r = x
+	} else {
+		newCache[t] = r
+	}
+
+	typesCache.Store(newCache)
 	return r
 }
 
-func typeOf(t reflect.Type) Type {
+func typeOf(t reflect.Type, seen map[reflect.Type]Type) Type {
+	if r, ok := seen[t]; ok {
+		return r
+	}
+
 	switch t.Kind() {
 	case reflect.Bool:
 		return &primitiveTypes[Bool]
@@ -177,18 +197,24 @@ func typeOf(t reflect.Type) Type {
 			return &primitiveTypes[Bytes]
 		}
 	case reflect.Map:
-		return mapTypeOf(t)
+		return memoize(t, seen, mapTypeOf(t, seen))
 	case reflect.Struct:
-		return structTypeOf(t)
+		return memoize(t, seen, structTypeOf(t, seen))
 	case reflect.Ptr:
-		return cachedTypeOf(t.Elem())
+		return memoize(t, seen, typeOf(t.Elem(), seen))
 	}
+
 	panic(fmt.Errorf("cannot construct protobuf type from go value of type %s", t))
 }
 
+func memoize(t reflect.Type, seen map[reflect.Type]Type, r Type) Type {
+	seen[t] = r
+	return r
+}
+
 var (
-	typesMutex sync.RWMutex
-	typesCache = map[reflect.Type]Type{}
+	typesMutex sync.Mutex
+	typesCache atomic.Value // map[reflect.Type]Type{}
 )
 
 type Field struct {
@@ -271,10 +297,10 @@ var primitiveTypes = [...]primitiveType{
 	{name: "bytes", kind: Bytes, wire: Varlen},
 }
 
-func mapTypeOf(t reflect.Type) *mapType {
+func mapTypeOf(t reflect.Type, seen map[reflect.Type]Type) *mapType {
 	return &mapType{
-		key:  cachedTypeOf(t.Key()),
-		elem: cachedTypeOf(t.Elem()),
+		key:  typeOf(t.Key(), seen),
+		elem: typeOf(t.Elem(), seen),
 	}
 }
 
@@ -327,7 +353,7 @@ func (t *mapType) ZigZag() Type {
 	panic(fmt.Errorf("proto.Type.ZigZag: called on unsupported type: %s", t))
 }
 
-func structTypeOf(t reflect.Type) *structType {
+func structTypeOf(t reflect.Type, seen map[reflect.Type]Type) *structType {
 	st := &structType{
 		name:           t.Name(),
 		fieldsByName:   make(map[string]int),
@@ -351,7 +377,7 @@ func structTypeOf(t reflect.Type) *structType {
 		}
 
 		fieldName := f.Name
-		fieldType := cachedTypeOf(f.Type)
+		fieldType := typeOf(f.Type, seen)
 
 		if tag, ok := f.Tag.Lookup("protobuf"); ok {
 			if fieldNumber != taggedFields {
