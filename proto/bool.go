@@ -31,7 +31,9 @@ func encodeBool(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 }
 
 func decodeBool(b []byte, p unsafe.Pointer, _ flags) (int, error) {
-	v, n, err := decodeVarint(b)
-	*(*bool)(p) = v != 0
-	return n, err
+	if len(b) == 0 {
+		return 0, io.ErrUnexpectedEOF
+	}
+	*(*bool)(p) = b[0] != 0
+	return 1, nil
 }
