@@ -197,19 +197,14 @@ func typeOf(t reflect.Type, seen map[reflect.Type]Type) Type {
 			return &primitiveTypes[Bytes]
 		}
 	case reflect.Map:
-		return memoize(t, seen, mapTypeOf(t, seen))
+		return mapTypeOf(t, seen)
 	case reflect.Struct:
-		return memoize(t, seen, structTypeOf(t, seen))
+		return structTypeOf(t, seen)
 	case reflect.Ptr:
-		return memoize(t, seen, typeOf(t.Elem(), seen))
+		return typeOf(t.Elem(), seen)
 	}
 
 	panic(fmt.Errorf("cannot construct protobuf type from go value of type %s", t))
-}
-
-func memoize(t reflect.Type, seen map[reflect.Type]Type, r Type) Type {
-	seen[t] = r
-	return r
 }
 
 var (
@@ -298,10 +293,11 @@ var primitiveTypes = [...]primitiveType{
 }
 
 func mapTypeOf(t reflect.Type, seen map[reflect.Type]Type) *mapType {
-	return &mapType{
-		key:  typeOf(t.Key(), seen),
-		elem: typeOf(t.Elem(), seen),
-	}
+	mt := &mapType{}
+	seen[t] = mt
+	mt.key = typeOf(t.Key(), seen)
+	mt.elem = typeOf(t.Elem(), seen)
+	return mt
 }
 
 type mapType struct {
@@ -359,6 +355,8 @@ func structTypeOf(t reflect.Type, seen map[reflect.Type]Type) *structType {
 		fieldsByName:   make(map[string]int),
 		fieldsByNumber: make(map[FieldNumber]int),
 	}
+
+	seen[t] = st
 
 	fieldNumber := FieldNumber(0)
 	taggedFields := FieldNumber(0)

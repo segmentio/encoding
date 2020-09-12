@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+type RecursiveMessage struct {
+	Next *RecursiveMessage `protobuf:"bytes,1,opt,name=next,proto3"`
+}
+
 func TestTypeOf(t *testing.T) {
 	tests := []struct {
 		value interface{}
@@ -48,6 +52,13 @@ func TestTypeOf(t *testing.T) {
 			proto: `message {
   int64 hello = 1;
   repeated string world = 3;
+}`,
+		},
+
+		{
+			value: RecursiveMessage{},
+			proto: `message RecursiveMessage {
+  RecursiveMessage next = 1;
 }`,
 		},
 	}
