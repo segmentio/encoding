@@ -46,27 +46,6 @@ func (m RawMessage) Rewrite(out, _ []byte) ([]byte, error) {
 	return append(out, m...), nil
 }
 
-// Scan calls fn for each protobuf field in the message m.
-//
-// The iteration stops when all fields have been scanned, fn returns false, or
-// an error is seen.
-func (m RawMessage) Scan(fn func(FieldNumber, WireType, RawValue) bool) error {
-	next := m
-
-	for len(next) != 0 {
-		f, t, v, m, err := Parse(next)
-		if err != nil {
-			return err
-		}
-		if !fn(f, t, v) {
-			return nil
-		}
-		next = m
-	}
-
-	return nil
-}
-
 // FieldNumber represents a protobuf field number.
 type FieldNumber uint
 
@@ -252,6 +231,27 @@ func Parse(m RawMessage) (FieldNumber, WireType, RawValue, RawMessage, error) {
 	default:
 		return f, t, nil, m, fmt.Errorf("invalid wire type: %d", t)
 	}
+}
+
+// Scan calls fn for each protobuf field in the message m.
+//
+// The iteration stops when all fields have been scanned, fn returns false, or
+// an error is seen.
+func Scan(m RawMessage, fn func(FieldNumber, WireType, RawValue) bool) error {
+	next := m
+
+	for len(next) != 0 {
+		f, t, v, m, err := Parse(next)
+		if err != nil {
+			return err
+		}
+		if !fn(f, t, v) {
+			return nil
+		}
+		next = m
+	}
+
+	return nil
 }
 
 // RawValue represents a single protobuf value.
