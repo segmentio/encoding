@@ -215,6 +215,11 @@ func TestMarshalUnmarshal(t *testing.T) {
 			},
 		},
 
+		struct {
+			Min int64 `protobuf:"zigzag64,1,opt,name=min,proto3"`
+			Max int64 `protobuf:"zigzag64,2,opt,name=min,proto3"`
+		}{Min: math.MinInt64, Max: math.MaxInt64},
+
 		// pointers
 		struct{ M *message }{M: nil},
 		struct {
