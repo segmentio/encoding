@@ -143,6 +143,10 @@ const (
 	Fixed64 WireType = 1
 	Varlen  WireType = 2
 	Fixed32 WireType = 5
+	// Wire types 3 and 4 were used for StartGroup and EndGroup, but are
+	// deprecated so we don't expose them here.
+	//
+	// https://developers.google.com/protocol-buffers/docs/encoding#structure
 )
 
 func (wt WireType) String() string {
