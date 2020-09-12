@@ -3,6 +3,7 @@ package proto
 import (
 	"errors"
 	"io"
+	"math"
 	"testing"
 )
 
@@ -30,6 +31,22 @@ func TestMarshalToShortBuffer(t *testing.T) {
 				t.Errorf("error mismatch, want io.ErrShortBuffer but got %q", err)
 			}
 		})
+	}
+}
+
+func BenchmarkEncodeVarintShort(b *testing.B) {
+	c := [10]byte{}
+
+	for i := 0; i < b.N; i++ {
+		encodeVarint(c[:], 0)
+	}
+}
+
+func BenchmarkEncodeVarintLong(b *testing.B) {
+	c := [10]byte{}
+
+	for i := 0; i < b.N; i++ {
+		encodeVarint(c[:], math.MaxUint64)
 	}
 }
 

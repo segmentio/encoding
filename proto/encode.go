@@ -33,12 +33,83 @@ func encodeVarint(b []byte, v uint64) (int, error) {
 		return 0, io.ErrShortBuffer
 	}
 
-	for i := range b[:n-1] {
-		b[i] = byte(v) | 0x80
-		v >>= 7
+	switch n {
+	case 1:
+		b[0] = byte(v)
+
+	case 2:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v >> 7)
+
+	case 3:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v >> 14)
+
+	case 4:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v>>14) | 0x80
+		b[3] = byte(v >> 21)
+
+	case 5:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v>>14) | 0x80
+		b[3] = byte(v>>21) | 0x80
+		b[4] = byte(v >> 28)
+
+	case 6:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v>>14) | 0x80
+		b[3] = byte(v>>21) | 0x80
+		b[4] = byte(v>>28) | 0x80
+		b[5] = byte(v >> 35)
+
+	case 7:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v>>14) | 0x80
+		b[3] = byte(v>>21) | 0x80
+		b[4] = byte(v>>28) | 0x80
+		b[5] = byte(v>>35) | 0x80
+		b[6] = byte(v >> 42)
+
+	case 8:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v>>14) | 0x80
+		b[3] = byte(v>>21) | 0x80
+		b[4] = byte(v>>28) | 0x80
+		b[5] = byte(v>>35) | 0x80
+		b[6] = byte(v>>42) | 0x80
+		b[7] = byte(v >> 49)
+
+	case 9:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v>>14) | 0x80
+		b[3] = byte(v>>21) | 0x80
+		b[4] = byte(v>>28) | 0x80
+		b[5] = byte(v>>35) | 0x80
+		b[6] = byte(v>>42) | 0x80
+		b[7] = byte(v>>49) | 0x80
+		b[8] = byte(v >> 56)
+
+	case 10:
+		b[0] = byte(v) | 0x80
+		b[1] = byte(v>>7) | 0x80
+		b[2] = byte(v>>14) | 0x80
+		b[3] = byte(v>>21) | 0x80
+		b[4] = byte(v>>28) | 0x80
+		b[5] = byte(v>>35) | 0x80
+		b[6] = byte(v>>42) | 0x80
+		b[7] = byte(v>>49) | 0x80
+		b[8] = byte(v>>56) | 0x80
+		b[9] = byte(v >> 63)
 	}
 
-	b[n-1] = byte(v)
 	return n, nil
 }
 
