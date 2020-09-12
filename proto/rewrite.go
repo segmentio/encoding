@@ -55,7 +55,7 @@ func (r RewriteFunc) Rewrite(out, in []byte) ([]byte, error) {
 // interace to support composing rewrite rules.
 type MessageRewriter []Rewriter
 
-// Rewrute applies the rewrite rule matching f in r, satisfies the Rewriter
+// Rewrite applies the rewrite rule matching f in r, satisfies the Rewriter
 // interface.
 func (r MessageRewriter) Rewrite(out, in []byte) ([]byte, error) {
 	seen := make(fieldset, 4)
