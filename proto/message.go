@@ -237,7 +237,7 @@ func Parse(m RawMessage) (FieldNumber, WireType, RawValue, RawMessage, error) {
 //
 // The iteration stops when all fields have been scanned, fn returns false, or
 // an error is seen.
-func Scan(m RawMessage, fn func(FieldNumber, WireType, RawValue) bool) error {
+func Scan(m RawMessage, fn func(FieldNumber, WireType, RawValue) (bool, error)) error {
 	next := m
 
 	for len(next) != 0 {
@@ -245,8 +245,8 @@ func Scan(m RawMessage, fn func(FieldNumber, WireType, RawValue) bool) error {
 		if err != nil {
 			return err
 		}
-		if !fn(f, t, v) {
-			return nil
+		if ok, err := fn(f, t, v); !ok {
+			return err
 		}
 		next = m
 	}
