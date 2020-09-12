@@ -27,20 +27,19 @@ func encodeZigZag32(v int32) uint32 {
 type encodeFunc = func([]byte, unsafe.Pointer, flags) (int, error)
 
 func encodeVarint(b []byte, v uint64) (int, error) {
-	i := 0
-	for v >= 0x80 {
-		if i >= len(b) {
-			return i, io.ErrShortBuffer
-		}
+	n := sizeOfVarint(v)
+
+	if len(b) < n {
+		return 0, io.ErrShortBuffer
+	}
+
+	for i := range b[:n-1] {
 		b[i] = byte(v) | 0x80
 		v >>= 7
-		i++
 	}
-	if i >= len(b) {
-		return i, io.ErrShortBuffer
-	}
-	b[i] = byte(v)
-	return i + 1, nil
+
+	b[n-1] = byte(v)
+	return n, nil
 }
 
 func encodeVarintZigZag(b []byte, v int64) (int, error) {
