@@ -173,9 +173,9 @@ func typeOf(t reflect.Type, seen map[reflect.Type]Type) Type {
 
 	switch {
 	case implements(t, messageType):
-		return &primitiveTypes[Bytes]
+		return &opaqueMessageType{}
 	case implements(t, customType):
-		return &primitiveTypes[Bytes]
+		return &opaqueMessageType{}
 	}
 
 	switch t.Kind() {
@@ -604,4 +604,50 @@ func splitNameValue(s string) (name, value string) {
 	} else {
 		return strings.TrimSpace(s[:i]), strings.TrimSpace(s[i+1:])
 	}
+}
+
+type opaqueMessageType struct{}
+
+func (t *opaqueMessageType) String() string {
+	return "bytes"
+}
+
+func (t *opaqueMessageType) Name() string {
+	return "bytes"
+}
+
+func (t *opaqueMessageType) Kind() Kind {
+	return Struct
+}
+
+func (t *opaqueMessageType) Key() Type {
+	panic(fmt.Errorf("proto.Type.Key: called on unsupported type: %s", t))
+}
+
+func (t *opaqueMessageType) Elem() Type {
+	panic(fmt.Errorf("proto.Type.Elem: called on unsupported type: %s", t))
+}
+
+func (t *opaqueMessageType) WireType() WireType {
+	return Varlen
+}
+
+func (t *opaqueMessageType) NumField() int {
+	return 0
+}
+
+func (t *opaqueMessageType) Field(int) Field {
+	panic(fmt.Errorf("proto.Type.Field: called on unsupported type: %s", t))
+}
+
+func (t *opaqueMessageType) FieldByName(string) Field {
+	panic(fmt.Errorf("proto.Type.FieldByName: called on unsupported type: %s", t))
+}
+
+func (t *opaqueMessageType) FieldByNumber(FieldNumber) Field {
+	panic(fmt.Errorf("proto.Type.FieldByNumber: called on unsupported type: %s", t))
+}
+
+func (t *opaqueMessageType) ZigZag() Type {
+	panic(fmt.Errorf("proto.Type.ZigZag: called on unsupported type: %s", t))
 }
