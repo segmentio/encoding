@@ -118,9 +118,9 @@ func inlined(t reflect.Type) bool {
 	}
 }
 
-type fieldNumber int
+type fieldNumber uint
 
-type wireType int
+type wireType uint
 
 const (
 	varint  wireType = 0

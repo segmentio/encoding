@@ -47,7 +47,7 @@ func (m RawMessage) Rewrite(out, _ []byte) ([]byte, error) {
 }
 
 // FieldNumber represents a protobuf field number.
-type FieldNumber int
+type FieldNumber uint
 
 func (f FieldNumber) Bool(v bool) RawMessage {
 	var x uint64
@@ -136,7 +136,7 @@ func (f FieldNumber) Value(v interface{}) RawMessage {
 }
 
 // The WireType enumeration represents the different protobuf wire types.
-type WireType int
+type WireType uint
 
 const (
 	Varint  WireType = 0
