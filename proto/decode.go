@@ -86,9 +86,8 @@ func decodeVarlen(b []byte) ([]byte, int, error) {
 	if err != nil {
 		return nil, n, err
 	}
-	l := int(v)
-	if l < 0 || (l+n) > len(b) {
+	if v > uint64(len(b)-n) {
 		return nil, n, io.ErrUnexpectedEOF
 	}
-	return b[n : n+l], n + l, nil
+	return b[n : n+int(v)], n + int(v), nil
 }

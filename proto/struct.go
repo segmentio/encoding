@@ -309,7 +309,13 @@ func structDecodeFuncOf(t reflect.Type, fields []structField) decodeFunc {
 					_, skip, err = decodeVarint(b[offset:])
 				case varlen:
 					size, skip, err = decodeVarint(b[offset:])
-					skip += int(size)
+					if err == nil {
+						if size > uint64(len(b)-skip) {
+							err = io.ErrUnexpectedEOF
+						} else {
+							skip += int(size)
+						}
+					}
 				case fixed32:
 					_, skip, err = decodeFixed32(b[offset:])
 				case fixed64:
@@ -349,7 +355,7 @@ func structDecodeFuncOf(t reflect.Type, fields []structField) decodeFunc {
 				if err != nil {
 					return offset + n, fieldError(fieldNumber, wireType, err)
 				}
-				if (offset + n + int(l)) > len(b) {
+				if l > uint64(len(b)-(offset+n)) {
 					return len(b), fieldError(fieldNumber, wireType, io.ErrUnexpectedEOF)
 				}
 				if f.embedded() {
