@@ -103,7 +103,7 @@ type Type interface {
 	ZigZag() Type
 }
 
-// TypeOf returns the protobuf type used to represent the go value v.
+// TypeOf returns the protobuf type used to represent a go value or go type.
 //
 // The function uses the following table to map Go types to Protobuf:
 //
@@ -125,7 +125,10 @@ type Type interface {
 //
 // Pointer types are also supported and automatically dereferenced.
 func TypeOf(v interface{}) Type {
-	t := reflect.TypeOf(v)
+	t, _ := v.(reflect.Type)
+	if t == nil {
+		t = reflect.TypeOf(v)
+	}
 
 	cache, _ := typesCache.Load().(map[reflect.Type]Type)
 	if r, ok := cache[t]; ok {
