@@ -74,7 +74,7 @@ func TestTypeOf(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%T", test.value), func(t *testing.T) {
-			typ := TypeOf(test.value)
+			typ := TypeOf(reflect.TypeOf(test.value))
 			str := typ.String()
 
 			if str != test.proto {
@@ -87,13 +87,13 @@ func TestTypeOf(t *testing.T) {
 }
 
 func TestTypesAreEqual(t *testing.T) {
-	if TypeOf(true) != TypeOf(false) {
+	if TypeOf(reflect.TypeOf(true)) != TypeOf(reflect.TypeOf(false)) {
 		t.Error("type of true is not equal to type of false")
 	}
 }
 
 func TestTypesAreNotEqual(t *testing.T) {
-	if TypeOf(false) == TypeOf(0) {
+	if TypeOf(reflect.TypeOf(false)) == TypeOf(reflect.TypeOf(0)) {
 		t.Error("type of bool equal type of int")
 	}
 }

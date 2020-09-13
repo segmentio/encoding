@@ -200,7 +200,7 @@ func TestParseRewriteTemplate(t *testing.T) {
 		},
 	}
 
-	rw, err := ParseRewriteTemplate(TypeOf(original), []byte(`{
+	rw, err := ParseRewriteTemplate(TypeOf(reflect.TypeOf(original)), []byte(`{
   "field_1": true,
 
   "field_2": 2,
