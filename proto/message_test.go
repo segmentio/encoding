@@ -162,3 +162,38 @@ func assertEmpty(t *testing.T, m RawMessage) {
 		t.Errorf("unexpected content remained in the protobuf message: %v", m)
 	}
 }
+
+func BenchmarkScan(b *testing.B) {
+	m, _ := Marshal(&message{
+		A: 1,
+		B: 2,
+		C: 3,
+		S: submessage{
+			X: "hello",
+			Y: "world",
+		},
+	})
+
+	for i := 0; i < b.N; i++ {
+		Scan(m, func(f FieldNumber, t WireType, v RawValue) (bool, error) {
+			switch f {
+			case 1, 2, 3:
+				return true, nil
+			case 4:
+				err := Scan(v, func(f FieldNumber, t WireType, v RawValue) (bool, error) {
+					switch f {
+					case 1, 2:
+						return true, nil
+					default:
+						b.Error("invalid field number:", f)
+						return false, nil
+					}
+				})
+				return err != nil, err
+			default:
+				b.Error("invalid field number:", f)
+				return false, nil
+			}
+		})
+	}
+}
