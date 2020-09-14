@@ -173,7 +173,7 @@ func typeOf(t reflect.Type, seen map[reflect.Type]Type) Type {
 	case implements(t, messageType):
 		return &opaqueMessageType{}
 	case implements(t, customMessageType) && !implements(t, protoMessageType):
-		return &opaqueMessageType{}
+		return &primitiveTypes[Bytes]
 	}
 
 	switch t.Kind() {
