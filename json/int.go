@@ -1,5 +1,10 @@
 package json
 
+import (
+	"reflect"
+	"unsafe"
+)
+
 func appendInt(b []byte, n int64) []byte {
 	return formatInteger(b, uint64(n), n < 0)
 }
@@ -19,41 +24,59 @@ const intLookup = "00010203040506070809" +
 	"80818283848586878889" +
 	"90919293949596979899"
 
+var u16Lookup = stringToU16(intLookup)
+
+func stringToU16(s string) []uint16 {
+	return *(*[]uint16)(unsafe.Pointer(&reflect.SliceHeader{
+		Data: ((*reflect.StringHeader)(unsafe.Pointer(&s))).Data,
+		Len:  len(s) / 2,
+		Cap:  len(s) / 2,
+	}))
+}
+
 func formatInteger(b []byte, n uint64, negative bool) []byte {
 	if !negative {
 		if n < 10 {
 			return append(b, byte(n+'0'))
 		} else if n < 100 {
-			i := int(n)
-			return append(b, intLookup[i*2:i*2+2]...)
+			u := u16Lookup[n]
+			return append(b, byte(u), byte(u >> 8))
 		}
 	} else {
 		n = -n
 	}
 
-	var a [20 + 1]byte // sign + up to 20 digits for UINT64_MAX
-	i := len(a)
+	var buf [22]byte
+	i := len(buf) / 2
+
+	u := *(*[]uint16)(cast(buf[:], 2))
 
 	for n >= 100 {
-		is := n % 100 * 2
+		j := n % 100
 		n /= 100
-		i -= 2
-		a[i+1] = intLookup[is+1]
-		a[i+0] = intLookup[is+0]
-	}
-
-	is := n * 2
-	i--
-	a[i] = intLookup[is+1]
-	if n >= 10 {
 		i--
-		a[i] = intLookup[is]
+		u[i] = u16Lookup[j]
 	}
 
+	i--
+	u[i] = u16Lookup[n]
+
+	i *= 2
+	if n < 10 {
+		i++
+	}
 	if negative {
 		i--
-		a[i] = '-'
+		buf[i] = '-'
 	}
 
-	return append(b, a[i:]...)
+	return append(b, buf[i:]...)
+}
+
+func cast(b []byte, size int) unsafe.Pointer {
+	return unsafe.Pointer(&reflect.SliceHeader{
+		Data: uintptr(*(*unsafe.Pointer)(unsafe.Pointer(&b))),
+		Len:  len(b) / size,
+		Cap:  len(b) / size,
+	})
 }
