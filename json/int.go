@@ -1,9 +1,22 @@
 package json
 
 import (
-	"reflect"
 	"unsafe"
 )
+
+// "00010203...96979899" cast to []uint16
+var intLookup = []uint16{
+	0x3030, 0x3130, 0x3230, 0x3330, 0x3430, 0x3530, 0x3630, 0x3730, 0x3830, 0x3930,
+	0x3031, 0x3131, 0x3231, 0x3331, 0x3431, 0x3531, 0x3631, 0x3731, 0x3831, 0x3931,
+	0x3032, 0x3132, 0x3232, 0x3332, 0x3432, 0x3532, 0x3632, 0x3732, 0x3832, 0x3932,
+	0x3033, 0x3133, 0x3233, 0x3333, 0x3433, 0x3533, 0x3633, 0x3733, 0x3833, 0x3933,
+	0x3034, 0x3134, 0x3234, 0x3334, 0x3434, 0x3534, 0x3634, 0x3734, 0x3834, 0x3934,
+	0x3035, 0x3135, 0x3235, 0x3335, 0x3435, 0x3535, 0x3635, 0x3735, 0x3835, 0x3935,
+	0x3036, 0x3136, 0x3236, 0x3336, 0x3436, 0x3536, 0x3636, 0x3736, 0x3836, 0x3936,
+	0x3037, 0x3137, 0x3237, 0x3337, 0x3437, 0x3537, 0x3637, 0x3737, 0x3837, 0x3937,
+	0x3038, 0x3138, 0x3238, 0x3338, 0x3438, 0x3538, 0x3638, 0x3738, 0x3838, 0x3938,
+	0x3039, 0x3139, 0x3239, 0x3339, 0x3439, 0x3539, 0x3639, 0x3739, 0x3839, 0x3939,
+}
 
 func appendInt(b []byte, n int64) []byte {
 	return formatInteger(b, uint64(n), n < 0)
@@ -13,33 +26,12 @@ func appendUint(b []byte, n uint64) []byte {
 	return formatInteger(b, n, false)
 }
 
-const intLookup = "00010203040506070809" +
-	"10111213141516171819" +
-	"20212223242526272829" +
-	"30313233343536373839" +
-	"40414243444546474849" +
-	"50515253545556575859" +
-	"60616263646566676869" +
-	"70717273747576777879" +
-	"80818283848586878889" +
-	"90919293949596979899"
-
-var u16Lookup = stringToU16(intLookup)
-
-func stringToU16(s string) []uint16 {
-	return *(*[]uint16)(unsafe.Pointer(&reflect.SliceHeader{
-		Data: ((*reflect.StringHeader)(unsafe.Pointer(&s))).Data,
-		Len:  len(s) / 2,
-		Cap:  len(s) / 2,
-	}))
-}
-
 func formatInteger(b []byte, n uint64, negative bool) []byte {
 	if !negative {
 		if n < 10 {
 			return append(b, byte(n+'0'))
 		} else if n < 100 {
-			u := u16Lookup[n]
+			u := intLookup[n]
 			return append(b, byte(u), byte(u >> 8))
 		}
 	} else {
@@ -47,19 +39,18 @@ func formatInteger(b []byte, n uint64, negative bool) []byte {
 	}
 
 	var buf [22]byte
-	i := len(buf) / 2
-
-	u := *(*[]uint16)(cast(buf[:], 2))
+	u := (*[11]uint16)(unsafe.Pointer(&buf))
+	i := 11
 
 	for n >= 100 {
 		j := n % 100
 		n /= 100
 		i--
-		u[i] = u16Lookup[j]
+		u[i] = intLookup[j]
 	}
 
 	i--
-	u[i] = u16Lookup[n]
+	u[i] = intLookup[n]
 
 	i *= 2
 	if n < 10 {
@@ -73,10 +64,3 @@ func formatInteger(b []byte, n uint64, negative bool) []byte {
 	return append(b, buf[i:]...)
 }
 
-func cast(b []byte, size int) unsafe.Pointer {
-	return unsafe.Pointer(&reflect.SliceHeader{
-		Data: uintptr(*(*unsafe.Pointer)(unsafe.Pointer(&b))),
-		Len:  len(b) / size,
-		Cap:  len(b) / size,
-	})
-}
