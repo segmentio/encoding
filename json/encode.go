@@ -136,6 +136,10 @@ func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	b = append(b, '"')
 
+	if len(s) == 0 || simpleString(s, escapeHTML) {
+		return append(append(b, s...), '"'), nil
+	}
+
 	for j < len(s) {
 		c := s[j]
 
