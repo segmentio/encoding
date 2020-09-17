@@ -79,48 +79,66 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 				if t.zigzag {
 					field.flags |= zigzag
 				}
+				switch t.wireType {
+				case Fixed32:
+					switch baseKindOf(f.Type) {
+					case reflect.Uint32:
+						field.codec = &fixed32Codec
+					case reflect.Float32:
+						field.codec = &float32Codec
+					}
+				case Fixed64:
+					switch baseKindOf(f.Type) {
+					case reflect.Uint64:
+						field.codec = &fixed64Codec
+					case reflect.Float64:
+						field.codec = &float64Codec
+					}
+				}
 			}
 		}
 
-		switch baseKindOf(f.Type) {
-		case reflect.Struct:
-			field.flags |= embedded
-			field.codec = codecOf(f.Type, seen)
-
-		case reflect.Slice:
-			elem := f.Type.Elem()
-
-			if elem.Kind() == reflect.Uint8 { // []byte
+		if field.codec == nil {
+			switch baseKindOf(f.Type) {
+			case reflect.Struct:
+				field.flags |= embedded
 				field.codec = codecOf(f.Type, seen)
-			} else {
-				if baseKindOf(elem) == reflect.Struct {
-					field.flags |= embedded
+
+			case reflect.Slice:
+				elem := f.Type.Elem()
+
+				if elem.Kind() == reflect.Uint8 { // []byte
+					field.codec = codecOf(f.Type, seen)
+				} else {
+					if baseKindOf(elem) == reflect.Struct {
+						field.flags |= embedded
+					}
+					field.flags |= repeated
+					field.codec = codecOf(elem, seen)
+					field.codec = sliceCodecOf(f.Type, field, seen)
 				}
-				field.flags |= repeated
-				field.codec = codecOf(elem, seen)
-				field.codec = sliceCodecOf(f.Type, field, seen)
-			}
 
-		case reflect.Map:
-			key, val := f.Type.Key(), f.Type.Elem()
-			k := codecOf(key, seen)
-			v := codecOf(val, seen)
-			m := &mapField{
-				number:   field.number,
-				keyCodec: k,
-				valCodec: v,
-			}
-			if baseKindOf(key) == reflect.Struct {
-				m.keyFlags |= embedded
-			}
-			if baseKindOf(val) == reflect.Struct {
-				m.valFlags |= embedded
-			}
-			field.flags |= embedded | repeated
-			field.codec = mapCodecOf(f.Type, m, seen)
+			case reflect.Map:
+				key, val := f.Type.Key(), f.Type.Elem()
+				k := codecOf(key, seen)
+				v := codecOf(val, seen)
+				m := &mapField{
+					number:   field.number,
+					keyCodec: k,
+					valCodec: v,
+				}
+				if baseKindOf(key) == reflect.Struct {
+					m.keyFlags |= embedded
+				}
+				if baseKindOf(val) == reflect.Struct {
+					m.valFlags |= embedded
+				}
+				field.flags |= embedded | repeated
+				field.codec = mapCodecOf(f.Type, m, seen)
 
-		default:
-			field.codec = codecOf(f.Type, seen)
+			default:
+				field.codec = codecOf(f.Type, seen)
+			}
 		}
 
 		field.tagsize = uint8(sizeOfTag(fieldNumber(field.number), wireType(field.codec.wire)))
@@ -317,9 +335,9 @@ func structDecodeFuncOf(t reflect.Type, fields []structField) decodeFunc {
 						}
 					}
 				case fixed32:
-					_, skip, err = decodeFixed32(b[offset:])
+					_, skip, err = decodeLE32(b[offset:])
 				case fixed64:
-					_, skip, err = decodeFixed64(b[offset:])
+					_, skip, err = decodeLE64(b[offset:])
 				default:
 					err = ErrWireTypeUnknown
 				}

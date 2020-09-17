@@ -117,7 +117,7 @@ func encodeVarintZigZag(b []byte, v int64) (int, error) {
 	return encodeVarint(b, encodeZigZag64(v))
 }
 
-func encodeFixed32(b []byte, v uint32) (int, error) {
+func encodeLE32(b []byte, v uint32) (int, error) {
 	if len(b) < 4 {
 		return 0, io.ErrShortBuffer
 	}
@@ -125,7 +125,7 @@ func encodeFixed32(b []byte, v uint32) (int, error) {
 	return 4, nil
 }
 
-func encodeFixed64(b []byte, v uint64) (int, error) {
+func encodeLE64(b []byte, v uint64) (int, error) {
 	if len(b) < 8 {
 		return 0, io.ErrShortBuffer
 	}

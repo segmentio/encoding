@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/segmentio/encoding/json"
@@ -14,6 +13,12 @@ type Rewriter interface {
 	// passed as argument. If it wasn't able to perform the rewrite, it must
 	// return a non-nil error.
 	Rewrite(out, in []byte) ([]byte, error)
+}
+
+type identity struct{}
+
+func (identity) Rewrite(out, in []byte) ([]byte, error) {
+	return append(out, in...), nil
 }
 
 // MultiRewriter constructs a Rewriter which applies all rewriters passed as
@@ -321,7 +326,7 @@ func parseRewriteTemplateBytes(t Type, f FieldNumber, j json.RawMessage) (Rewrit
 }
 
 func parseRewriteTemplateMap(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
-	return nil, errors.New("NOT IMPLEMENTED")
+	return identity{}, nil // TODO: implement
 }
 
 func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
@@ -344,7 +349,7 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 	for k, v := range template {
 		f, ok := fieldsByName[k]
 		if !ok {
-			return nil, fmt.Errorf("rewrite template contained invalid field named %q", k)
+			return nil, fmt.Errorf("rewrite template contained an invalid field named %q", k)
 		}
 
 		var fields []json.RawMessage
@@ -377,7 +382,7 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 		message[f.Number] = MultiRewriter(rewriters...)
 	}
 
-	if f != 0 && len(message) != 0 {
+	if f != 0 {
 		return &embddedRewriter{number: f, message: message}, nil
 	}
 

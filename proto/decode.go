@@ -62,14 +62,14 @@ func decodeVarintZigZag(b []byte) (int64, int, error) {
 	return decodeZigZag64(v), n, err
 }
 
-func decodeFixed32(b []byte) (uint32, int, error) {
+func decodeLE32(b []byte) (uint32, int, error) {
 	if len(b) < 4 {
 		return 0, 0, io.ErrUnexpectedEOF
 	}
 	return binary.LittleEndian.Uint32(b), 4, nil
 }
 
-func decodeFixed64(b []byte) (uint64, int, error) {
+func decodeLE64(b []byte) (uint64, int, error) {
 	if len(b) < 8 {
 		return 0, 0, io.ErrUnexpectedEOF
 	}

@@ -11,6 +11,7 @@ func TestRewrite(t *testing.T) {
 		B float32
 		C float64
 		D string
+		M *message
 	}
 
 	tests := []struct {
@@ -21,8 +22,8 @@ func TestRewrite(t *testing.T) {
 	}{
 		{
 			scenario: "identity",
-			in:       message{A: 42},
-			out:      message{A: 42},
+			in:       message{A: 42, M: &message{A: 1}},
+			out:      message{A: 42, M: &message{A: 1}},
 			rw:       MessageRewriter(nil),
 		},
 
@@ -300,5 +301,77 @@ func BenchmarkRewrite(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		out, err = rw.Rewrite(out[:0], p)
+	}
+}
+
+func TestRewriteStructIdentity(t *testing.T) {
+	type Node struct {
+		Next               []Node   `protobuf:"bytes,1,rep,name=next,proto3" json:"next"`
+		Name               string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name"`
+		Type               string   `protobuf:"bytes,3,opt,name=type,proto3" json:"type"`
+		On                 uint32   `protobuf:"varint,4,opt,name=on,proto3,enum=op.Status" json:"on,omitempty"`
+		Key                string   `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
+		Seed               uint64   `protobuf:"fixed64,6,opt,name=seed,proto3" json:"seed,omitempty"`
+		ScheduleAfter      uint32   `protobuf:"varint,7,opt,name=schedule_after,json=scheduleAfter,proto3" json:"schedule_after,omitempty"`
+		ExpireAfter        uint32   `protobuf:"varint,8,opt,name=expire_after,json=expireAfter,proto3" json:"expire_after,omitempty"`
+		BackoffCoefficient uint32   `protobuf:"varint,9,opt,name=backoff_coefficient,json=backoffCoefficient,proto3" json:"backoff_coefficient,omitempty"`
+		BackoffMinDelay    uint32   `protobuf:"varint,10,opt,name=backoff_min_delay,json=backoffMinDelay,proto3" json:"backoff_min_delay,omitempty"`
+		BackoffMaxDelay    uint32   `protobuf:"varint,11,opt,name=backoff_max_delay,json=backoffMaxDelay,proto3" json:"backoff_max_delay,omitempty"`
+		ExecutionTimeout   uint32   `protobuf:"varint,12,opt,name=execution_timeout,json=executionTimeout,proto3" json:"execution_timeout,omitempty"`
+		NextLength         uint64   `protobuf:"varint,13,opt,name=next_length,json=nextLength,proto3" json:"next_length,omitempty"`
+		BatchMaxBytes      uint32   `protobuf:"varint,14,opt,name=batch_max_bytes,json=batchMaxBytes,proto3" json:"batch_max_bytes,omitempty"`
+		BatchMaxCount      uint32   `protobuf:"varint,15,opt,name=batch_max_count,json=batchMaxCount,proto3" json:"batch_max_count,omitempty"`
+		BatchTimeout       uint32   `protobuf:"varint,16,opt,name=batch_timeout,json=batchTimeout,proto3" json:"batch_timeout,omitempty"`
+		BatchKey           [16]byte `protobuf:"bytes,17,opt,name=batch_key,json=batchKey,proto3,customtype=U128" json:"batch_key"`
+	}
+
+	type Header struct {
+		Flows         string `protobuf:"bytes,1,opt,name=flows,proto3" json:"flows,omitempty"`
+		Root          Node   `protobuf:"bytes,2,opt,name=root,proto3" json:"root"`
+		TraceContext  []byte `protobuf:"bytes,6,opt,name=trace_context,json=traceContext,proto3" json:"trace_context"`
+		ContentLength int64  `protobuf:"varint,7,opt,name=content_length,json=contentLength,proto3" json:"content_length,omitempty"`
+		ContentType   string `protobuf:"bytes,8,opt,name=content_type,json=contentType,proto3" json:"content_type"`
+	}
+
+	b := []byte{
+		0xa, 0xd, 0x66, 0x6c, 0x6f, 0x77, 0x2d, 0x42, 0x3a, 0x66, 0x6c, 0x6f, 0x77, 0x2d, 0x30, 0x12,
+		0x7a, 0xa, 0x30, 0x12, 0xc, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72,
+		0x64, 0x1a, 0x0, 0x20, 0x2, 0x31, 0x69, 0xf2, 0xc9, 0xd0, 0xc1, 0x2f, 0xe0, 0x80, 0x68, 0x65,
+		0x8a, 0x1, 0x10, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+		0x0, 0x0, 0x0, 0x12, 0x4, 0x74, 0x65, 0x73, 0x74, 0x1a, 0x4, 0x68, 0x74, 0x74, 0x70, 0x31,
+		0xa, 0x7f, 0xf5, 0xf8, 0x13, 0x1d, 0xfb, 0x17, 0x38, 0xc1, 0xd, 0x40, 0xff, 0xdb, 0x1, 0x48,
+		0xc6, 0xf, 0x50, 0xbd, 0x1b, 0x58, 0x9a, 0xbe, 0x2, 0x60, 0x88, 0x27, 0x68, 0x5d, 0x70, 0x80,
+		0x80, 0x4, 0x78, 0xa, 0x80, 0x1, 0xd0, 0xf, 0x8a, 0x1, 0x10, 0x0, 0x0, 0x0, 0x0, 0x0,
+		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x32, 0x1c, 0xa, 0x10, 0x2a, 0x43,
+		0x4c, 0xf3, 0x8c, 0x67, 0x48, 0x8f, 0xe, 0xca, 0xe8, 0x28, 0x96, 0x6c, 0x2b, 0xe4, 0x12,
+		0x8, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x38, 0x91, 0x66, 0x42, 0x18, 0x61, 0x70,
+		0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x6f, 0x63, 0x74, 0x65, 0x74, 0x2d,
+		0x73, 0x74, 0x72, 0x65, 0x61, 0x6d,
+	}
+
+	m := Header{}
+	if err := Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := ParseRewriteTemplate(TypeOf(reflect.TypeOf(m)), []byte(`{"root":{}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := r.Rewrite(nil, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	x := Header{}
+	if err := Unmarshal(c, &x); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(m, x) {
+		t.Errorf("messages mismatch")
+		t.Logf("want: %+v", m)
+		t.Logf("got:  %+v", x)
 	}
 }

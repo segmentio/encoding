@@ -206,7 +206,7 @@ func mapDecodeFuncOf(t reflect.Type, f *mapField, seen map[reflect.Type]*codec) 
 		{Name: "Elem", Type: t.Elem()},
 	})
 
-	structCodec := structCodecOf(structType, seen)
+	structCodec := codecOf(structType, seen)
 	structPool := new(sync.Pool)
 	structZero := pointer(reflect.Zero(structType).Interface())
 

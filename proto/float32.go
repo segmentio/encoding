@@ -24,14 +24,14 @@ func sizeOfFloat32(p unsafe.Pointer, flags flags) int {
 func encodeFloat32(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	if p != nil {
 		if v := *(*float32)(p); v != 0 || flags.has(wantzero) || math.Signbit(float64(v)) {
-			return encodeFixed32(b, math.Float32bits(v))
+			return encodeLE32(b, math.Float32bits(v))
 		}
 	}
 	return 0, nil
 }
 
 func decodeFloat32(b []byte, p unsafe.Pointer, _ flags) (int, error) {
-	v, n, err := decodeFixed32(b)
+	v, n, err := decodeLE32(b)
 	*(*float32)(p) = math.Float32frombits(v)
 	return n, err
 }
