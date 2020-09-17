@@ -85,9 +85,9 @@ func formatInteger(out []byte, n uint64, negative bool) []byte {
 	i--
 	u[i] = lookup[n]
 
-	i *= 2
+	i *= 2 // convert to byte index
 	if n < 10 {
-		i++
+		i++ // remove leading zero
 	}
 	if negative {
 		i--
