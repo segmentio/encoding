@@ -26,22 +26,14 @@ func BenchmarkAppendIntStd1(b *testing.B) {
 	benchStd(b, 1)
 }
 
-func BenchmarkAppendIntStdMax(b *testing.B) {
-	benchStd(b, math.MaxInt64)
-}
-
-func BenchmarkAppendIntStdMin(b *testing.B) {
-	benchStd(b, math.MinInt64)
-}
-
 func BenchmarkAppendInt1(b *testing.B) {
 	benchNew(b, 1)
 }
 
-func BenchmarkAppendIntMax(b *testing.B) {
-	benchNew(b, math.MaxInt64)
+func BenchmarkAppendIntStdMinI64(b *testing.B) {
+	benchStd(b, math.MinInt64)
 }
 
-func BenchmarkAppendIntMin(b *testing.B) {
+func BenchmarkAppendIntMinI64(b *testing.B) {
 	benchNew(b, math.MinInt64)
 }
