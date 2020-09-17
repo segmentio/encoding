@@ -126,6 +126,8 @@ func TestParseRewriteTemplate(t *testing.T) {
 
 		Subfield    *submessage  `protobuf:"bytes,99,opt,name=subfield,proto3"`
 		Submessages []submessage `protobuf:"bytes,100,rep,name=submessages,proto3"`
+
+		Mapping map[string]int `protobuf:"bytes,200,opt,name=mapping,proto3"`
 	}
 
 	original := &message{
@@ -167,6 +169,11 @@ func TestParseRewriteTemplate(t *testing.T) {
 			{Question: "Q2?", Answer: "A2"},
 			{Question: "Q3?", Answer: "A3"},
 		},
+
+		Mapping: map[string]int{
+			"hello": 1,
+			"world": 2,
+		},
 	}
 
 	expected := &message{
@@ -198,6 +205,10 @@ func TestParseRewriteTemplate(t *testing.T) {
 			{Question: "Q1?", Answer: "A1"},
 			{Question: "Q2?", Answer: "A2"},
 			{Question: "Q3?", Answer: "Hello World!"},
+		},
+
+		Mapping: map[string]int{
+			"answer": 42,
 		},
 	}
 
@@ -248,7 +259,11 @@ func TestParseRewriteTemplate(t *testing.T) {
       "question": "Q3?",
       "answer": "Hello World!"
     }
-  ]
+  ],
+
+  "mapping": {
+    "answer": 42
+  }
 }`))
 	if err != nil {
 		t.Fatal(err)

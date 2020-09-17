@@ -326,7 +326,54 @@ func parseRewriteTemplateBytes(t Type, f FieldNumber, j json.RawMessage) (Rewrit
 }
 
 func parseRewriteTemplateMap(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
-	return identity{}, nil // TODO: implement
+	st := &structType{
+		name: t.Name(),
+		fields: []Field{
+			{Index: 0, Number: 1, Name: "key", Type: t.Key()},
+			{Index: 1, Number: 2, Name: "value", Type: t.Elem()},
+		},
+		fieldsByName:   make(map[string]int),
+		fieldsByNumber: make(map[FieldNumber]int),
+	}
+
+	for _, f := range st.fields {
+		st.fieldsByName[f.Name] = f.Index
+		st.fieldsByNumber[f.Number] = f.Index
+	}
+
+	template := map[string]json.RawMessage{}
+
+	if err := json.Unmarshal(j, &template); err != nil {
+		return nil, err
+	}
+
+	maplist := make([]json.RawMessage, 0, len(template))
+
+	for key, value := range template {
+		b, err := json.Marshal(struct {
+			Key   string          `json:"key"`
+			Value json.RawMessage `json:"value"`
+		}{
+			Key:   key,
+			Value: value,
+		})
+		if err != nil {
+			return nil, err
+		}
+		maplist = append(maplist, b)
+	}
+
+	rewriters := make([]Rewriter, len(maplist))
+
+	for i, b := range maplist {
+		r, err := parseRewriteTemplateStruct(st, f, b)
+		if err != nil {
+			return nil, err
+		}
+		rewriters[i] = r
+	}
+
+	return MultiRewriter(rewriters...), nil
 }
 
 func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
