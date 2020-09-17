@@ -45,18 +45,14 @@ func expand(b byte) uint64 {
 
 // below return a mask that can be used to determine if any of the bytes
 // in `n` are below `b`. If a byte's MSB is set in the mask then that byte was
-// below `b`.
-//
-// The result is only valid if `b` and each byte in `n` is below 0x80.
+// below `b`. The result is only valid if `b` is below 0x80.
 func below(n uint64, b byte) uint64 {
 	return n - expand(b)
 }
 
 // contains returns a mask that can be used to determine if any of the
 // bytes in `n` are equal to `b`. If a byte's MSB is set in the mask then
-// that byte is equal to `b`.
-//
-// The result is only valid if `b` and each byte in `n` is below 0x80.
+// that byte is equal to `b`. The result is only valid if `b` is below 0x80.
 func contains(n uint64, b byte) uint64 {
 	return (n ^ expand(b)) - lsb
 }
