@@ -6,6 +6,25 @@ import (
 	"testing"
 )
 
+func TestAppendInt(t *testing.T) {
+	var ints []int64
+	for i := 0; i < 64; i++ {
+		u := uint64(1) << i
+		ints = append(ints, int64(u-1), int64(u), int64(u+1), -int64(u))
+	}
+
+	var std [20]byte
+	var our [20]byte
+
+	for _, i := range ints {
+		expected := strconv.AppendInt(std[:], i, 10)
+		actual := appendInt(our[:], i)
+		if string(expected) != string(actual) {
+			t.Fatalf("appendInt(%d) = %v, expected = %v", i, string(actual), string(expected))
+		}
+	}
+}
+
 func benchStd(b *testing.B, n int64) {
 	var buf [20]byte
 	b.ResetTimer()
