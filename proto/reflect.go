@@ -393,8 +393,11 @@ func structTypeOf(t reflect.Type, seen map[reflect.Type]Type) *structType {
 
 			fieldName = t.name
 			fieldNumber = t.fieldNumber
-			repeated = t.repeated
 			taggedFields = t.fieldNumber
+			// Because maps are represented as repeated varlen fields on the
+			// wire, the generated protobuf code sets the `rep` attribute on
+			// the struct fields.
+			repeated = t.repeated && f.Type.Kind() != reflect.Map
 
 			if t.zigzag {
 				fieldType = fieldType.ZigZag()
