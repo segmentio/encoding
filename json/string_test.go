@@ -5,34 +5,34 @@ import (
 	"testing"
 )
 
-func BenchmarkSimpleString4KB(b *testing.B) {
-	benchmarkSimpleString(b, strings.Repeat("!foobar!", 512), false)
+func BenchmarkEscapeIndex4KB(b *testing.B) {
+	benchmarkEscapeIndex(b, strings.Repeat("!foobar!", 512), false)
 }
 
-func BenchmarkSimpleString4KBEscapeHTML(b *testing.B) {
-	benchmarkSimpleString(b, strings.Repeat("!foobar!", 512), true)
+func BenchmarkEscapeIndex4KBEscapeHTML(b *testing.B) {
+	benchmarkEscapeIndex(b, strings.Repeat("!foobar!", 512), true)
 }
 
-func BenchmarkSimpleString1(b *testing.B) {
-	benchmarkSimpleString(b, "1", false)
+func BenchmarkEscapeIndex1(b *testing.B) {
+	benchmarkEscapeIndex(b, "1", false)
 }
 
-func BenchmarkSimpleString1EscapeHTML(b *testing.B) {
-	benchmarkSimpleString(b, "1", true)
+func BenchmarkEscapeIndex1EscapeHTML(b *testing.B) {
+	benchmarkEscapeIndex(b, "1", true)
 }
 
-func BenchmarkSimpleString7(b *testing.B) {
-	benchmarkSimpleString(b, "1234567", false)
+func BenchmarkEscapeIndex7(b *testing.B) {
+	benchmarkEscapeIndex(b, "1234567", false)
 }
 
-func BenchmarkSimpleString7EscapeHTML(b *testing.B) {
-	benchmarkSimpleString(b, "1234567", true)
+func BenchmarkEscapeIndex7EscapeHTML(b *testing.B) {
+	benchmarkEscapeIndex(b, "1234567", true)
 }
 
-func benchmarkSimpleString(b *testing.B, s string, escapeHTML bool) {
+func benchmarkEscapeIndex(b *testing.B, s string, escapeHTML bool) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		simpleString(s, escapeHTML)
+		escapeIndex(s, escapeHTML)
 	}
 	b.SetBytes(int64(len(s)))
 }

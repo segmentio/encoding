@@ -130,14 +130,17 @@ func (e encoder) encodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 	s := *(*string)(p)
+	if len(s) == 0 {
+		return append(b, `""`...), nil
+	}
 	i := 0
-	j := 0
 	escapeHTML := (e.flags & EscapeHTML) != 0
 
-	b = append(b, '"')
-
-	if len(s) == 0 || simpleString(s, escapeHTML) {
-		return append(append(b, s...), '"'), nil
+	j := escapeIndex(s, escapeHTML)
+	if j < 0 {
+		return append(append(append(b, '"'), s...), '"'), nil
+	} else {
+		b = append(append(b, '"'), s[:j]...)
 	}
 
 	for j < len(s) {
