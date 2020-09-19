@@ -140,11 +140,8 @@ func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 	b = append(b, '"')
 
 	if len(s) >= 8 {
-		if e := escapeIndex(s, escapeHTML); e < 0 {
+		if j = escapeIndex(s, escapeHTML); j < 0 {
 			return append(append(b, s...), '"'), nil
-		} else {
-			b = append(b, s[:e]...)
-			j = e // start from the escape index
 		}
 	}
 

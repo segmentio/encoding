@@ -27,7 +27,7 @@ func escapeIndex(s string, escapeHTML bool) int {
 			mask |= contains(n, '<') | contains(n, '>') | contains(n, '&')
 		}
 		if (mask & msb) != 0 {
-			return (bits.TrailingZeros64(mask&msb) + 1) / 8
+			return bits.TrailingZeros64(mask&msb) / 8
 		}
 	}
 
