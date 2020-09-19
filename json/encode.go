@@ -134,13 +134,18 @@ func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return append(b, `""`...), nil
 	}
 	i := 0
+	j := 0
 	escapeHTML := (e.flags & EscapeHTML) != 0
 
-	j := escapeIndex(s, escapeHTML)
-	if j < 0 {
-		return append(append(append(b, '"'), s...), '"'), nil
-	} else {
-		b = append(append(b, '"'), s[:j]...)
+	b = append(b, '"')
+
+	if len(s) >= 8 {
+		if e := escapeIndex(s, escapeHTML); e < 0 {
+			return append(append(b, s...), '"'), nil
+		} else {
+			b = append(b, s[:e]...)
+			j = e // start from the escape index
+		}
 	}
 
 	for j < len(s) {
