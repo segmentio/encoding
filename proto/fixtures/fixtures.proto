@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package fixtures;
+
+option go_package = "github.com/segmentio/encoding/proto/fixtures";
+
+message Message {
+  int64 a = 1;
+  uint32 b = 2;
+  uint64 c = 3;
+  string d = 4;
+
+  sint32 signed_1 = 10;
+  sint64 signed_2 = 11;
+
+  fixed32 fixed_1 = 20;
+  fixed64 fixed_2 = 21;
+
+  sfixed32 signed_fixed_1 = 30;
+  sfixed64 signed_fixed_2 = 31;
+
+  float float32 = 40;
+  double float64 = 41;
+}
