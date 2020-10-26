@@ -11,17 +11,66 @@ func TestParseString(t *testing.T) {
 		in  string
 		out string
 		ext string
+		err string
 	}{
-		{`""`, `""`, ``},
-		{`"1234567890"`, `"1234567890"`, ``},
-		{`"Hello World!"`, `"Hello World!"`, ``},
-		{`"Hello\"World!"`, `"Hello\"World!"`, ``},
-		{`"\\"`, `"\\"`, ``},
+		{`""`, `""`, ``, ``},
+		{`"1234567890"`, `"1234567890"`, ``, ``},
+		{`"Hello World!"`, `"Hello World!"`, ``, ``},
+		{`"Hello\"World!"`, `"Hello\"World!"`, ``, ``},
+		{`"\\"`, `"\\"`, ``, ``},
+		{`"\u0061\u0062\u0063"`, `"\u0061\u0062\u0063"`, ``, ``},
+		{`"\u0"`, ``, ``, `json: unicode code point must have at least 4 characters: 0"`},
 	}
 
 	for _, test := range tests {
 		t.Run(test.in, func(t *testing.T) {
 			out, ext, err := parseString([]byte(test.in))
+
+			if test.err == "" {
+				if err != nil {
+					t.Errorf("%s => %s", test.in, err)
+					return
+				}
+			} else {
+				if s := err.Error(); s != test.err {
+					t.Error("invalid error")
+					t.Logf("expected: %s", test.err)
+					t.Logf("found:    %s", s)
+				}
+			}
+
+			if s := string(out); s != test.out {
+				t.Error("invalid output")
+				t.Logf("expected: %s", test.out)
+				t.Logf("found:    %s", s)
+			}
+
+			if s := string(ext); s != test.ext {
+				t.Error("invalid extra bytes")
+				t.Logf("expected: %s", test.ext)
+				t.Logf("found:    %s", s)
+			}
+		})
+	}
+}
+
+func TestParseStringUnquote(t *testing.T) {
+	tests := []struct {
+		in  string
+		out string
+		ext string
+	}{
+		{`""`, ``, ``},
+		{`"1234567890"`, `1234567890`, ``},
+		{`"Hello World!"`, `Hello World!`, ``},
+		{`"Hello\"World!"`, `Hello"World!`, ``},
+		{`"\\"`, `\`, ``},
+		{`"\u0061\u0062\u0063"`, `abc`, ``},
+	}
+
+	for _, test := range tests {
+		t.Run(test.in, func(t *testing.T) {
+			out, ext, _, err := parseStringUnquote([]byte(test.in), nil)
 
 			if err != nil {
 				t.Errorf("%s => %s", test.in, err)
