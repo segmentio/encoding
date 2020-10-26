@@ -376,11 +376,11 @@ func parseUnicode(b []byte) (rune, int, error) {
 
 	u, r, err := parseUintHex(b[:4])
 	if err != nil {
-		return 0, 0, syntaxError(b, "parsing unicode code point: %s", err)
+		return 0, 4, syntaxError(b, "parsing unicode code point: %s", err)
 	}
 
 	if len(r) != 0 {
-		return 0, 0, syntaxError(b, "invalid unicode code point")
+		return 0, 4, syntaxError(b, "invalid unicode code point")
 	}
 
 	return rune(u), 4, nil
