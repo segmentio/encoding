@@ -185,6 +185,41 @@ func TestTokenizer(t *testing.T) {
 	}
 }
 
+// Regression test for syntax that caused panics in Next.
+func TestTokenizer_invalidInput(t *testing.T) {
+	tests := []struct {
+		scenario string
+		payload  []byte
+	}{
+		{
+			scenario: "bare comma",
+			payload:  []byte(","),
+		},
+		{
+			scenario: "comma after array",
+			payload:  []byte("[],"),
+		},
+		{
+			scenario: "comma after object",
+			payload:  []byte("{},"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.scenario, func(t *testing.T) {
+			tkn := NewTokenizer(test.payload)
+
+			// This shouldn't panic
+			for tkn.Next() {
+			}
+
+			if tkn.Err == nil {
+				t.Error("expected Err to be set, got nil")
+			}
+		})
+	}
+}
+
 func BenchmarkTokenizer(b *testing.B) {
 	values := []struct {
 		scenario string
