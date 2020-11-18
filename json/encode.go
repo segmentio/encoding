@@ -476,6 +476,7 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 					b = append(b, ',')
 				}
 
+				// encodeString doesn't return errors so we ignore it here
 				b, _ = e.encodeString(b, unsafe.Pointer(&k))
 				b = append(b, ':')
 
@@ -546,7 +547,6 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 		b = append(b, '{')
 
 		if len(m) != 0 {
-			var err error
 			var i = 0
 
 			for k, v := range m {
@@ -554,13 +554,10 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 					b = append(b, ',')
 				}
 
+				// encodeString never returns an error so we ignore it here
 				b, _ = e.encodeString(b, unsafe.Pointer(&k))
 				b = append(b, ':')
-
-				b, err = e.encodeString(b, unsafe.Pointer(&v))
-				if err != nil {
-					break
-				}
+				b, _ = e.encodeString(b, unsafe.Pointer(&v))
 
 				i++
 			}
@@ -580,8 +577,6 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 	}
 	sort.Sort(s)
 
-	var start = len(b)
-	var err error
 	b = append(b, '{')
 
 	for i, elem := range s.elements {
@@ -589,13 +584,10 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 			b = append(b, ',')
 		}
 
+		// encodeString never returns an error so we ignore it here
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
 		b = append(b, ':')
-
 		b, _ = e.encodeString(b, unsafe.Pointer(elem.val.(*string)))
-		if err != nil {
-			break
-		}
 	}
 
 	for i := range s.elements {
@@ -604,10 +596,6 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 
 	s.elements = s.elements[:0]
 	mapslicePool.Put(s)
-
-	if err != nil {
-		return b[:start], err
-	}
 
 	b = append(b, '}')
 	return b, nil
@@ -640,7 +628,7 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 
 				b, err = e.encodeSlice(b, unsafe.Pointer(&v), stringSize, sliceStringType, encoder.encodeString)
 				if err != nil {
-					break
+					return b, err
 				}
 
 				i++
@@ -706,7 +694,6 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 		b = append(b, '{')
 
 		if len(m) != 0 {
-			var err error
 			var i = 0
 
 			for k, v := range m {
@@ -714,12 +701,12 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 					b = append(b, ',')
 				}
 
+				// encodeString never returns an error so we ignore it here
 				b, _ = e.encodeString(b, unsafe.Pointer(&k))
-				b = append(b, ':')
-
-				b, err = e.encodeBool(b, unsafe.Pointer(&v))
-				if err != nil {
-					break
+				if v {
+					b = append(b, ":true"...)
+				} else {
+					b = append(b, ":false"...)
 				}
 
 				i++
@@ -739,8 +726,6 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 	}
 	sort.Sort(s)
 
-	var start = len(b)
-	var err error
 	b = append(b, '{')
 
 	for i, elem := range s.elements {
@@ -748,13 +733,12 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 			b = append(b, ',')
 		}
 
+		// encodeString never returns an error so we ignore it here
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
-		b = append(b, ':')
-
 		if elem.val.(bool) {
-			b = append(b, "true"...)
+			b = append(b, ":true"...)
 		} else {
-			b = append(b, "false"...)
+			b = append(b, ":false"...)
 		}
 	}
 
@@ -764,10 +748,6 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 
 	s.elements = s.elements[:0]
 	mapslicePool.Put(s)
-
-	if err != nil {
-		return b[:start], err
-	}
 
 	b = append(b, '}')
 	return b, nil
