@@ -988,14 +988,14 @@ func (d decoder) decodeMapStringStrings(b []byte, p unsafe.Pointer) ([]byte, err
 
 	var err error
 	var key string
-	var val []string
+	var buf []string
 	var input = b
 	var stringSize = unsafe.Sizeof("")
 
 	b = b[1:]
 	for {
 		key = ""
-		val = []string{}
+		buf = buf[:0]
 
 		b = skipSpaces(b)
 
@@ -1032,7 +1032,7 @@ func (d decoder) decodeMapStringStrings(b []byte, p unsafe.Pointer) ([]byte, err
 		}
 		b = skipSpaces(b[1:])
 
-		b, err = d.decodeSlice(b, unsafe.Pointer(&val), stringSize, sliceStringType, decoder.decodeString)
+		b, err = d.decodeSlice(b, unsafe.Pointer(&buf), stringSize, sliceStringType, decoder.decodeString)
 		if err != nil {
 			if _, r, err := parseValue(input); err != nil {
 				return r, err
@@ -1045,6 +1045,9 @@ func (d decoder) decodeMapStringStrings(b []byte, p unsafe.Pointer) ([]byte, err
 			}
 			return b, err
 		}
+
+		val := make([]string, len(buf))
+		copy(val, buf)
 
 		m[key] = val
 		i++
