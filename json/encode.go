@@ -575,7 +575,8 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 		s.elements = make([]element, 0, align(10, uintptr(len(m))))
 	}
 	for key, val := range m {
-		s.elements = append(s.elements, element{key: key, val: &val})
+		v := val
+		s.elements = append(s.elements, element{key: key, val: &v})
 	}
 	sort.Sort(s)
 
@@ -655,7 +656,8 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 		s.elements = make([]element, 0, align(10, uintptr(len(m))))
 	}
 	for key, val := range m {
-		s.elements = append(s.elements, element{key: key, val: &val})
+		v := val
+		s.elements = append(s.elements, element{key: key, val: &v})
 	}
 	sort.Sort(s)
 
