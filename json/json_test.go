@@ -185,6 +185,12 @@ var testValues = [...]interface{}{
 	makeMapStringBool(0),
 	makeMapStringBool(15),
 	makeMapStringBool(1020),
+	makeMapStringString(0),
+	makeMapStringString(15),
+	makeMapStringString(1020),
+	makeMapStringStrings(0),
+	makeMapStringStrings(15),
+	makeMapStringStrings(1020),
 	makeMapStringInterface(0),
 	makeMapStringInterface(15),
 	makeMapStringInterface(1020),
@@ -281,6 +287,22 @@ func makeMapStringBool(n int) map[string]bool {
 	m := make(map[string]bool, n)
 	for i := 0; i != n; i++ {
 		m[strconv.Itoa(i)] = true
+	}
+	return m
+}
+
+func makeMapStringString(n int) map[string]string {
+	m := make(map[string]string, n)
+	for i := 0; i != n; i++ {
+		m[strconv.Itoa(i)] = "Hello, world!"
+	}
+	return m
+}
+
+func makeMapStringStrings(n int) map[string][]string {
+	m := make(map[string][]string, n)
+	for i := 0; i != n; i++ {
+		m[strconv.Itoa(i)] = []string{"Hello,", "world!"}
 	}
 	return m
 }
