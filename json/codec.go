@@ -349,8 +349,8 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 
 	case k == stringType && v == stringsType:
 		return codec{
-			encode: encoder.encodeMapStringStrings,
-			decode: decoder.decodeMapStringStrings,
+			encode: encoder.encodeMapStringStringSlice,
+			decode: decoder.decodeMapStringStringSlice,
 		}
 
 	case k == stringType && v == boolType:
@@ -1069,7 +1069,7 @@ var (
 	mapStringInterfaceType  = reflect.TypeOf((map[string]interface{})(nil))
 	mapStringRawMessageType = reflect.TypeOf((map[string]RawMessage)(nil))
 	mapStringStringType     = reflect.TypeOf((map[string]string)(nil))
-	mapStringStringsType    = reflect.TypeOf((map[string][]string)(nil))
+	mapStringStringSliceType    = reflect.TypeOf((map[string][]string)(nil))
 	mapStringBoolType       = reflect.TypeOf((map[string]bool)(nil))
 
 	interfaceType       = reflect.TypeOf((*interface{})(nil)).Elem()

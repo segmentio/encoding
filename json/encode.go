@@ -612,7 +612,7 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 	return b, nil
 }
 
-func (e encoder) encodeMapStringStrings(b []byte, p unsafe.Pointer) ([]byte, error) {
+func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte, error) {
 	m := *(*map[string][]string)(p)
 	if m == nil {
 		return append(b, "null"...), nil

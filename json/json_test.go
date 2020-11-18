@@ -188,9 +188,9 @@ var testValues = [...]interface{}{
 	makeMapStringString(0),
 	makeMapStringString(15),
 	makeMapStringString(1020),
-	makeMapStringStrings(0),
-	makeMapStringStrings(15),
-	makeMapStringStrings(1020),
+	makeMapStringStringSlice(0),
+	makeMapStringStringSlice(15),
+	makeMapStringStringSlice(1020),
 	makeMapStringInterface(0),
 	makeMapStringInterface(15),
 	makeMapStringInterface(1020),
@@ -299,7 +299,7 @@ func makeMapStringString(n int) map[string]string {
 	return m
 }
 
-func makeMapStringStrings(n int) map[string][]string {
+func makeMapStringStringSlice(n int) map[string][]string {
 	m := make(map[string][]string, n)
 	for i := 0; i != n; i++ {
 		m[strconv.Itoa(i)] = []string{"Hello,", "world!"}

@@ -969,14 +969,14 @@ func (d decoder) decodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 	}
 }
 
-func (d decoder) decodeMapStringStrings(b []byte, p unsafe.Pointer) ([]byte, error) {
+func (d decoder) decodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte, error) {
 	if hasNullPrefix(b) {
 		*(*unsafe.Pointer)(p) = nil
 		return b[4:], nil
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, mapStringStringsType)
+		return inputError(b, mapStringStringSliceType)
 	}
 
 	i := 0
