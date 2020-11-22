@@ -535,7 +535,7 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 		if err != nil {
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = t.String() + e.Struct
-				e.Field = strconv.Itoa(i) + "." + e.Field
+				e.Field = d.prependField(strconv.Itoa(i), e.Field)
 			}
 			return b, err
 		}
@@ -637,7 +637,7 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = t.String() + e.Struct
-				e.Field = strconv.Itoa(s.len) + "." + e.Field
+				e.Field = d.prependField(strconv.Itoa(s.len), e.Field)
 			}
 			return b, err
 		}
@@ -716,7 +716,7 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = "map[" + kt.String() + "]" + vt.String() + "{" + e.Struct + "}"
-				e.Field = fmt.Sprint(k.Interface()) + "." + e.Field
+				e.Field = d.prependField(fmt.Sprint(k.Interface()), e.Field)
 			}
 			return b, err
 		}
@@ -797,7 +797,7 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = mapStringInterfaceType.String() + e.Struct
-				e.Field = key + "." + e.Field
+				e.Field = d.prependField(key, e.Field)
 			}
 			return b, err
 		}
@@ -878,7 +878,7 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = mapStringRawMessageType.String() + e.Struct
-				e.Field = key + "." + e.Field
+				e.Field = d.prependField(key, e.Field)
 			}
 			return b, err
 		}
@@ -959,7 +959,7 @@ func (d decoder) decodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = mapStringStringType.String() + e.Struct
-				e.Field = key + "." + e.Field
+				e.Field = d.prependField(key, e.Field)
 			}
 			return b, err
 		}
@@ -1041,7 +1041,7 @@ func (d decoder) decodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = mapStringStringType.String() + e.Struct
-				e.Field = key + "." + e.Field
+				e.Field = d.prependField(key, e.Field)
 			}
 			return b, err
 		}
@@ -1125,7 +1125,7 @@ func (d decoder) decodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = mapStringStringType.String() + e.Struct
-				e.Field = key + "." + e.Field
+				e.Field = d.prependField(key, e.Field)
 			}
 			return b, err
 		}
@@ -1215,7 +1215,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 			}
 			if e, ok := err.(*UnmarshalTypeError); ok {
 				e.Struct = st.typ.String() + e.Struct
-				e.Field = string(k) + "." + e.Field
+				e.Field = d.prependField(string(k), e.Field)
 			}
 			return b, err
 		}
@@ -1436,4 +1436,11 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 	}
 
 	return b, &UnmarshalTypeError{Value: value, Type: reflect.PtrTo(t)}
+}
+
+func (d decoder) prependField(key, field string) string {
+	if field != "" {
+		return key + "." + field
+	}
+	return key
 }
