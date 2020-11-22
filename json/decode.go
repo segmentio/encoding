@@ -1441,7 +1441,6 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 func (d decoder) prependField(key, field string) string {
 	if field != "" {
 		return key + "." + field
-	} else {
-		return key
 	}
+	return key
 }
