@@ -142,10 +142,20 @@ func Append(b []byte, x interface{}, flags AppendFlags) ([]byte, error) {
 	return b, err
 }
 
-// AppendEscaped appends s to b with the string escaped as a JSON value.
+// Escape is a convenience helper to construct an escaped JSON string from s.
+// The function escales HTML characters, for more control over the escape
+// behavior and to write to a pre-allocated buffer, use AppendEscape.
+func Escape(s string) []byte {
+	// +10 for extra escape characters, maybe not enough and the buffer will
+	// be reallocated.
+	b := make([]byte, 0, len(s)+10)
+	return AppendEscape(b, s, EscapeHTML)
+}
+
+// AppendEscape appends s to b with the string escaped as a JSON value.
 // This will include the starting and ending quote characters, and the
 // appropriate characters will be escaped correctly for JSON encoding.
-func AppendEscaped(b []byte, s string, flags AppendFlags) []byte {
+func AppendEscape(b []byte, s string, flags AppendFlags) []byte {
 	e := encoder{flags: flags}
 	b, _ = e.encodeString(b, unsafe.Pointer(&s))
 	return b
