@@ -1646,3 +1646,46 @@ func TestSetTrustRawMessage(t *testing.T) {
 		)
 	}
 }
+
+func TestAppendEscaped(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		b := AppendEscaped([]byte{}, `value`, AppendFlags(0))
+		exp := []byte(`"value"`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+
+	t.Run("escaped", func(t *testing.T) {
+		b := AppendEscaped([]byte{}, `"escaped"	<value>`, EscapeHTML)
+		exp := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+
+	t.Run("build", func(t *testing.T) {
+		b := []byte{}
+		b = append(b, '{')
+		b = AppendEscaped(b, `key`, EscapeHTML)
+		b = append(b, ':')
+		b = AppendEscaped(b, `"escaped"	<value>`, EscapeHTML)
+		b = append(b, '}')
+		exp := []byte(`{"key":"\"escaped\"\t\u003cvalue\u003e"}`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+}
