@@ -142,6 +142,15 @@ func Append(b []byte, x interface{}, flags AppendFlags) ([]byte, error) {
 	return b, err
 }
 
+// AppendEscaped appends s to b with the string escaped as a JSON value.
+// This will include the starting and ending quote characters, and the
+// appropriate characters will be escaped correctly for JSON encoding.
+func AppendEscaped(b []byte, s string, flags AppendFlags) []byte {
+	e := encoder{flags: flags}
+	b, _ = e.encodeString(b, unsafe.Pointer(&s))
+	return b
+}
+
 // Compact is documented at https://golang.org/pkg/encoding/json/#Compact
 func Compact(dst *bytes.Buffer, src []byte) error {
 	return json.Compact(dst, src)
