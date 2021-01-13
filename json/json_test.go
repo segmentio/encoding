@@ -1647,9 +1647,22 @@ func TestSetTrustRawMessage(t *testing.T) {
 	}
 }
 
-func TestAppendEscaped(t *testing.T) {
+func TestEscapeString(t *testing.T) {
+	b := Escape(`value`)
+	x := []byte(`"value"`)
+
+	if !bytes.Equal(x, b) {
+		t.Error(
+			"unexpected encoding:",
+			"expected", string(x),
+			"got", string(b),
+		)
+	}
+}
+
+func TestAppendEscape(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
-		b := AppendEscaped([]byte{}, `value`, AppendFlags(0))
+		b := AppendEscape([]byte{}, `value`, AppendFlags(0))
 		exp := []byte(`"value"`)
 		if bytes.Compare(exp, b) != 0 {
 			t.Error(
@@ -1661,7 +1674,7 @@ func TestAppendEscaped(t *testing.T) {
 	})
 
 	t.Run("escaped", func(t *testing.T) {
-		b := AppendEscaped([]byte{}, `"escaped"	<value>`, EscapeHTML)
+		b := AppendEscape([]byte{}, `"escaped"	<value>`, EscapeHTML)
 		exp := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
 		if bytes.Compare(exp, b) != 0 {
 			t.Error(
@@ -1675,9 +1688,9 @@ func TestAppendEscaped(t *testing.T) {
 	t.Run("build", func(t *testing.T) {
 		b := []byte{}
 		b = append(b, '{')
-		b = AppendEscaped(b, `key`, EscapeHTML)
+		b = AppendEscape(b, `key`, EscapeHTML)
 		b = append(b, ':')
-		b = AppendEscaped(b, `"escaped"	<value>`, EscapeHTML)
+		b = AppendEscape(b, `"escaped"	<value>`, EscapeHTML)
 		b = append(b, '}')
 		exp := []byte(`{"key":"\"escaped\"\t\u003cvalue\u003e"}`)
 		if bytes.Compare(exp, b) != 0 {
