@@ -2,7 +2,6 @@ package json
 
 import (
 	"math/bits"
-	"reflect"
 	"unsafe"
 )
 
@@ -63,8 +62,8 @@ func expand(b byte) uint64 {
 }
 
 func stringToUint64(s string) []uint64 {
-	return *(*[]uint64)(unsafe.Pointer(&reflect.SliceHeader{
-		Data: ((*reflect.StringHeader)(unsafe.Pointer(&s))).Data,
+	return *(*[]uint64)(unsafe.Pointer(&sliceHeader{
+		Data: *(*unsafe.Pointer)(unsafe.Pointer(&s)),
 		Len:  len(s) / 8,
 		Cap:  len(s) / 8,
 	}))
