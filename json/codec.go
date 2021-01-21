@@ -1022,13 +1022,18 @@ func uintStringsAreSorted(u0, u1 uint64) bool {
 	return string(strconv.AppendUint(b0[:0], u0, 10)) < string(strconv.AppendUint(b1[:0], u1, 10))
 }
 
-//go:nosplit
 func stringToBytes(s string) []byte {
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
-		Data: ((*reflect.StringHeader)(unsafe.Pointer(&s))).Data,
+	return *(*[]byte)(unsafe.Pointer(&sliceHeader{
+		Data: *(*unsafe.Pointer)(unsafe.Pointer(&s)),
 		Len:  len(s),
 		Cap:  len(s),
 	}))
+}
+
+type sliceHeader struct {
+	Data unsafe.Pointer
+	Len  int
+	Cap  int
 }
 
 var (

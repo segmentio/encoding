@@ -52,11 +52,17 @@ func decodeBytes(b []byte, p unsafe.Pointer, _ flags) (int, error) {
 }
 
 func makeBytes(p unsafe.Pointer, n int) []byte {
-	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
-		Data: uintptr(p),
+	return *(*[]byte)(unsafe.Pointer(&sliceHeader{
+		Data: p,
 		Len:  n,
 		Cap:  n,
 	}))
+}
+
+type sliceHeader struct {
+	Data unsafe.Pointer
+	Len  int
+	Cap  int
 }
 
 // isZeroBytes is an optimized version of this loop:
@@ -79,8 +85,8 @@ func makeBytes(p unsafe.Pointer, n int) []byte {
 // IsZeroBytes64K  14.8µs ± 3%   1.9µs ± 3%  -87.34%  (p=0.000 n=10+10)
 func isZeroBytes(b []byte) bool {
 	if n := len(b) / 8; n != 0 {
-		if !isZeroUint64(*(*[]uint64)(unsafe.Pointer(&reflect.SliceHeader{
-			Data: uintptr(unsafe.Pointer(&b[0])),
+		if !isZeroUint64(*(*[]uint64)(unsafe.Pointer(&sliceHeader{
+			Data: unsafe.Pointer(&b[0]),
 			Len:  n,
 			Cap:  n,
 		}))) {
