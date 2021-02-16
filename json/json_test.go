@@ -1702,3 +1702,42 @@ func TestAppendEscape(t *testing.T) {
 		}
 	})
 }
+
+func TestUnescapeString(t *testing.T) {
+	b := Escape(`value`)
+	x := []byte(`"value"`)
+
+	if !bytes.Equal(x, b) {
+		t.Error(
+			"unexpected encoding:",
+			"expected", string(x),
+			"got", string(b),
+		)
+	}
+}
+
+func TestAppendUnescape(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		out := AppendUnescape([]byte{}, `"value"`, ParseFlags(0))
+		exp := []byte("value")
+		if bytes.Compare(exp, out) != 0 {
+			t.Error(
+				"unexpected decoding:",
+				"expected", exp,
+				"got", out,
+			)
+		}
+	})
+
+	t.Run("escaped", func(t *testing.T) {
+		b := AppendUnescape([]byte{}, `"\"escaped\"\t\u003cvalue\u003e"`, ParseFlags(0))
+		exp := []byte(`"escaped"	<value>`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+}
