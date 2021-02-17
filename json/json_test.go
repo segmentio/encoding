@@ -1740,4 +1740,19 @@ func TestAppendUnescape(t *testing.T) {
 			)
 		}
 	})
+
+	t.Run("build", func(t *testing.T) {
+		b := []byte{}
+		b = append(b, []byte(`{"key":`)...)
+		b = AppendUnescape(b, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
+		b = append(b, '}')
+		exp := []byte(`{"key":"escaped"	<value>}`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", string(exp),
+				"got", string(b),
+			)
+		}
+	})
 }

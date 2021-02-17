@@ -170,12 +170,14 @@ func Unescape(s []byte) []byte {
 }
 
 // AppendUnescape appends s to b with the string unescaped as a JSON value.
-// This will include the starting and ending quote characters, and the
+// This will remove starting and ending quote characters, and the
 // appropriate characters will be escaped correctly as if JSON decoded.
+// New space will be reallocated if more space is needed.
 func AppendUnescape(b []byte, s []byte, flags ParseFlags) []byte {
 	d := decoder{flags: flags}
-	b, _ = d.decodeString(s, unsafe.Pointer(&s))
-	return s
+	buf := new(string)
+	d.decodeString(s, unsafe.Pointer(buf))
+	return append(b, *buf...)
 }
 
 // Compact is documented at https://golang.org/pkg/encoding/json/#Compact
