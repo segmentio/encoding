@@ -1704,12 +1704,12 @@ func TestAppendEscape(t *testing.T) {
 }
 
 func TestUnescapeString(t *testing.T) {
-	b := Escape(`value`)
-	x := []byte(`"value"`)
+	b := Unescape([]byte(`"value"`))
+	x := []byte(`value`)
 
 	if !bytes.Equal(x, b) {
 		t.Error(
-			"unexpected encoding:",
+			"unexpected decoding:",
 			"expected", string(x),
 			"got", string(b),
 		)
