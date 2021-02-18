@@ -1756,3 +1756,24 @@ func TestAppendUnescape(t *testing.T) {
 		}
 	})
 }
+
+func BenchmarkUnescape(b *testing.B) {
+	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+	out := []byte{}
+	for i := 0; i < b.N; i++ {
+		out = Unescape(s)
+	}
+
+	b.Log(string(out))
+}
+
+func BenchmarkUnmarshalField(b *testing.B) {
+	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+	var v string
+
+	for i := 0; i < b.N; i++ {
+		json.Unmarshal(s, &v)
+	}
+
+	b.Log(v)
+}
