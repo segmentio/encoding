@@ -1702,3 +1702,78 @@ func TestAppendEscape(t *testing.T) {
 		}
 	})
 }
+
+func TestUnescapeString(t *testing.T) {
+	b := Unescape([]byte(`"value"`))
+	x := []byte(`value`)
+
+	if !bytes.Equal(x, b) {
+		t.Error(
+			"unexpected decoding:",
+			"expected", string(x),
+			"got", string(b),
+		)
+	}
+}
+
+func TestAppendUnescape(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		out := AppendUnescape([]byte{}, []byte(`"value"`), ParseFlags(0))
+		exp := []byte("value")
+		if bytes.Compare(exp, out) != 0 {
+			t.Error(
+				"unexpected decoding:",
+				"expected", exp,
+				"got", out,
+			)
+		}
+	})
+
+	t.Run("escaped", func(t *testing.T) {
+		b := AppendUnescape([]byte{}, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
+		exp := []byte(`"escaped"	<value>`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+
+	t.Run("build", func(t *testing.T) {
+		b := []byte{}
+		b = append(b, []byte(`{"key":`)...)
+		b = AppendUnescape(b, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
+		b = append(b, '}')
+		exp := []byte(`{"key":"escaped"	<value>}`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", string(exp),
+				"got", string(b),
+			)
+		}
+	})
+}
+
+func BenchmarkUnescape(b *testing.B) {
+	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+	out := []byte{}
+	for i := 0; i < b.N; i++ {
+		out = Unescape(s)
+	}
+
+	b.Log(string(out))
+}
+
+func BenchmarkUnmarshalField(b *testing.B) {
+	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+	var v string
+
+	for i := 0; i < b.N; i++ {
+		json.Unmarshal(s, &v)
+	}
+
+	b.Log(v)
+}

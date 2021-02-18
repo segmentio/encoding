@@ -161,6 +161,25 @@ func AppendEscape(b []byte, s string, flags AppendFlags) []byte {
 	return b
 }
 
+// Unescape is a convenience helper to unescape a JSON value.
+// For more control over the unescape behavior and
+// to write to a pre-allocated buffer, use AppendUnescape.
+func Unescape(s []byte) []byte {
+	b := make([]byte, 0, len(s))
+	return AppendUnescape(b, s, ParseFlags(0))
+}
+
+// AppendUnescape appends s to b with the string unescaped as a JSON value.
+// This will remove starting and ending quote characters, and the
+// appropriate characters will be escaped correctly as if JSON decoded.
+// New space will be reallocated if more space is needed.
+func AppendUnescape(b []byte, s []byte, flags ParseFlags) []byte {
+	d := decoder{flags: flags}
+	buf := new(string)
+	d.decodeString(s, unsafe.Pointer(buf))
+	return append(b, *buf...)
+}
+
 // Compact is documented at https://golang.org/pkg/encoding/json/#Compact
 func Compact(dst *bytes.Buffer, src []byte) error {
 	return json.Compact(dst, src)
