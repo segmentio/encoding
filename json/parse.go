@@ -40,7 +40,7 @@ func skipSpacesN(b []byte) ([]byte, int) {
 	return nil, 0
 }
 
-// parseInt parses a decimanl representation of an int64 from b.
+// parseInt parses a decimal representation of an int64 from b.
 //
 // The function is equivalent to calling strconv.ParseInt(string(b), 10, 64) but
 // it prevents Go from making a memory allocation for converting a byte slice to

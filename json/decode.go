@@ -683,7 +683,7 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 
 		if i != 0 {
 			if len(b) == 0 {
-				return b, syntaxError(b, "unexpected end of JONS input after object field value")
+				return b, syntaxError(b, "unexpected end of JSON input after object field value")
 			}
 			if b[0] != ',' {
 				return b, syntaxError(b, "expected ',' after object field value but found '%c'", b[0])
