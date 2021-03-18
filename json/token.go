@@ -183,15 +183,14 @@ skipLoop:
 		case ':':
 			t.isKey = false
 		case ',':
-			stack := t.grabStack()
-			if len(stack.state) == 0 {
+			if t.stack == nil || len(t.stack.state) == 0 {
 				t.Err = syntaxError(t.json, "found unexpected comma")
 				return false
 			}
-			if stack.is(inObject) {
+			if t.stack.is(inObject) {
 				t.isKey = true
 			}
-			stack.state[len(stack.state)-1].len++
+			t.stack.state[len(t.stack.state)-1].len++
 		}
 	}
 
@@ -213,7 +212,10 @@ func (t *Tokenizer) index() int {
 }
 
 func (t *Tokenizer) push(typ scope) {
-	t.grabStack().push(typ)
+	if t.stack == nil {
+		t.stack = acquireStack()
+	}
+	t.stack.push(typ)
 }
 
 func (t *Tokenizer) pop(expect scope) error {
@@ -221,13 +223,6 @@ func (t *Tokenizer) pop(expect scope) error {
 		return syntaxError(t.json, "found unexpected character while tokenizing json input")
 	}
 	return nil
-}
-
-func (t *Tokenizer) grabStack() *stack {
-	if t.stack == nil {
-		t.stack = acquireStack()
-	}
-	return t.stack
 }
 
 // RawValue represents a raw json value, it is intended to carry null, true,
