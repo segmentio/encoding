@@ -7,17 +7,6 @@ import (
 	. "github.com/mmcloughlin/avo/operand"
 )
 
-// https://graphics.stanford.edu/~seander/bithacks.html#HasLessInWord
-//
-// The masks have been simplified for the special case implemented by the
-// validatePrint function, which tests if the words contain a byte less than
-// 0x20 or more than 0x7E (bounds of printable ASCII characters).
-const (
-	mask0 = 0x0101010101010101 // (2^64 - 1) / 255
-	mask1 = 0x8080808080808080 // mask0 * 128
-	space = 0x2020202020202020 // mask0 * 0x20
-)
-
 func main() {
 	TEXT("validPrint16", NOSPLIT, "func(p *byte, n uintptr) int")
 	Doc("Validates that the string only contains printable ASCII characters.")
