@@ -21,31 +21,18 @@ const (
 )
 
 func main() {
-	TEXT("validPrint", NOSPLIT, "func(s string) int")
+	TEXT("validPrint16", NOSPLIT, "func(p *byte, n uintptr) int")
 	Doc("Validates that the string only contains printable ASCII characters.")
 
-	n := Load(Param("s").Len(), GP64())
+	n := Load(Param("n"), GP64())
 	CMPQ(n, Imm(0))
 	JE(LabelRef("valid"))
 
-	p := Load(Param("s").Base(), GP64())
+	p := Load(Param("p"), GP64())
 	r := GP64()
 	x := GP64()
 	y := GP64()
-	z := GP64()
 	MOVQ(U64(0), r)
-
-	Comment("Only initialize the 32 bits registers if there are more than 8 bytes.")
-	CMPQ(n, Imm(4))
-	JL(LabelRef("loop1"))
-
-	Comment("Only initialize the 64 bits registers if there are more than 8 bytes.")
-	CMPQ(n, Imm(8))
-	JL(LabelRef("loop4"))
-
-	Comment("Only initialize the 128 bits registers if there are more than 16 bytes.")
-	CMPQ(n, Imm(16))
-	JL(LabelRef("init8"))
 
 	// =========================================================================
 	// Loop optimized for strings with 16 bytes or more.
@@ -85,7 +72,7 @@ func main() {
 	// of memory loads and loop management (pointer increment, counter decrement).
 	Label("loop32")
 	Comment("Loop until less than 32 bytes remain.")
-	CMPQ(n, Imm(32))
+	CMPQ(n, Imm(2)) // less than 2 x 16 bytes?
 	JL(LabelRef("loop16"))
 
 	MOVUPS(Mem{Base: p}, xmm0)
@@ -132,7 +119,7 @@ func main() {
 	CMPQ(x, Imm(0))
 	JNE(LabelRef("done"))
 
-	SUBQ(Imm(32), n)
+	SUBQ(Imm(2), n)
 	ADDQ(Imm(32), p)
 	JMP(LabelRef("loop32"))
 
@@ -140,8 +127,8 @@ func main() {
 	// than 32 bytes remaining.
 	Label("loop16")
 	Comment("Consume the next 16 bytes of input.")
-	CMPQ(n, Imm(16))
-	JL(LabelRef("init8"))
+	CMPQ(n, Imm(0))
+	JE(LabelRef("valid"))
 
 	MOVUPS(Mem{Base: p}, xmm0)
 
@@ -164,129 +151,6 @@ func main() {
 	MOVQ(xmm2, x)
 	CMPQ(x, Imm(0))
 	JNE(LabelRef("done"))
-
-	SUBQ(Imm(16), n)
-	ADDQ(Imm(16), p)
-	// =========================================================================
-
-	// =========================================================================
-	// Section for the case where there is at least 8 bytes to read. The code
-	// either jumps here from the end of "loop16", or starts here for strings
-	// that are shorter than 16 bytes.
-	Label("init8")
-	maxUint64 := GP64()
-	hasLessThan0x20L := GP64()
-	hasLessThan0x20R := GP64()
-	hasMoreThan0x7eL := GP64()
-	hasMoreThan0x7eR := GP64()
-
-	MOVQ(U64(math.MaxUint64), maxUint64)
-	MOVQ(U64(mask0*uint64(0x20)), hasLessThan0x20L)
-	MOVQ(U64(mask1), hasLessThan0x20R)
-	MOVQ(U64(mask0*(uint64(127)-0x7e)), hasMoreThan0x7eL)
-	MOVQ(U64(mask1), hasMoreThan0x7eR)
-
-	Label("loop8")
-	Comment("Consume the next 8 bytes of input.")
-	CMPQ(n, Imm(8))
-	JL(LabelRef("loop4"))
-
-	MOVQ(Mem{Base: p}, x)
-
-	// func hasLess64(x, n uint64) bool {
-	// 	return ((x - (constL64 * n)) & ^x & constR64) != 0
-	// }
-	//
-	// With n=0x20 to test for characters before the space ASCII code.
-	MOVQ(x, y)
-	MOVQ(x, z)
-	SUBQ(hasLessThan0x20L, z)
-	XORQ(maxUint64, y)
-	ANDQ(y, z)
-	ANDQ(hasLessThan0x20R, z)
-	CMPQ(z, Imm(0))
-	JNE(LabelRef("done"))
-
-	// func hasMore64(x, n uint64) bool {
-	// 	return (((x + (hasMoreConstL64 * (127 - n))) | x) & hasMoreConstR64) != 0
-	// }
-	//
-	// With n=0x7e to test for characters after the `~` ASCII code.
-	MOVQ(x, z)
-	ADDQ(hasMoreThan0x7eL, z)
-	ORQ(x, z)
-	ANDQ(hasMoreThan0x7eR, z)
-	CMPQ(z, Imm(0))
-	JNE(LabelRef("done"))
-
-	SUBQ(Imm(8), n)
-	ADDQ(Imm(8), p)
-	// =========================================================================
-
-	// =========================================================================
-	// Section for the case where there is at least 4 bytes to read.
-	// This is the same as the 8 byte section, but working on 32 bits registers.
-	Label("init4")
-	maxUint32 := GP32()
-	hasLessThan0x20L32 := GP32()
-	hasLessThan0x20R32 := GP32()
-	hasMoreThan0x7eL32 := GP32()
-	hasMoreThan0x7eR32 := GP32()
-
-	x32 := GP32()
-	y32 := GP32()
-	z32 := GP32()
-
-	MOVL(U32(math.MaxUint32), maxUint32)
-	MOVL(U32((mask0&0xFFFFFFFF)*uint32(0x20)), hasLessThan0x20L32)
-	MOVL(U32((mask1 & 0xFFFFFFFF)), hasLessThan0x20R32)
-	MOVL(U32((mask0&0xFFFFFFFF)*(uint32(127)-0x7e)), hasMoreThan0x7eL32)
-	MOVL(U32((mask1 & 0xFFFFFFFF)), hasMoreThan0x7eR32)
-
-	Label("loop4")
-	Comment("Consume the next 4 bytes of input.")
-	CMPQ(n, Imm(4))
-	JL(LabelRef("loop1"))
-
-	MOVL(Mem{Base: p}, x32)
-
-	MOVL(x32, y32)
-	MOVL(x32, z32)
-	SUBL(hasLessThan0x20L32, z32)
-	XORL(maxUint32, y32)
-	ANDL(y32, z32)
-	ANDL(hasLessThan0x20R32, z32)
-	CMPL(z32, Imm(0))
-	JNE(LabelRef("done"))
-
-	MOVL(x32, z32)
-	ADDL(hasMoreThan0x7eL32, z32)
-	ORL(x32, z32)
-	ANDL(hasMoreThan0x7eR32, z32)
-	CMPL(z32, Imm(0))
-	JNE(LabelRef("done"))
-
-	SUBQ(Imm(4), n)
-	ADDQ(Imm(4), p)
-	// =========================================================================
-
-	// =========================================================================
-	// Last step, iterate over the remaining bytes (at most 3).
-	Label("loop1")
-	Comment("Loop until zero bytes remain.")
-	CMPQ(n, Imm(0))
-	JLE(LabelRef("valid"))
-
-	MOVBQZX(Mem{Base: p}, x)
-	CMPQ(x, Imm(0x20))
-	JL(LabelRef("done"))
-
-	CMPQ(x, Imm(0x7e))
-	JG(LabelRef("done"))
-
-	DECQ(n)
-	INCQ(p)
-	JMP(LabelRef("loop1"))
 	// =========================================================================
 
 	Label("valid")

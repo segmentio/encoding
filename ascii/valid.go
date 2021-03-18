@@ -62,12 +62,54 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 
 // Valid returns true if b contains only printable ASCII characters.
 func ValidPrint(b []byte) bool {
-	return validPrint(*(*string)(unsafe.Pointer(&b))) != 0
+	return len(b) == 0 || validPrint(unsafe.Pointer(&b), uintptr(len(b)))
 }
 
 // ValidString returns true if s contains only printable ASCII characters.
 func ValidPrintString(s string) bool {
-	return validPrint(s) != 0
+	return len(s) == 0 || validPrint(unsafe.Pointer(&s), uintptr(len(s)))
+}
+
+//go:nosplit
+func validPrint(s unsafe.Pointer, n uintptr) bool {
+	p := *(*unsafe.Pointer)(s)
+	i := uintptr(0)
+
+	if n >= 16 {
+		if validPrint16((*byte)(p), n/16) == 0 {
+			return false
+		}
+		i = ((n / 16) * 16)
+	}
+
+	if (n - i) >= 8 {
+		x := *(*uint64)(unsafe.Pointer(uintptr(p) + i))
+		if hasLess64(x, 0x20) || hasMore64(x, 0x7e) {
+			return false
+		}
+		i += 8
+	}
+
+	if (n - i) >= 4 {
+		x := *(*uint32)(unsafe.Pointer(uintptr(p) + i))
+		if hasLess32(x, 0x20) || hasMore32(x, 0x7e) {
+			return false
+		}
+		i += 4
+	}
+
+	var x uint32
+	switch n - i {
+	case 3:
+		x = 0x20000000 | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i + 1)))<<8
+	case 2:
+		x = 0x20200000 | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i)))
+	case 1:
+		x = 0x20202000 | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i)))
+	default:
+		return true
+	}
+	return !(hasLess32(x, 0x20) || hasMore32(x, 0x7e))
 }
 
 // ValidBytes returns true if b is an ASCII character.
