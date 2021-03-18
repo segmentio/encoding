@@ -5,92 +5,37 @@
 // func validPrint16(p *byte, n uintptr) int
 // Requires: SSE, SSE2, SSE4.1
 TEXT ·validPrint16(SB), NOSPLIT, $0-24
-	MOVQ   n+8(FP), AX
-	CMPQ   AX, $0x00
-	JE     valid
-	MOVQ   p+0(FP), CX
+	MOVQ   p+0(FP), AX
+	MOVQ   n+8(FP), CX
 	MOVQ   $0x0000000000000000, DX
-	MOVQ   $0xffffffffffffffff, BX
+	MOVQ   $0x1919191919191919, BX
+	MOVQ   $0x7f7f7f7f7f7f7f7f, BP
 	PINSRQ $0x00, BX, X0
 	PINSRQ $0x01, BX, X0
-	MOVQ   $0x2020202020202020, BX
-	MOVQ   $0x2020202020202020, BP
-	PINSRQ $0x00, BX, X1
+	PINSRQ $0x00, BP, X1
 	PINSRQ $0x01, BP, X1
-	MOVQ   $0x0101010101010101, BX
-	MOVQ   $0x0101010101010101, BP
-	PINSRQ $0x00, BX, X3
-	PINSRQ $0x01, BP, X3
-	MOVQ   $0x8080808080808080, BX
-	MOVQ   $0x8080808080808080, BP
-	PINSRQ $0x00, BX, X2
-	PINSRQ $0x01, BP, X2
-	PINSRQ $0x00, BX, X4
-	PINSRQ $0x01, BP, X4
-
-loop32:
-	// Loop until less than 32 bytes remain.
-	CMPQ   AX, $0x02
-	JL     loop16
-	MOVUPS (CX), X5
-	MOVUPS X5, X6
-	MOVUPS X5, X7
-	SUBSS  X1, X7
-	XORPS  X0, X6
-	ANDPS  X6, X7
-	ANDPS  X2, X7
-	MOVQ   X7, BX
-	CMPQ   BX, $0x00
-	JNE    done
-	MOVUPS X5, X7
-	ADDSS  X3, X7
-	ORPS   X5, X7
-	ANDPS  X4, X7
-	MOVQ   X7, BX
-	CMPQ   BX, $0x00
-	JNE    done
-	MOVUPS 16(CX), X5
-	MOVUPS X5, X6
-	MOVUPS X5, X7
-	SUBSS  X1, X7
-	XORPS  X0, X6
-	ANDPS  X6, X7
-	ANDPS  X2, X7
-	MOVQ   X7, BX
-	CMPQ   BX, $0x00
-	JNE    done
-	MOVUPS X5, X7
-	ADDSS  X3, X7
-	ORPS   X5, X7
-	ANDPS  X4, X7
-	MOVQ   X7, BX
-	CMPQ   BX, $0x00
-	JNE    done
-	SUBQ   $0x02, AX
-	ADDQ   $0x20, CX
-	JMP    loop32
 
 loop16:
-	// Consume the next 16 bytes of input.
-	CMPQ   AX, $0x00
-	JE     valid
-	MOVUPS (CX), X5
-	MOVUPS X5, X6
-	MOVUPS X5, X7
-	SUBSS  X1, X7
-	XORPS  X0, X6
-	ANDPS  X6, X7
-	ANDPS  X2, X7
-	MOVQ   X7, BX
-	CMPQ   BX, $0x00
-	JNE    done
-	MOVUPS X5, X7
-	ADDSS  X3, X7
-	ORPS   X5, X7
-	ANDPS  X4, X7
-	MOVQ   X7, BX
-	CMPQ   BX, $0x00
-	JNE    done
+	CMPQ     CX, $0x00
+	JE       valid
+	MOVUPS   (AX), X2
+	MOVUPS   X2, X3
+	PMINUB   X0, X3
+	PCMPEQB  X0, X3
+	PMOVMSKB X3, BX
+	XORL     $0x0000ffff, BX
+	CMPL     BX, $0x00
+	JNE      done
+	MOVUPS   X2, X3
+	PMAXUB   X1, X3
+	PCMPEQB  X1, X3
+	PMOVMSKB X3, BX
+	XORL     $0x0000ffff, BX
+	CMPL     BX, $0x00
+	JNE      done
+	DECQ     CX
+	ADDQ     $0x10, AX
+	JMP      loop16
 
 valid:
 	MOVQ $0x00000001, DX
