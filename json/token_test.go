@@ -315,6 +315,7 @@ func BenchmarkTokenizer(b *testing.B) {
 			for _, value := range values {
 				b.Run(value.scenario, func(b *testing.B) {
 					bechmark.function(b, value.payload)
+					b.SetBytes(int64(len(value.payload)))
 				})
 			}
 		})
