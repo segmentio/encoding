@@ -8,7 +8,6 @@ import (
 var testStrings = [...]string{
 	"",
 	"hello",
-	"qwertyui",
 	"Hello World!",
 	"Hello\"World!",
 	"Hello\\World!",

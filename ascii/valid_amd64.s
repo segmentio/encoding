@@ -5,16 +5,22 @@
 // func validPrint(s string) int
 // Requires: SSE, SSE2, SSE4.1
 TEXT ·validPrint(SB), NOSPLIT, $0-24
-	MOVQ s_base+0(FP), AX
-	MOVQ s_len+8(FP), CX
+	MOVQ s_len+8(FP), AX
+	CMPQ AX, $0x00
+	JE   valid
+	MOVQ s_base+0(FP), CX
 	MOVQ $0x0000000000000000, DX
 
-	// Only initialize the 64 bits registers if there are more than 8 bytes.
-	CMPQ CX, $0x08
+	// Only initialize the 32 bits registers if there are more than 8 bytes.
+	CMPQ AX, $0x04
 	JL   loop1
 
+	// Only initialize the 64 bits registers if there are more than 8 bytes.
+	CMPQ AX, $0x08
+	JL   loop4
+
 	// Only initialize the 128 bits registers if there are more than 16 bytes.
-	CMPQ   CX, $0x10
+	CMPQ   AX, $0x10
 	JL     init8
 	MOVQ   $0xffffffffffffffff, BX
 	PINSRQ $0x00, BX, X0
@@ -36,9 +42,9 @@ TEXT ·validPrint(SB), NOSPLIT, $0-24
 
 loop32:
 	// Loop until less than 32 bytes remain.
-	CMPQ   CX, $0x20
+	CMPQ   AX, $0x20
 	JL     loop16
-	MOVUPS (AX), X5
+	MOVUPS (CX), X5
 	MOVUPS X5, X6
 	MOVUPS X5, X7
 	SUBSS  X1, X7
@@ -55,7 +61,7 @@ loop32:
 	MOVQ   X7, BX
 	CMPQ   BX, $0x00
 	JNE    done
-	MOVUPS 16(AX), X5
+	MOVUPS 16(CX), X5
 	MOVUPS X5, X6
 	MOVUPS X5, X7
 	SUBSS  X1, X7
@@ -72,15 +78,15 @@ loop32:
 	MOVQ   X7, BX
 	CMPQ   BX, $0x00
 	JNE    done
-	SUBQ   $0x20, CX
-	ADDQ   $0x20, AX
+	SUBQ   $0x20, AX
+	ADDQ   $0x20, CX
 	JMP    loop32
 
 loop16:
 	// Consume the next 16 bytes of input.
-	CMPQ   CX, $0x10
+	CMPQ   AX, $0x10
 	JL     init8
-	MOVUPS (AX), X5
+	MOVUPS (CX), X5
 	MOVUPS X5, X6
 	MOVUPS X5, X7
 	SUBSS  X1, X7
@@ -97,8 +103,8 @@ loop16:
 	MOVQ   X7, BX
 	CMPQ   BX, $0x00
 	JNE    done
-	SUBQ   $0x10, CX
-	ADDQ   $0x10, AX
+	SUBQ   $0x10, AX
+	ADDQ   $0x10, CX
 
 init8:
 	MOVQ $0xffffffffffffffff, DI
@@ -108,9 +114,9 @@ init8:
 	MOVQ $0x8080808080808080, R11
 
 	// Consume the next 8 bytes of input.
-	CMPQ CX, $0x08
-	JL   loop1
-	MOVQ (AX), BX
+	CMPQ AX, $0x08
+	JL   loop4
+	MOVQ (CX), BX
 	MOVQ BX, BP
 	MOVQ BX, SI
 	SUBQ R8, SI
@@ -125,24 +131,51 @@ init8:
 	ANDQ R11, SI
 	CMPQ SI, $0x00
 	JNE  done
-	SUBQ $0x08, CX
-	ADDQ $0x08, AX
+	SUBQ $0x08, AX
+	ADDQ $0x08, CX
+	MOVL $0xffffffff, SI
+	MOVL $0x20202020, R12
+	MOVL $0x80808080, R13
+	MOVL $0x01010101, R14
+	MOVL $0x80808080, R15
+
+loop4:
+	// Consume the next 4 bytes of input.
+	CMPQ AX, $0x04
+	JL   loop1
+	MOVL (CX), BX
+	MOVL BX, BP
+	MOVL BX, DI
+	SUBL R12, DI
+	XORL SI, BP
+	ANDL BP, DI
+	ANDL R13, DI
+	CMPL DI, $0x00
+	JNE  done
+	MOVL BX, DI
+	ADDL R14, DI
+	ORL  BX, DI
+	ANDL R15, DI
+	CMPL DI, $0x00
+	JNE  done
+	SUBQ $0x04, AX
+	ADDQ $0x04, CX
 
 loop1:
 	// Loop until zero bytes remain.
-	CMPQ    CX, $0x00
+	CMPQ    AX, $0x00
 	JLE     valid
-	MOVBQZX (AX), BX
+	MOVBQZX (CX), BX
 	CMPQ    BX, $0x20
 	JL      done
 	CMPQ    BX, $0x7e
 	JG      done
-	DECQ    CX
-	INCQ    AX
+	DECQ    AX
+	INCQ    CX
 	JMP     loop1
 
 valid:
-	MOVQ $0x0000000000000001, DX
+	MOVQ $0x00000001, DX
 
 done:
 	MOVQ DX, ret+16(FP)

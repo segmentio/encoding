@@ -24,17 +24,24 @@ func main() {
 	TEXT("validPrint", NOSPLIT, "func(s string) int")
 	Doc("Validates that the string only contains printable ASCII characters.")
 
-	p := Load(Param("s").Base(), GP64())
 	n := Load(Param("s").Len(), GP64())
+	CMPQ(n, Imm(0))
+	JE(LabelRef("valid"))
+
+	p := Load(Param("s").Base(), GP64())
 	r := GP64()
 	x := GP64()
 	y := GP64()
 	z := GP64()
 	MOVQ(U64(0), r)
 
+	Comment("Only initialize the 32 bits registers if there are more than 8 bytes.")
+	CMPQ(n, Imm(4))
+	JL(LabelRef("loop1"))
+
 	Comment("Only initialize the 64 bits registers if there are more than 8 bytes.")
 	CMPQ(n, Imm(8))
-	JL(LabelRef("loop1"))
+	JL(LabelRef("loop4"))
 
 	Comment("Only initialize the 128 bits registers if there are more than 16 bytes.")
 	CMPQ(n, Imm(16))
@@ -182,7 +189,7 @@ func main() {
 	Label("loop8")
 	Comment("Consume the next 8 bytes of input.")
 	CMPQ(n, Imm(8))
-	JL(LabelRef("loop1"))
+	JL(LabelRef("loop4"))
 
 	MOVQ(Mem{Base: p}, x)
 
@@ -217,13 +224,59 @@ func main() {
 	// =========================================================================
 
 	// =========================================================================
-	// Last step, iterate over the remaining bytes.
+	// Section for the case where there is at least 4 bytes to read.
+	// This is the same as the 8 byte section, but working on 32 bits registers.
+	Label("init4")
+	maxUint32 := GP32()
+	hasLessThan0x20L32 := GP32()
+	hasLessThan0x20R32 := GP32()
+	hasMoreThan0x7eL32 := GP32()
+	hasMoreThan0x7eR32 := GP32()
+
+	x32 := GP32()
+	y32 := GP32()
+	z32 := GP32()
+
+	MOVL(U32(math.MaxUint32), maxUint32)
+	MOVL(U32((mask0&0xFFFFFFFF)*uint32(0x20)), hasLessThan0x20L32)
+	MOVL(U32((mask1 & 0xFFFFFFFF)), hasLessThan0x20R32)
+	MOVL(U32((mask0&0xFFFFFFFF)*(uint32(127)-0x7e)), hasMoreThan0x7eL32)
+	MOVL(U32((mask1 & 0xFFFFFFFF)), hasMoreThan0x7eR32)
+
+	Label("loop4")
+	Comment("Consume the next 4 bytes of input.")
+	CMPQ(n, Imm(4))
+	JL(LabelRef("loop1"))
+
+	MOVL(Mem{Base: p}, x32)
+
+	MOVL(x32, y32)
+	MOVL(x32, z32)
+	SUBL(hasLessThan0x20L32, z32)
+	XORL(maxUint32, y32)
+	ANDL(y32, z32)
+	ANDL(hasLessThan0x20R32, z32)
+	CMPL(z32, Imm(0))
+	JNE(LabelRef("done"))
+
+	MOVL(x32, z32)
+	ADDL(hasMoreThan0x7eL32, z32)
+	ORL(x32, z32)
+	ANDL(hasMoreThan0x7eR32, z32)
+	CMPL(z32, Imm(0))
+	JNE(LabelRef("done"))
+
+	SUBQ(Imm(4), n)
+	ADDQ(Imm(4), p)
+	// =========================================================================
+
+	// =========================================================================
+	// Last step, iterate over the remaining bytes (at most 3).
 	Label("loop1")
 	Comment("Loop until zero bytes remain.")
 	CMPQ(n, Imm(0))
 	JLE(LabelRef("valid"))
 
-	Label("enterLoop1")
 	MOVBQZX(Mem{Base: p}, x)
 	CMPQ(x, Imm(0x20))
 	JL(LabelRef("done"))
@@ -237,7 +290,7 @@ func main() {
 	// =========================================================================
 
 	Label("valid")
-	MOVQ(U64(1), r)
+	MOVQ(U32(1), r)
 
 	Label("done")
 	Store(r, ReturnIndex(0))
