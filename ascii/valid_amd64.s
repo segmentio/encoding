@@ -23,8 +23,45 @@ TEXT ·validPrint16(SB), NOSPLIT, $0-24
 	VPBROADCASTQ X0, Y2
 	VPBROADCASTQ X1, Y3
 
+loop64:
+	// Unroll two iterations of the loop operating on 32 bytes chunks.
+	CMPQ      CX, $0x04
+	JL        loop32
+	VMOVUPS   (AX), Y4
+	VMOVUPS   Y4, Y5
+	VPMINUB   Y2, Y5, Y5
+	VPCMPEQB  Y2, Y5, Y5
+	VPMOVMSKB Y5, BX
+	XORL      $0xffffffff, BX
+	JNE       done
+	VMOVUPS   Y4, Y5
+	VPMAXUB   Y3, Y5, Y5
+	VPCMPEQB  Y3, Y5, Y5
+	VPMOVMSKB Y5, BX
+	XORL      $0xffffffff, BX
+	JNE       done
+	VMOVUPS   32(AX), Y4
+	VMOVUPS   Y4, Y5
+	VPMINUB   Y2, Y5, Y5
+	VPCMPEQB  Y2, Y5, Y5
+	VPMOVMSKB Y5, BX
+	XORL      $0xffffffff, BX
+	JNE       done
+	VMOVUPS   Y4, Y5
+	VPMAXUB   Y3, Y5, Y5
+	VPCMPEQB  Y3, Y5, Y5
+	VPMOVMSKB Y5, BX
+	XORL      $0xffffffff, BX
+	JNE       done
+	SUBQ      $0x04, CX
+	ADDQ      $0x40, AX
+	CMPQ      CX, $0x04
+	JGE       loop64
+
 loop32:
-	// Loop until less than 32 bytes remain.
+	// Consume the next 32 bytes of input.
+	CMPQ      CX, $0x02
+	JL        loop16
 	VMOVUPS   (AX), Y4
 	VMOVUPS   Y4, Y5
 	VPMINUB   Y2, Y5, Y5
@@ -40,8 +77,6 @@ loop32:
 	JNE       done
 	SUBQ      $0x02, CX
 	ADDQ      $0x20, AX
-	CMPQ      CX, $0x02
-	JGE       loop32
 
 loop16:
 	// Consume the next 16 bytes of input.

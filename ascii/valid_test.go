@@ -23,6 +23,8 @@ var testStrings = [...]string{
 	"\x80",
 	"\x7F",
 	"\xFF",
+	"a string of 16B.",
+	"an invalid string of 32B. \x00......",
 	"some kind of long string with only ascii characters.",
 	"some kind of long string with a non-ascii character at the end.\xff",
 	strings.Repeat("1234567890", 1000),

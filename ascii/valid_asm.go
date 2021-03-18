@@ -48,29 +48,71 @@ func main() {
 	ymm1 := YMM()
 	ymm2 := YMM()
 
-	Label("loop32")
-	Comment("Loop until less than 32 bytes remain.")
+	Label("loop64")
+	Comment("Unroll two iterations of the loop operating on 32 bytes chunks.")
+	CMPQ(n, Imm(4))
+	JL(LabelRef("loop32"))
 
 	VMOVUPS(Mem{Base: p}, ymm0)
 
 	VMOVUPS(ymm0, ymm1)
-	VPMINUB(minYMM, ymm1, ymm2)  // extract the max of 0x20(x32) and ymm1 in each byte
-	VPCMPEQB(minYMM, ymm2, ymm1) // check bytes of ymm1 for equality with 0x20
-	VPMOVMSKB(ymm1, msk0)        // move the most significant bits of ymm1 to msk0
-	XORL(U32(0xFFFFFFFF), msk0)  // invert all bits of msk0
-	JNE(LabelRef("done"))        // if non-zero, some bytes were lower than 0x20
+	VPMINUB(minYMM, ymm1, ymm2)
+	VPCMPEQB(minYMM, ymm2, ymm1)
+	VPMOVMSKB(ymm1, msk0)
+	XORL(U32(0xFFFFFFFF), msk0)
+	JNE(LabelRef("done"))
 
 	VMOVUPS(ymm0, ymm1)
-	VPMAXUB(maxYMM, ymm1, ymm2)  // extract the min of 0x7E(x32) and ymm1 in each byte
-	VPCMPEQB(maxYMM, ymm2, ymm1) // check bytes of ymm1 for equality with 0x7F
-	VPMOVMSKB(ymm1, msk0)        // move the most significant bits of ymm1 to msk0
-	XORL(U32(0xFFFFFFFF), msk0)  // invert all bits of msk0
-	JNE(LabelRef("done"))        // if non-zero, some bytes were greater than 0x7E
+	VPMAXUB(maxYMM, ymm1, ymm2)
+	VPCMPEQB(maxYMM, ymm2, ymm1)
+	VPMOVMSKB(ymm1, msk0)
+	XORL(U32(0xFFFFFFFF), msk0)
+	JNE(LabelRef("done"))
+
+	VMOVUPS((Mem{Base: p}).Offset(32), ymm0)
+
+	VMOVUPS(ymm0, ymm1)
+	VPMINUB(minYMM, ymm1, ymm2)
+	VPCMPEQB(minYMM, ymm2, ymm1)
+	VPMOVMSKB(ymm1, msk0)
+	XORL(U32(0xFFFFFFFF), msk0)
+	JNE(LabelRef("done"))
+
+	VMOVUPS(ymm0, ymm1)
+	VPMAXUB(maxYMM, ymm1, ymm2)
+	VPCMPEQB(maxYMM, ymm2, ymm1)
+	VPMOVMSKB(ymm1, msk0)
+	XORL(U32(0xFFFFFFFF), msk0)
+	JNE(LabelRef("done"))
+
+	SUBQ(Imm(4), n)
+	ADDQ(Imm(64), p)
+	CMPQ(n, Imm(4)) // more than 64 bytes?
+	JGE(LabelRef("loop64"))
+
+	Label("loop32")
+	Comment("Consume the next 32 bytes of input.")
+	CMPQ(n, Imm(2))
+	JL(LabelRef("loop16"))
+
+	VMOVUPS(Mem{Base: p}, ymm0)
+
+	VMOVUPS(ymm0, ymm1)
+	VPMINUB(minYMM, ymm1, ymm2)
+	VPCMPEQB(minYMM, ymm2, ymm1)
+	VPMOVMSKB(ymm1, msk0)
+	XORL(U32(0xFFFFFFFF), msk0)
+	JNE(LabelRef("done"))
+
+	VMOVUPS(ymm0, ymm1)
+	VPMAXUB(maxYMM, ymm1, ymm2)
+	VPCMPEQB(maxYMM, ymm2, ymm1)
+	VPMOVMSKB(ymm1, msk0)
+	XORL(U32(0xFFFFFFFF), msk0)
+	JNE(LabelRef("done"))
 
 	SUBQ(Imm(2), n)
 	ADDQ(Imm(32), p)
-	CMPQ(n, Imm(2)) // more than 32 bytes?
-	JGE(LabelRef("loop32"))
 
 	Label("loop16")
 	Comment("Consume the next 16 bytes of input.")
