@@ -70,6 +70,16 @@ func ValidPrintString(s string) bool {
 	return len(s) == 0 || validPrint(unsafe.Pointer(&s), uintptr(len(s)))
 }
 
+// ValidBytes returns true if b is an ASCII character.
+func ValidPrintByte(b byte) bool {
+	return 0x20 <= b && b <= 0x7e
+}
+
+// ValidBytes returns true if b is an ASCII character.
+func ValidPrintRune(r rune) bool {
+	return 0x20 <= r && r <= 0x7e
+}
+
 //go:nosplit
 func validPrint(s unsafe.Pointer, n uintptr) bool {
 	p := *(*unsafe.Pointer)(s)
@@ -110,16 +120,6 @@ func validPrint(s unsafe.Pointer, n uintptr) bool {
 		return true
 	}
 	return !(hasLess32(x, 0x20) || hasMore32(x, 0x7e))
-}
-
-// ValidBytes returns true if b is an ASCII character.
-func ValidPrintByte(b byte) bool {
-	return 0x20 <= b && b <= 0x7e
-}
-
-// ValidBytes returns true if b is an ASCII character.
-func ValidPrintRune(r rune) bool {
-	return 0x20 <= r && r <= 0x7e
 }
 
 // https://graphics.stanford.edu/~seander/bithacks.html#HasLessInWord
