@@ -24,14 +24,12 @@ loop16:
 	PCMPEQB  X0, X3
 	PMOVMSKB X3, BX
 	XORL     $0x0000ffff, BX
-	CMPL     BX, $0x00
 	JNE      done
 	MOVUPS   X2, X3
 	PMAXUB   X1, X3
 	PCMPEQB  X1, X3
 	PMOVMSKB X3, BX
 	XORL     $0x0000ffff, BX
-	CMPL     BX, $0x00
 	JNE      done
 	DECQ     CX
 	ADDQ     $0x10, AX

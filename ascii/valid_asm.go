@@ -31,19 +31,6 @@ func main() {
 	// Loop optimized for strings with 16 bytes or more.
 	Label("init16")
 
-	// The first section unrolls two loop iterations, which amortizes the cost
-	// of memory loads and loop management (pointer increment, counter decrement).
-	/*
-		Label("loop32")
-		Comment("Loop until less than 32 bytes remain.")
-		CMPQ(n, Imm(2)) // less than 2 x 16 bytes?
-		JL(LabelRef("loop16"))
-
-		SUBQ(Imm(2), n)
-		ADDQ(Imm(32), p)
-		JMP(LabelRef("loop32"))
-	*/
-
 	min := GP64()
 	max := GP64()
 	MOVQ(U64(0x1919191919191919), min)
@@ -61,6 +48,19 @@ func main() {
 	xmm1 := XMM()
 	msk0 := GP32()
 
+	// The first section unrolls two loop iterations, which amortizes the cost
+	// of memory loads and loop management (pointer increment, counter decrement).
+	/*
+		Label("loop32")
+		Comment("Loop until less than 32 bytes remain.")
+		CMPQ(n, Imm(2)) // less than 2 x 16 bytes?
+		JL(LabelRef("loop16"))
+
+		SUBQ(Imm(2), n)
+		ADDQ(Imm(32), p)
+		JMP(LabelRef("loop32"))
+	*/
+
 	// The second part of the 16 bytes section is entered when there are less
 	// than 32 bytes remaining.
 	Label("loop16")
@@ -75,16 +75,14 @@ func main() {
 	PCMPEQB(minXMM, xmm1)   // check bytes of xmm1 for equality with 0x20
 	PMOVMSKB(xmm1, msk0)    // move the most significant bits of xmm1 to msk0
 	XORL(U32(0xFFFF), msk0) // invert all bits of msk0
-	CMPL(msk0, Imm(0))      // if non-zero, some bytes were lower than 0x20
-	JNE(LabelRef("done"))
+	JNE(LabelRef("done"))   // if non-zero, some bytes were lower than 0x20
 
 	MOVUPS(xmm0, xmm1)
 	PMAXUB(maxXMM, xmm1)    // extract the min of 0x7E(x16) and xmm1 in each byte
 	PCMPEQB(maxXMM, xmm1)   // check bytes of xmm1 for equality with 0x7F
 	PMOVMSKB(xmm1, msk0)    // move the most significant bits of xmm1 to msk0
 	XORL(U32(0xFFFF), msk0) // invert all bits of msk0
-	CMPL(msk0, Imm(0))      // if non-zero, some bytes were greater than 0x7E
-	JNE(LabelRef("done"))
+	JNE(LabelRef("done"))   // if non-zero, some bytes were greater than 0x7E
 
 	DECQ(n)
 	ADDQ(Imm(16), p)
