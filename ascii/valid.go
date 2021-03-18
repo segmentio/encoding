@@ -1,3 +1,4 @@
+//go:generate go run valid_asm.go -out valid_amd64.s -stubs valid_amd64.go
 package ascii
 
 import (
@@ -61,12 +62,12 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 
 // Valid returns true if b contains only printable ASCII characters.
 func ValidPrint(b []byte) bool {
-	return validPrint(unsafe.Pointer(&b), uintptr(len(b)))
+	return len(b) == 0 || validPrint(unsafe.Pointer(&b), uintptr(len(b)))
 }
 
 // ValidString returns true if s contains only printable ASCII characters.
 func ValidPrintString(s string) bool {
-	return validPrint(unsafe.Pointer(&s), uintptr(len(s)))
+	return len(s) == 0 || validPrint(unsafe.Pointer(&s), uintptr(len(s)))
 }
 
 // ValidBytes returns true if b is an ASCII character.
@@ -81,14 +82,17 @@ func ValidPrintRune(r rune) bool {
 
 //go:nosplit
 func validPrint(s unsafe.Pointer, n uintptr) bool {
-	if n == 0 {
-		return true
+	p := *(*unsafe.Pointer)(s)
+	i := uintptr(0)
+
+	if n >= 16 {
+		if validPrint16((*byte)(p), n/16) == 0 {
+			return false
+		}
+		i = ((n / 16) * 16)
 	}
 
-	i := uintptr(0)
-	p := *(*unsafe.Pointer)(s)
-
-	for (n - i) >= 8 {
+	if (n - i) >= 8 {
 		x := *(*uint64)(unsafe.Pointer(uintptr(p) + i))
 		if hasLess64(x, 0x20) || hasMore64(x, 0x7e) {
 			return false
