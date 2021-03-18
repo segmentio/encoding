@@ -136,54 +136,58 @@ skipLoop:
 		}
 	}
 
-	if t.json = t.json[i:]; len(t.json) == 0 {
+	if i > 0 {
+		t.json = t.json[i:]
+	}
+
+	if len(t.json) == 0 {
 		t.Reset(nil)
 		return false
 	}
 
-	var d Delim
-	var v []byte
-	var b []byte
-	var err error
-
 	switch t.json[0] {
 	case '"':
-		v, b, err = parseString(t.json)
+		t.Delim = 0
+		t.Value, t.json, t.Err = parseString(t.json)
 	case 'n':
-		v, b, err = parseNull(t.json)
+		t.Delim = 0
+		t.Value, t.json, t.Err = parseNull(t.json)
 	case 't':
-		v, b, err = parseTrue(t.json)
+		t.Delim = 0
+		t.Value, t.json, t.Err = parseTrue(t.json)
 	case 'f':
-		v, b, err = parseFalse(t.json)
+		t.Delim = 0
+		t.Value, t.json, t.Err = parseFalse(t.json)
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		v, b, err = parseNumber(t.json)
+		t.Delim = 0
+		t.Value, t.json, t.Err = parseNumber(t.json)
 	case '{', '}', '[', ']', ':', ',':
-		d, v, b = Delim(t.json[0]), t.json[:1], t.json[1:]
+		t.Delim, t.Value, t.json = Delim(t.json[0]), t.json[:1], t.json[1:]
 	default:
-		v, b, err = t.json[:1], t.json[1:], syntaxError(t.json, "expected token but found '%c'", t.json[0])
+		t.Delim = 0
+		t.Value, t.json, t.Err = t.json[:1], t.json[1:], syntaxError(t.json, "expected token but found '%c'", t.json[0])
 	}
 
-	t.Delim = d
-	t.Value = RawValue(v)
-	t.Err = err
 	t.Depth = t.depth()
 	t.Index = t.index()
-	t.IsKey = d == 0 && t.isKey
-	t.json = b
 
-	if d != 0 {
-		switch d {
+	if t.Delim == 0 {
+		t.IsKey = t.isKey
+	} else {
+		t.IsKey = false
+
+		switch t.Delim {
 		case '{':
 			t.isKey = true
 			t.push(inObject)
 		case '[':
 			t.push(inArray)
 		case '}':
-			err = t.pop(inObject)
+			t.Err = t.pop(inObject)
 			t.Depth--
 			t.Index = t.index()
 		case ']':
-			err = t.pop(inArray)
+			t.Err = t.pop(inArray)
 			t.Depth--
 			t.Index = t.index()
 		case ':':
@@ -200,7 +204,7 @@ skipLoop:
 		}
 	}
 
-	return (d != 0 || len(v) != 0) && err == nil
+	return (t.Delim != 0 || len(t.Value) != 0) && t.Err == nil
 }
 
 func (t *Tokenizer) push(typ scope) {
