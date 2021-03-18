@@ -27,10 +27,6 @@ func main() {
 	r := GP64()
 	MOVQ(U64(0), r)
 
-	// =========================================================================
-	// Loop optimized for strings with 16 bytes or more.
-	Label("init16")
-
 	min := GP64()
 	max := GP64()
 	MOVQ(U64(0x1919191919191919), min)
@@ -44,27 +40,47 @@ func main() {
 	PINSRQ(Imm(0), max, maxXMM)
 	PINSRQ(Imm(1), max, maxXMM)
 
+	minYMM := YMM()
+	VPBROADCASTQ(minXMM, minYMM)
+
+	maxYMM := YMM()
+	VPBROADCASTQ(maxXMM, maxYMM)
+
 	xmm0 := XMM()
 	xmm1 := XMM()
 	msk0 := GP32()
 
-	// The first section unrolls two loop iterations, which amortizes the cost
-	// of memory loads and loop management (pointer increment, counter decrement).
-	/*
-		Label("loop32")
-		Comment("Loop until less than 32 bytes remain.")
-		CMPQ(n, Imm(2)) // less than 2 x 16 bytes?
-		JL(LabelRef("loop16"))
+	ymm0 := YMM()
+	ymm1 := YMM()
+	ymm2 := YMM()
 
-		SUBQ(Imm(2), n)
-		ADDQ(Imm(32), p)
-		JMP(LabelRef("loop32"))
-	*/
+	Label("loop32")
+	Comment("Loop until less than 32 bytes remain.")
+	CMPQ(n, Imm(2)) // less than 2 x 16 bytes?
+	JL(LabelRef("loop16"))
 
-	// The second part of the 16 bytes section is entered when there are less
-	// than 32 bytes remaining.
+	VMOVUPS(Mem{Base: p}, ymm0)
+
+	VMOVUPS(ymm0, ymm1)
+	VPMINUB(minYMM, ymm1, ymm2)  // extract the max of 0x20(x32) and ymm1 in each byte
+	VPCMPEQB(minYMM, ymm2, ymm1) // check bytes of ymm1 for equality with 0x20
+	VPMOVMSKB(ymm1, msk0)        // move the most significant bits of ymm1 to msk0
+	XORL(U32(0xFFFFFFFF), msk0)  // invert all bits of msk0
+	JNE(LabelRef("done"))        // if non-zero, some bytes were lower than 0x20
+
+	VMOVUPS(ymm0, ymm1)
+	VPMAXUB(maxYMM, ymm1, ymm2)  // extract the min of 0x7E(x32) and ymm1 in each byte
+	VPCMPEQB(maxYMM, ymm2, ymm1) // check bytes of ymm1 for equality with 0x7F
+	VPMOVMSKB(ymm1, msk0)        // move the most significant bits of ymm1 to msk0
+	XORL(U32(0xFFFFFFFF), msk0)  // invert all bits of msk0
+	JNE(LabelRef("done"))        // if non-zero, some bytes were greater than 0x7E
+
+	SUBQ(Imm(2), n)
+	ADDQ(Imm(32), p)
+	JMP(LabelRef("loop32"))
+
 	Label("loop16")
-	//Comment("Consume the next 16 bytes of input.")
+	Comment("Consume the next 16 bytes of input.")
 	CMPQ(n, Imm(0))
 	JE(LabelRef("valid"))
 
@@ -83,11 +99,6 @@ func main() {
 	PMOVMSKB(xmm1, msk0)    // move the most significant bits of xmm1 to msk0
 	XORL(U32(0xFFFF), msk0) // invert all bits of msk0
 	JNE(LabelRef("done"))   // if non-zero, some bytes were greater than 0x7E
-
-	DECQ(n)
-	ADDQ(Imm(16), p)
-	JMP(LabelRef("loop16"))
-	// =========================================================================
 
 	Label("valid")
 	MOVQ(U32(1), r)

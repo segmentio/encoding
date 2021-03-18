@@ -3,19 +3,43 @@
 #include "textflag.h"
 
 // func validPrint16(p *byte, n uintptr) int
-// Requires: SSE, SSE2, SSE4.1
+// Requires: AVX, AVX2, SSE, SSE2, SSE4.1
 TEXT ·validPrint16(SB), NOSPLIT, $0-24
-	MOVQ   p+0(FP), AX
-	MOVQ   n+8(FP), CX
-	MOVQ   $0x0000000000000000, DX
-	MOVQ   $0x1919191919191919, BX
-	MOVQ   $0x7f7f7f7f7f7f7f7f, BP
-	PINSRQ $0x00, BX, X0
-	PINSRQ $0x01, BX, X0
-	PINSRQ $0x00, BP, X1
-	PINSRQ $0x01, BP, X1
+	MOVQ         p+0(FP), AX
+	MOVQ         n+8(FP), CX
+	MOVQ         $0x0000000000000000, DX
+	MOVQ         $0x1919191919191919, BX
+	MOVQ         $0x7f7f7f7f7f7f7f7f, BP
+	PINSRQ       $0x00, BX, X0
+	PINSRQ       $0x01, BX, X0
+	PINSRQ       $0x00, BP, X1
+	PINSRQ       $0x01, BP, X1
+	VPBROADCASTQ X0, Y2
+	VPBROADCASTQ X1, Y3
+
+loop32:
+	// Loop until less than 32 bytes remain.
+	CMPQ      CX, $0x02
+	JL        loop16
+	VMOVUPS   (AX), Y4
+	VMOVUPS   Y4, Y5
+	VPMINUB   Y2, Y5, Y5
+	VPCMPEQB  Y2, Y5, Y5
+	VPMOVMSKB Y5, BX
+	XORL      $0xffffffff, BX
+	JNE       done
+	VMOVUPS   Y4, Y5
+	VPMAXUB   Y3, Y5, Y5
+	VPCMPEQB  Y3, Y5, Y5
+	VPMOVMSKB Y5, BX
+	XORL      $0xffffffff, BX
+	JNE       done
+	SUBQ      $0x02, CX
+	ADDQ      $0x20, AX
+	JMP       loop32
 
 loop16:
+	// Consume the next 16 bytes of input.
 	CMPQ     CX, $0x00
 	JE       valid
 	MOVUPS   (AX), X2
@@ -31,9 +55,6 @@ loop16:
 	PMOVMSKB X3, BX
 	XORL     $0x0000ffff, BX
 	JNE      done
-	DECQ     CX
-	ADDQ     $0x10, AX
-	JMP      loop16
 
 valid:
 	MOVQ $0x00000001, DX
