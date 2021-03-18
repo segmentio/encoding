@@ -27,6 +27,7 @@ func main() {
 	r := GP64()
 	MOVQ(U64(0), r)
 
+	Comment("Initialize 128 bits registers.")
 	min := GP64()
 	max := GP64()
 	MOVQ(U64(0x1919191919191919), min)
@@ -40,15 +41,19 @@ func main() {
 	PINSRQ(Imm(0), max, maxXMM)
 	PINSRQ(Imm(1), max, maxXMM)
 
+	xmm0 := XMM()
+	xmm1 := XMM()
+	msk0 := GP32()
+
+	CMPQ(n, Imm(2)) // skip YMM register initialization if there are less than 32 bytes
+	JL(LabelRef("loop16"))
+
+	Comment("Initialize 256 bits registers.")
 	minYMM := YMM()
 	VPBROADCASTQ(minXMM, minYMM)
 
 	maxYMM := YMM()
 	VPBROADCASTQ(maxXMM, maxYMM)
-
-	xmm0 := XMM()
-	xmm1 := XMM()
-	msk0 := GP32()
 
 	ymm0 := YMM()
 	ymm1 := YMM()
@@ -56,8 +61,6 @@ func main() {
 
 	Label("loop32")
 	Comment("Loop until less than 32 bytes remain.")
-	CMPQ(n, Imm(2)) // less than 2 x 16 bytes?
-	JL(LabelRef("loop16"))
 
 	VMOVUPS(Mem{Base: p}, ymm0)
 
@@ -77,7 +80,8 @@ func main() {
 
 	SUBQ(Imm(2), n)
 	ADDQ(Imm(32), p)
-	JMP(LabelRef("loop32"))
+	CMPQ(n, Imm(2)) // more than 32 bytes?
+	JGE(LabelRef("loop32"))
 
 	Label("loop16")
 	Comment("Consume the next 16 bytes of input.")
