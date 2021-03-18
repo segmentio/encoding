@@ -1,5 +1,7 @@
 package json
 
+import "sync"
+
 // Tokenizer is an iterator-style type which can be used to progressively parse
 // through a json input.
 //
@@ -72,35 +74,23 @@ type Tokenizer struct {
 	// that was parsed.
 	json []byte
 
-	// Stack used to track entering and leaving arrays, objects, and keys. The
-	// buffer is used as a pre-allocated space to
-	stack  []state
-	buffer [8]state
+	// Stack used to track entering and leaving arrays, objects, and keys.
+	stack *stack
 }
-
-type state struct {
-	typ scope
-	len int
-}
-
-type scope int
-
-const (
-	inArray scope = iota
-	inObject
-)
 
 // NewTokenizer constructs a new Tokenizer which reads its json input from b.
 func NewTokenizer(b []byte) *Tokenizer { return &Tokenizer{json: b} }
 
 // Reset erases the state of t and re-initializes it with the json input from b.
 func (t *Tokenizer) Reset(b []byte) {
+	if t.stack != nil {
+		releaseStack(t.stack)
+	}
 	// This code is similar to:
 	//
 	//	*t = Tokenizer{json: b}
 	//
-	// However, it does not compile down to an invocation of duff-copy, which
-	// ends up being slower and prevents the code from being inlined.
+	// However, it does not compile down to an invocation of duff-copy.
 	t.Delim = 0
 	t.Value = nil
 	t.Err = nil
@@ -193,55 +183,51 @@ skipLoop:
 		case ':':
 			t.isKey = false
 		case ',':
-			if len(t.stack) == 0 {
+			stack := t.grabStack()
+			if len(stack.state) == 0 {
 				t.Err = syntaxError(t.json, "found unexpected comma")
 				return false
 			}
-			if t.is(inObject) {
+			if stack.is(inObject) {
 				t.isKey = true
 			}
-			t.stack[len(t.stack)-1].len++
+			stack.state[len(stack.state)-1].len++
 		}
 	}
 
 	return (t.Delim != 0 || len(t.Value) != 0) && t.Err == nil
 }
 
-func (t *Tokenizer) push(typ scope) {
-	if t.stack == nil {
-		t.stack = t.buffer[:0]
-	}
-	t.stack = append(t.stack, state{typ: typ, len: 1})
-}
-
-func (t *Tokenizer) pop(expect scope) error {
-	i := len(t.stack) - 1
-
-	if i < 0 {
-		return syntaxError(t.json, "found unexpected character while tokenizing json input")
-	}
-
-	if found := t.stack[i]; expect != found.typ {
-		return syntaxError(t.json, "found unexpected character while tokenizing json input")
-	}
-
-	t.stack = t.stack[:i]
-	return nil
-}
-
-func (t *Tokenizer) is(typ scope) bool {
-	return len(t.stack) != 0 && t.stack[len(t.stack)-1].typ == typ
-}
-
 func (t *Tokenizer) depth() int {
-	return len(t.stack)
+	if t.stack == nil {
+		return 0
+	}
+	return t.stack.depth()
 }
 
 func (t *Tokenizer) index() int {
-	if len(t.stack) == 0 {
+	if t.stack == nil {
 		return 0
 	}
-	return t.stack[len(t.stack)-1].len - 1
+	return t.stack.index()
+}
+
+func (t *Tokenizer) push(typ scope) {
+	t.grabStack().push(typ)
+}
+
+func (t *Tokenizer) pop(expect scope) error {
+	if t.stack == nil || !t.stack.pop(expect) {
+		return syntaxError(t.json, "found unexpected character while tokenizing json input")
+	}
+	return nil
+}
+
+func (t *Tokenizer) grabStack() *stack {
+	if t.stack == nil {
+		t.stack = acquireStack()
+	}
+	return t.stack
 }
 
 // RawValue represents a raw json value, it is intended to carry null, true,
@@ -292,3 +278,71 @@ func (v RawValue) AppendUnquote(b []byte) []byte {
 func (v RawValue) Unquote() []byte {
 	return v.AppendUnquote(nil)
 }
+
+type scope int
+
+const (
+	inArray scope = iota
+	inObject
+)
+
+type state struct {
+	typ scope
+	len int
+}
+
+type stack struct {
+	state []state
+}
+
+func (s *stack) push(typ scope) {
+	s.state = append(s.state, state{typ: typ, len: 1})
+}
+
+func (s *stack) pop(expect scope) bool {
+	i := len(s.state) - 1
+
+	if i < 0 {
+		return false
+	}
+
+	if found := s.state[i]; expect != found.typ {
+		return false
+	}
+
+	s.state = s.state[:i]
+	return true
+}
+
+func (s *stack) is(typ scope) bool {
+	return len(s.state) != 0 && s.state[len(s.state)-1].typ == typ
+}
+
+func (s *stack) depth() int {
+	return len(s.state)
+}
+
+func (s *stack) index() int {
+	if len(s.state) == 0 {
+		return 0
+	}
+	return s.state[len(s.state)-1].len - 1
+}
+
+func acquireStack() *stack {
+	s, _ := stackPool.Get().(*stack)
+	if s == nil {
+		s = &stack{state: make([]state, 0, 4)}
+	} else {
+		s.state = s.state[:0]
+	}
+	return s
+}
+
+func releaseStack(s *stack) {
+	stackPool.Put(s)
+}
+
+var (
+	stackPool sync.Pool // *stack
+)
