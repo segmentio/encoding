@@ -34,7 +34,7 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 		if valid16((*byte)(p), n/16) == 0 {
 			return false
 		}
-		i = ((n / 16) * 16)
+		i = (n / 16) * 16
 	}
 
 	if (n - i) >= 8 {
@@ -52,9 +52,9 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 	}
 
 	var x uint32
-	switch n {
+	switch n - i {
 	case 3:
-		x = uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i + 2)))<<16
+		x = uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i + 2)))<<16
 	case 2:
 		x = uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i)))
 	case 1:
