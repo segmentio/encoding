@@ -7,12 +7,12 @@ import (
 
 // Valid returns true if b contains only ASCII characters.
 func Valid(b []byte) bool {
-	return valid(unsafe.Pointer(&b), uintptr(len(b)))
+	return len(b) == 0 || valid(unsafe.Pointer(&b), uintptr(len(b)))
 }
 
 // ValidString returns true if s contains only ASCII characters.
 func ValidString(s string) bool {
-	return valid(unsafe.Pointer(&s), uintptr(len(s)))
+	return len(s) == 0 || valid(unsafe.Pointer(&s), uintptr(len(s)))
 }
 
 // ValidBytes returns true if b is an ASCII character.
@@ -30,26 +30,31 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 	i := uintptr(0)
 	p := *(*unsafe.Pointer)(s)
 
-	for n >= 8 {
+	if n >= 16 {
+		if valid16((*byte)(p), n/16) == 0 {
+			return false
+		}
+		i = ((n / 16) * 16)
+	}
+
+	if (n - i) >= 8 {
 		if ((*(*uint64)(unsafe.Pointer(uintptr(p) + i))) & 0x8080808080808080) != 0 {
 			return false
 		}
 		i += 8
-		n -= 8
 	}
 
-	if n >= 4 {
+	if (n - i) >= 4 {
 		if ((*(*uint32)(unsafe.Pointer(uintptr(p) + i))) & 0x80808080) != 0 {
 			return false
 		}
 		i += 4
-		n -= 4
 	}
 
 	var x uint32
 	switch n {
 	case 3:
-		x = uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i + 1)))<<8
+		x = uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i))) | uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i + 2)))<<16
 	case 2:
 		x = uint32(*(*uint16)(unsafe.Pointer(uintptr(p) + i)))
 	case 1:
