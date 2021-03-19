@@ -11,7 +11,7 @@ TEXT ·validPrint16(SB), NOSPLIT, $0-24
 
 	// Initialize 128 bits registers.
 	MOVQ   $0x1919191919191919, BX
-	MOVQ   $0x7f7f7f7f7f7f7f7f, BP
+	MOVQ   $0x7e7e7e7e7e7e7e7e, BP
 	PINSRQ $0x00, BX, X0
 	PINSRQ $0x01, BX, X0
 	PINSRQ $0x00, BP, X1
@@ -28,29 +28,15 @@ loop64:
 	CMPQ      CX, $0x04
 	JL        loop32
 	VMOVUPS   (AX), Y4
-	VMOVUPS   Y4, Y5
-	VPMINUB   Y2, Y5, Y5
-	VPCMPEQB  Y2, Y5, Y5
-	VPMOVMSKB Y5, BX
-	XORL      $0xffffffff, BX
-	JNE       done
-	VMOVUPS   Y4, Y5
-	VPMAXUB   Y3, Y5, Y5
-	VPCMPEQB  Y3, Y5, Y5
-	VPMOVMSKB Y5, BX
-	XORL      $0xffffffff, BX
-	JNE       done
-	VMOVUPS   32(AX), Y4
-	VMOVUPS   Y4, Y5
-	VPMINUB   Y2, Y5, Y5
-	VPCMPEQB  Y2, Y5, Y5
-	VPMOVMSKB Y5, BX
-	XORL      $0xffffffff, BX
-	JNE       done
-	VMOVUPS   Y4, Y5
-	VPMAXUB   Y3, Y5, Y5
-	VPCMPEQB  Y3, Y5, Y5
-	VPMOVMSKB Y5, BX
+	VMOVUPS   32(AX), Y5
+	VPCMPGTB  Y2, Y4, Y6
+	VPCMPGTB  Y3, Y4, Y4
+	VPANDN    Y6, Y4, Y4
+	VPCMPGTB  Y2, Y5, Y6
+	VPCMPGTB  Y3, Y5, Y5
+	VPANDN    Y6, Y5, Y5
+	VPAND     Y4, Y5, Y4
+	VPMOVMSKB Y4, BX
 	XORL      $0xffffffff, BX
 	JNE       done
 	SUBQ      $0x04, CX
@@ -63,16 +49,10 @@ loop32:
 	CMPQ      CX, $0x02
 	JL        loop16
 	VMOVUPS   (AX), Y4
-	VMOVUPS   Y4, Y5
-	VPMINUB   Y2, Y5, Y5
-	VPCMPEQB  Y2, Y5, Y5
-	VPMOVMSKB Y5, BX
-	XORL      $0xffffffff, BX
-	JNE       done
-	VMOVUPS   Y4, Y5
-	VPMAXUB   Y3, Y5, Y5
-	VPCMPEQB  Y3, Y5, Y5
-	VPMOVMSKB Y5, BX
+	VPCMPGTB  Y2, Y4, Y6
+	VPCMPGTB  Y3, Y4, Y4
+	VPANDN    Y6, Y4, Y4
+	VPMOVMSKB Y4, BX
 	XORL      $0xffffffff, BX
 	JNE       done
 	SUBQ      $0x02, CX
@@ -84,15 +64,10 @@ loop16:
 	JE       valid
 	MOVUPS   (AX), X2
 	MOVUPS   X2, X3
-	PMINUB   X0, X3
-	PCMPEQB  X0, X3
-	PMOVMSKB X3, BX
-	XORL     $0x0000ffff, BX
-	JNE      done
-	MOVUPS   X2, X3
-	PMAXUB   X1, X3
-	PCMPEQB  X1, X3
-	PMOVMSKB X3, BX
+	PCMPGTB  X0, X2
+	PCMPGTB  X1, X3
+	PANDN    X2, X3
+	PMOVMSKB X2, BX
 	XORL     $0x0000ffff, BX
 	JNE      done
 
