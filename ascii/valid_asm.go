@@ -20,7 +20,7 @@ func main() {
 	min := GP64()
 	max := GP64()
 	MOVQ(U64(0x1919191919191919), min)
-	MOVQ(U64(0x7F7F7F7F7F7F7F7F), max)
+	MOVQ(U64(0x7E7E7E7E7E7E7E7E), max)
 
 	minXMM := XMM()
 	PINSRQ(Imm(0), min, minXMM)
@@ -47,6 +47,12 @@ func main() {
 	ymm0 := YMM()
 	ymm1 := YMM()
 	ymm2 := YMM()
+	ymm3 := YMM()
+	ymm4 := YMM()
+	ymm5 := YMM()
+	ymm6 := YMM()
+	ymm7 := YMM()
+	ymm8 := YMM()
 
 	Label("loop64")
 	Comment("Unroll two iterations of the loop operating on 32 bytes chunks.")
@@ -54,35 +60,16 @@ func main() {
 	JL(LabelRef("loop32"))
 
 	VMOVUPS(Mem{Base: p}, ymm0)
-
-	VMOVUPS(ymm0, ymm1)
-	VPMINUB(minYMM, ymm1, ymm2)
-	VPCMPEQB(minYMM, ymm2, ymm1)
-	VPMOVMSKB(ymm1, msk0)
-	XORL(U32(0xFFFFFFFF), msk0)
-	JNE(LabelRef("done"))
-
-	VMOVUPS(ymm0, ymm1)
-	VPMAXUB(maxYMM, ymm1, ymm2)
-	VPCMPEQB(maxYMM, ymm2, ymm1)
-	VPMOVMSKB(ymm1, msk0)
-	XORL(U32(0xFFFFFFFF), msk0)
-	JNE(LabelRef("done"))
-
-	VMOVUPS((Mem{Base: p}).Offset(32), ymm0)
-
-	VMOVUPS(ymm0, ymm1)
-	VPMINUB(minYMM, ymm1, ymm2)
-	VPCMPEQB(minYMM, ymm2, ymm1)
-	VPMOVMSKB(ymm1, msk0)
-	XORL(U32(0xFFFFFFFF), msk0)
-	JNE(LabelRef("done"))
-
-	VMOVUPS(ymm0, ymm1)
-	VPMAXUB(maxYMM, ymm1, ymm2)
-	VPCMPEQB(maxYMM, ymm2, ymm1)
-	VPMOVMSKB(ymm1, msk0)
-	XORL(U32(0xFFFFFFFF), msk0)
+	VMOVUPS((Mem{Base: p}).Offset(32), ymm1)
+	VPCMPGTB(minYMM, ymm0, ymm2) // A = bytes that are greater than the min-1 (i.e. valid at lower end)
+	VPCMPGTB(maxYMM, ymm0, ymm3) // B = bytes that are greater than the max (i.e. invalid at upper end)
+	VPANDN(ymm2, ymm3, ymm4)     // A & ~B mask should be full unless there's an invalid byte
+	VPCMPGTB(minYMM, ymm1, ymm5) // compute the same for the next 32 bytes
+	VPCMPGTB(maxYMM, ymm1, ymm6)
+	VPANDN(ymm5, ymm6, ymm7)
+	VPAND(ymm4, ymm7, ymm8)      // combine masks
+	VPMOVMSKB(ymm8, msk0)
+	XORL(U32(0xFFFFFFFF), msk0)  // check for a zero somewhere
 	JNE(LabelRef("done"))
 
 	SUBQ(Imm(4), n)
@@ -96,18 +83,10 @@ func main() {
 	JL(LabelRef("loop16"))
 
 	VMOVUPS(Mem{Base: p}, ymm0)
-
-	VMOVUPS(ymm0, ymm1)
-	VPMINUB(minYMM, ymm1, ymm2)
-	VPCMPEQB(minYMM, ymm2, ymm1)
-	VPMOVMSKB(ymm1, msk0)
-	XORL(U32(0xFFFFFFFF), msk0)
-	JNE(LabelRef("done"))
-
-	VMOVUPS(ymm0, ymm1)
-	VPMAXUB(maxYMM, ymm1, ymm2)
-	VPCMPEQB(maxYMM, ymm2, ymm1)
-	VPMOVMSKB(ymm1, msk0)
+	VPCMPGTB(minYMM, ymm0, ymm2)
+	VPCMPGTB(maxYMM, ymm0, ymm3)
+	VPANDN(ymm2, ymm3, ymm4)
+	VPMOVMSKB(ymm4, msk0)
 	XORL(U32(0xFFFFFFFF), msk0)
 	JNE(LabelRef("done"))
 
@@ -120,20 +99,13 @@ func main() {
 	JE(LabelRef("valid"))
 
 	MOVUPS(Mem{Base: p}, xmm0)
-
 	MOVUPS(xmm0, xmm1)
-	PMINUB(minXMM, xmm1)    // extract the max of 0x20(x16) and xmm1 in each byte
-	PCMPEQB(minXMM, xmm1)   // check bytes of xmm1 for equality with 0x20
-	PMOVMSKB(xmm1, msk0)    // move the most significant bits of xmm1 to msk0
-	XORL(U32(0xFFFF), msk0) // invert all bits of msk0
-	JNE(LabelRef("done"))   // if non-zero, some bytes were lower than 0x20
-
-	MOVUPS(xmm0, xmm1)
-	PMAXUB(maxXMM, xmm1)    // extract the min of 0x7E(x16) and xmm1 in each byte
-	PCMPEQB(maxXMM, xmm1)   // check bytes of xmm1 for equality with 0x7F
-	PMOVMSKB(xmm1, msk0)    // move the most significant bits of xmm1 to msk0
-	XORL(U32(0xFFFF), msk0) // invert all bits of msk0
-	JNE(LabelRef("done"))   // if non-zero, some bytes were greater than 0x7E
+	PCMPGTB(minXMM, xmm0)
+	PCMPGTB(maxXMM, xmm1)
+	PANDN(xmm0, xmm1)
+	PMOVMSKB(xmm0, msk0)
+	XORL(U32(0xFFFF), msk0)
+	JNE(LabelRef("done"))
 
 	Label("valid")
 	MOVQ(U32(1), r)
