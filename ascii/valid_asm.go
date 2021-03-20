@@ -19,7 +19,6 @@ func main() {
 	msk := GP32()
 	xmm0 := XMM()
 	ymm0 := YMM()
-	ymm1 := YMM()
 
 	Label("loop64")
 	CMPQ(n, Imm(4))
@@ -29,9 +28,9 @@ func main() {
 	// that the current version of avo hasn't yet released support for the
 	// AVX.512 instruction set.
 	VMOVUPS(Mem{Base: p}, ymm0)
-	VPOR((Mem{Base: p}).Offset(32), ymm0, ymm1)
+	VPOR((Mem{Base: p}).Offset(32), ymm0, ymm0)
 
-	VPMOVMSKB(ymm1, msk)
+	VPMOVMSKB(ymm0, msk)
 	CMPL(msk, Imm(0))
 	JNE(LabelRef("done"))
 
