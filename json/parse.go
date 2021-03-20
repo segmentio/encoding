@@ -25,7 +25,9 @@ const (
 )
 
 func skipSpaces(b []byte) []byte {
-	b, _ = skipSpacesN(b)
+	if len(b) > 0 && b[0] <= 0x20 {
+		b, _ = skipSpacesN(b)
+	}
 	return b
 }
 
