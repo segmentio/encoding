@@ -432,7 +432,8 @@ func parseStringFast(b []byte, flags inputFlags) ([]byte, []byte, bool, error) {
 	if n <= 1 {
 		return nil, b[len(b):], false, syntaxError(b, "missing '\"' at the end of a string value")
 	}
-	if bytes.IndexByte(b[1:n], '\\') < 0 && ascii.ValidPrint(b[1:n]) {
+	if (flags.has(noBackslash) || bytes.IndexByte(b[1:n], '\\') < 0) &&
+		(flags.has(validAsciiPrint) || ascii.ValidPrint(b[1:n])) {
 		return b[:n], b[n:], false, nil
 	}
 
