@@ -20,10 +20,7 @@ type codec struct {
 }
 
 type encoder struct{ flags AppendFlags }
-type decoder struct {
-	flags      ParseFlags
-	inputFlags inputFlags
-}
+type decoder struct{ flags ParseFlags }
 
 type encodeFunc func(encoder, []byte, unsafe.Pointer) ([]byte, error)
 type decodeFunc func(decoder, []byte, unsafe.Pointer) ([]byte, error)
@@ -986,7 +983,7 @@ func syntaxError(b []byte, msg string, args ...interface{}) error {
 	return e
 }
 
-func inputError(b []byte, t reflect.Type, flags inputFlags) ([]byte, error) {
+func inputError(b []byte, t reflect.Type, flags ParseFlags) ([]byte, error) {
 	if len(b) == 0 {
 		return nil, unexpectedEOF(b)
 	}

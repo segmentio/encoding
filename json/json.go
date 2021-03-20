@@ -75,6 +75,10 @@ const (
 // applied when parsing json input.
 type ParseFlags int
 
+func (flags ParseFlags) has(f ParseFlags) bool {
+	return (flags & f) != 0
+}
+
 const (
 	// DisallowUnknownFields is a parsing flag used to prevent decoding of
 	// objects to Go struct values when a field of the input does not match
@@ -116,6 +120,16 @@ const (
 	// The zero-copy optimizations are better used in request-handler style
 	// code where none of the values are retained after the handler returns.
 	ZeroCopy = DontCopyString | DontCopyNumber | DontCopyRawMessage
+
+	// validAsciiPrint is an internal flag indicating that the input contains
+	// only valid ASCII print chars (0x20 <= c <= 0x7E). If the flag is unset,
+	// it's unknown whether the input is valid ASCII print.
+	validAsciiPrint ParseFlags = 1 << 28
+
+	// noBackslach is an internal flag indicating that the input does not
+	// contain a backslash. If the flag is unset, it's unknown whether the
+	// input contains a backslash.
+	noBackslash ParseFlags = 1 << 29
 )
 
 // Append acts like Marshal but appends the json representation to b instead of
@@ -245,10 +259,10 @@ func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
 	t := reflect.TypeOf(x)
 	p := (*iface)(unsafe.Pointer(&x)).ptr
 
-	inputFlags := inputFlagsFor(b)
+	flags |= internalParseFlags(b)
 
 	if t == nil || p == nil || t.Kind() != reflect.Ptr {
-		_, r, err := parseValue(skipSpaces(b), inputFlags)
+		_, r, err := parseValue(skipSpaces(b), flags)
 		r = skipSpaces(r)
 		if err != nil {
 			return r, err
@@ -264,14 +278,14 @@ func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
 		c = constructCachedCodec(t, cache)
 	}
 
-	r, err := c.decode(decoder{flags: flags, inputFlags: inputFlags}, skipSpaces(b), p)
+	r, err := c.decode(decoder{flags: flags}, skipSpaces(b), p)
 	return skipSpaces(r), err
 }
 
 // Valid is documented at https://golang.org/pkg/encoding/json/#Valid
 func Valid(data []byte) bool {
 	data = skipSpaces(data)
-	_, data, err := parseValue(data, inputFlagsFor(data))
+	_, data, err := parseValue(data, internalParseFlags(data))
 	if err != nil {
 		return false
 	}
@@ -316,7 +330,7 @@ const (
 func (dec *Decoder) readValue() (v []byte, err error) {
 	var n int
 	var r []byte
-	var flags inputFlags
+	flags := dec.flags
 
 	for {
 		if len(dec.remain) != 0 {
@@ -364,7 +378,7 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 			err = io.EOF
 		}
 		dec.remain, n = skipSpacesN(dec.buffer)
-		flags = inputFlagsFor(dec.remain)
+		flags = dec.flags | internalParseFlags(dec.remain)
 		dec.inputOffset += int64(n)
 		dec.err = err
 	}

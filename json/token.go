@@ -77,8 +77,8 @@ type Tokenizer struct {
 	// Stack used to track entering and leaving arrays, objects, and keys.
 	stack *stack
 
-	// Flags containing information about the input.
-	flags inputFlags
+	// Parsing flags.
+	flags ParseFlags
 }
 
 // NewTokenizer constructs a new Tokenizer which reads its json input from b.
@@ -103,7 +103,7 @@ func (t *Tokenizer) Reset(b []byte) {
 	t.isKey = false
 	t.json = b
 	t.stack = nil
-	t.flags = inputFlagsFor(b)
+	t.flags = internalParseFlags(b)
 }
 
 // Next returns a new tokenizer pointing at the next token, or the zero-value of

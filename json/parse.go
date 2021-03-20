@@ -24,29 +24,7 @@ const (
 	quote  = '"'
 )
 
-// Input flags provide information about the JSON input to the parsing routines,
-// allowing them to take fast paths or skip validation.
-//
-// For example, if the JSON input is valid ASCII print, then all nested strings
-// are also valid ASCII print (no need to check each one individually).
-//
-// An unset flag means "unknown"; the parsing routines should check their input
-// in this case.
-type inputFlags int
-
-const (
-	// The JSON input contains only valid ASCII print chars (0x20 <= c <= 0x7E).
-	validAsciiPrint inputFlags = 1 << iota
-
-	// The JSON input does not contain a backslash.
-	noBackslash
-)
-
-func (flags inputFlags) has(f inputFlags) bool {
-	return (flags & f) != 0
-}
-
-func inputFlagsFor(b []byte) (flags inputFlags) {
+func internalParseFlags(b []byte) (flags ParseFlags) {
 	// Don't consider surrounding whitespace
 	b = skipSpaces(b)
 	b = b[:len(b)-trailingSpaces(b)]
@@ -98,7 +76,7 @@ loop:
 //
 // Because it only works with base 10 the function is also significantly faster
 // than strconv.ParseInt.
-func parseInt(b []byte, t reflect.Type, flags inputFlags) (int64, []byte, error) {
+func parseInt(b []byte, t reflect.Type, flags ParseFlags) (int64, []byte, error) {
 	var value int64
 	var count int
 
@@ -189,7 +167,7 @@ func parseInt(b []byte, t reflect.Type, flags inputFlags) (int64, []byte, error)
 }
 
 // parseUint is like parseInt but for unsigned integers.
-func parseUint(b []byte, t reflect.Type, flags inputFlags) (uint64, []byte, error) {
+func parseUint(b []byte, t reflect.Type, flags ParseFlags) (uint64, []byte, error) {
 	const max = math.MaxUint64
 	const lim = max / 10
 
@@ -436,7 +414,7 @@ func parseUnicode(b []byte) (rune, int, error) {
 	return rune(u), 4, nil
 }
 
-func parseStringFast(b []byte, flags inputFlags) ([]byte, []byte, bool, error) {
+func parseStringFast(b []byte, flags ParseFlags) ([]byte, []byte, bool, error) {
 	if len(b) < 2 {
 		return nil, b[len(b):], false, unexpectedEOF(b)
 	}
@@ -483,12 +461,12 @@ func parseStringFast(b []byte, flags inputFlags) ([]byte, []byte, bool, error) {
 	return nil, b[len(b):], false, syntaxError(b, "missing '\"' at the end of a string value")
 }
 
-func parseString(b []byte, flags inputFlags) ([]byte, []byte, error) {
+func parseString(b []byte, flags ParseFlags) ([]byte, []byte, error) {
 	s, b, _, err := parseStringFast(b, flags)
 	return s, b, err
 }
 
-func parseStringUnquote(b []byte, r []byte, flags inputFlags) ([]byte, []byte, bool, error) {
+func parseStringUnquote(b []byte, r []byte, flags ParseFlags) ([]byte, []byte, bool, error) {
 	s, b, escaped, err := parseStringFast(b, flags)
 	if err != nil {
 		return s, b, false, err
@@ -587,7 +565,7 @@ func appendCoerceInvalidUTF8(b []byte, s []byte) []byte {
 	return b
 }
 
-func parseObject(b []byte, flags inputFlags) ([]byte, []byte, error) {
+func parseObject(b []byte, flags ParseFlags) ([]byte, []byte, error) {
 	if len(b) < 2 {
 		return nil, b[len(b):], unexpectedEOF(b)
 	}
@@ -653,7 +631,7 @@ func parseObject(b []byte, flags inputFlags) ([]byte, []byte, error) {
 	}
 }
 
-func parseArray(b []byte, flags inputFlags) ([]byte, []byte, error) {
+func parseArray(b []byte, flags ParseFlags) ([]byte, []byte, error) {
 	if len(b) < 2 {
 		return nil, b[len(b):], unexpectedEOF(b)
 	}
@@ -705,7 +683,7 @@ func parseArray(b []byte, flags inputFlags) ([]byte, []byte, error) {
 	}
 }
 
-func parseValue(b []byte, flags inputFlags) ([]byte, []byte, error) {
+func parseValue(b []byte, flags ParseFlags) ([]byte, []byte, error) {
 	if len(b) != 0 {
 		switch b[0] {
 		case '{':
