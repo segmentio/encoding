@@ -843,7 +843,7 @@ func (e encoder) encodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 		s = v
 	} else {
 		var err error
-		s, _, err = parseValue(v)
+		s, _, err = parseValue(v, 0)
 		if err != nil {
 			return b, &UnsupportedValueError{Value: reflect.ValueOf(v), Str: err.Error()}
 		}
@@ -875,7 +875,7 @@ func (e encoder) encodeJSONMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 		return b, err
 	}
 
-	s, _, err := parseValue(j)
+	s, _, err := parseValue(j, 0)
 	if err != nil {
 		return b, &MarshalerError{Type: t, Err: err}
 	}

@@ -76,6 +76,9 @@ type Tokenizer struct {
 
 	// Stack used to track entering and leaving arrays, objects, and keys.
 	stack *stack
+
+	// Flags containing information about the input.
+	flags inputFlags
 }
 
 // NewTokenizer constructs a new Tokenizer which reads its json input from b.
@@ -100,6 +103,7 @@ func (t *Tokenizer) Reset(b []byte) {
 	t.isKey = false
 	t.json = b
 	t.stack = nil
+	t.flags = inputFlagsFor(b)
 }
 
 // Next returns a new tokenizer pointing at the next token, or the zero-value of
@@ -138,7 +142,7 @@ skipLoop:
 	switch t.json[0] {
 	case '"':
 		t.Delim = 0
-		t.Value, t.json, t.Err = parseString(t.json)
+		t.Value, t.json, t.Err = parseString(t.json, t.flags)
 	case 'n':
 		t.Delim = 0
 		t.Value, t.json, t.Err = parseNull(t.json)
@@ -254,7 +258,7 @@ func (v RawValue) Number() bool {
 
 // AppendUnquote writes the unquoted version of the string value in v into b.
 func (v RawValue) AppendUnquote(b []byte) []byte {
-	s, r, new, err := parseStringUnquote([]byte(v), b)
+	s, r, new, err := parseStringUnquote([]byte(v), b, 0)
 	if err != nil {
 		panic(err)
 	}

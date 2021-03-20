@@ -245,8 +245,10 @@ func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
 	t := reflect.TypeOf(x)
 	p := (*iface)(unsafe.Pointer(&x)).ptr
 
+	inputFlags := inputFlagsFor(b)
+
 	if t == nil || p == nil || t.Kind() != reflect.Ptr {
-		_, r, err := parseValue(skipSpaces(b))
+		_, r, err := parseValue(skipSpaces(b), inputFlags)
 		r = skipSpaces(r)
 		if err != nil {
 			return r, err
@@ -262,13 +264,14 @@ func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
 		c = constructCachedCodec(t, cache)
 	}
 
-	r, err := c.decode(decoder{flags: flags}, skipSpaces(b), p)
+	r, err := c.decode(decoder{flags: flags, inputFlags: inputFlags}, skipSpaces(b), p)
 	return skipSpaces(r), err
 }
 
 // Valid is documented at https://golang.org/pkg/encoding/json/#Valid
 func Valid(data []byte) bool {
-	_, data, err := parseValue(skipSpaces(data))
+	data = skipSpaces(data)
+	_, data, err := parseValue(data, inputFlagsFor(data))
 	if err != nil {
 		return false
 	}
@@ -316,7 +319,7 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 
 	for {
 		if len(dec.remain) != 0 {
-			v, r, err = parseValue(dec.remain)
+			v, r, err = parseValue(dec.remain, 0)
 			if err == nil {
 				dec.remain, n = skipSpacesN(r)
 				dec.inputOffset += int64(len(v) + n)

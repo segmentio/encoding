@@ -24,7 +24,7 @@ func TestParseString(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.in, func(t *testing.T) {
-			out, ext, err := parseString([]byte(test.in))
+			out, ext, err := parseString([]byte(test.in), 0)
 
 			if test.err == "" {
 				if err != nil {
@@ -70,7 +70,7 @@ func TestParseStringUnquote(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.in, func(t *testing.T) {
-			out, ext, _, err := parseStringUnquote([]byte(test.in), nil)
+			out, ext, _, err := parseStringUnquote([]byte(test.in), nil, 0)
 
 			if err != nil {
 				t.Errorf("%s => %s", test.in, err)
@@ -135,7 +135,7 @@ func BenchmarkParseString(b *testing.B) {
 	s := []byte(`"__segment_internal"`)
 
 	for i := 0; i != b.N; i++ {
-		parseString(s)
+		parseString(s, 0)
 	}
 }
 

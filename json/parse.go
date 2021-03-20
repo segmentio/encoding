@@ -24,6 +24,38 @@ const (
 	quote  = '"'
 )
 
+// Input flags provide information about the JSON input to the parsing routines,
+// allowing them to take fast paths or skip validation.
+//
+// For example, if the JSON input is valid ASCII print, then all nested strings
+// are also valid ASCII print (no need to check each one individually).
+//
+// An unset flag means "unknown"; the parsing routines should check their input
+// in this case.
+type inputFlags int
+
+const (
+	// The JSON input contains only valid ASCII print chars (0x20 <= c <= 0x7E).
+	validAsciiPrint inputFlags = 1 << iota
+
+	// The JSON input does not contain a backslash.
+	noBackslash
+)
+
+func (flags inputFlags) has(f inputFlags) bool {
+	return (flags & f) != 0
+}
+
+func inputFlagsFor(b []byte) (flags inputFlags) {
+	if ascii.ValidPrint(b) {
+		flags |= validAsciiPrint
+	}
+	if bytes.IndexByte(b, '\\') == -1 {
+		flags |= noBackslash
+	}
+	return
+}
+
 func skipSpaces(b []byte) []byte {
 	if len(b) > 0 && b[0] <= 0x20 {
 		b, _ = skipSpacesN(b)
@@ -50,7 +82,7 @@ func skipSpacesN(b []byte) ([]byte, int) {
 //
 // Because it only works with base 10 the function is also significantly faster
 // than strconv.ParseInt.
-func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
+func parseInt(b []byte, t reflect.Type, flags inputFlags) (int64, []byte, error) {
 	var value int64
 	var count int
 
@@ -73,7 +105,7 @@ func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 		for _, d := range b[1:] {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
-					b, err := inputError(b, t)
+					b, err := inputError(b, t, flags)
 					return 0, b, err
 				}
 				break
@@ -106,7 +138,7 @@ func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 		for _, d := range b {
 			if !(d >= '0' && d <= '9') {
 				if count == 0 {
-					b, err := inputError(b, t)
+					b, err := inputError(b, t, flags)
 					return 0, b, err
 				}
 				break
@@ -141,7 +173,7 @@ func parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 }
 
 // parseUint is like parseInt but for unsigned integers.
-func parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
+func parseUint(b []byte, t reflect.Type, flags inputFlags) (uint64, []byte, error) {
 	const max = math.MaxUint64
 	const lim = max / 10
 
@@ -159,7 +191,7 @@ func parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
 	for _, d := range b {
 		if !(d >= '0' && d <= '9') {
 			if count == 0 {
-				b, err := inputError(b, t)
+				b, err := inputError(b, t, flags)
 				return 0, b, err
 			}
 			break
@@ -388,7 +420,7 @@ func parseUnicode(b []byte) (rune, int, error) {
 	return rune(u), 4, nil
 }
 
-func parseStringFast(b []byte) ([]byte, []byte, bool, error) {
+func parseStringFast(b []byte, flags inputFlags) ([]byte, []byte, bool, error) {
 	if len(b) < 2 {
 		return nil, b[len(b):], false, unexpectedEOF(b)
 	}
@@ -434,13 +466,13 @@ func parseStringFast(b []byte) ([]byte, []byte, bool, error) {
 	return nil, b[len(b):], false, syntaxError(b, "missing '\"' at the end of a string value")
 }
 
-func parseString(b []byte) ([]byte, []byte, error) {
-	s, b, _, err := parseStringFast(b)
+func parseString(b []byte, flags inputFlags) ([]byte, []byte, error) {
+	s, b, _, err := parseStringFast(b, flags)
 	return s, b, err
 }
 
-func parseStringUnquote(b []byte, r []byte) ([]byte, []byte, bool, error) {
-	s, b, escaped, err := parseStringFast(b)
+func parseStringUnquote(b []byte, r []byte, flags inputFlags) ([]byte, []byte, bool, error) {
+	s, b, escaped, err := parseStringFast(b, flags)
 	if err != nil {
 		return s, b, false, err
 	}
@@ -538,7 +570,7 @@ func appendCoerceInvalidUTF8(b []byte, s []byte) []byte {
 	return b
 }
 
-func parseObject(b []byte) ([]byte, []byte, error) {
+func parseObject(b []byte, flags inputFlags) ([]byte, []byte, error) {
 	if len(b) < 2 {
 		return nil, b[len(b):], unexpectedEOF(b)
 	}
@@ -581,7 +613,7 @@ func parseObject(b []byte) ([]byte, []byte, error) {
 			}
 		}
 
-		_, b, err = parseString(b)
+		_, b, err = parseString(b, flags)
 		if err != nil {
 			return nil, b, err
 		}
@@ -595,7 +627,7 @@ func parseObject(b []byte) ([]byte, []byte, error) {
 		}
 		b = skipSpaces(b[1:])
 
-		_, b, err = parseValue(b)
+		_, b, err = parseValue(b, flags)
 		if err != nil {
 			return nil, b, err
 		}
@@ -604,7 +636,7 @@ func parseObject(b []byte) ([]byte, []byte, error) {
 	}
 }
 
-func parseArray(b []byte) ([]byte, []byte, error) {
+func parseArray(b []byte, flags inputFlags) ([]byte, []byte, error) {
 	if len(b) < 2 {
 		return nil, b[len(b):], unexpectedEOF(b)
 	}
@@ -647,7 +679,7 @@ func parseArray(b []byte) ([]byte, []byte, error) {
 			}
 		}
 
-		_, b, err = parseValue(b)
+		_, b, err = parseValue(b, flags)
 		if err != nil {
 			return nil, b, err
 		}
@@ -656,15 +688,15 @@ func parseArray(b []byte) ([]byte, []byte, error) {
 	}
 }
 
-func parseValue(b []byte) ([]byte, []byte, error) {
+func parseValue(b []byte, flags inputFlags) ([]byte, []byte, error) {
 	if len(b) != 0 {
 		switch b[0] {
 		case '{':
-			return parseObject(b)
+			return parseObject(b, flags)
 		case '[':
-			return parseArray(b)
+			return parseArray(b, flags)
 		case '"':
-			return parseString(b)
+			return parseString(b, flags)
 		case 'n':
 			return parseNull(b)
 		case 't':
