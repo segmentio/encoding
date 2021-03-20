@@ -16,9 +16,7 @@ func main() {
 	r := GP64()
 	MOVQ(U64(0), r)
 
-	msk0 := GP32()
-	msk1 := GP32()
-
+	msk := GP32()
 	xmm0 := XMM()
 	ymm0 := YMM()
 	ymm1 := YMM()
@@ -31,12 +29,10 @@ func main() {
 	// that the current version of avo hasn't yet released support for the
 	// AVX.512 instruction set.
 	VMOVUPS(Mem{Base: p}, ymm0)
-	VMOVUPS((Mem{Base: p}).Offset(32), ymm1)
+	VPOR((Mem{Base: p}).Offset(32), ymm0, ymm1)
 
-	VPMOVMSKB(ymm0, msk0)
-	VPMOVMSKB(ymm1, msk1)
-	ORL(msk1, msk0)
-	CMPL(msk0, Imm(0))
+	VPMOVMSKB(ymm1, msk)
+	CMPL(msk, Imm(0))
 	JNE(LabelRef("done"))
 
 	SUBQ(Imm(4), n)
@@ -50,8 +46,8 @@ func main() {
 	JL(LabelRef("loop16"))
 
 	VMOVUPS(Mem{Base: p}, ymm0)
-	VPMOVMSKB(ymm0, msk0)
-	CMPL(msk0, Imm(0))
+	VPMOVMSKB(ymm0, msk)
+	CMPL(msk, Imm(0))
 	JNE(LabelRef("done"))
 
 	SUBQ(Imm(2), n)
@@ -63,8 +59,8 @@ func main() {
 	JE(LabelRef("valid"))
 
 	MOVUPS(Mem{Base: p}, xmm0)
-	PMOVMSKB(xmm0, msk0)
-	CMPL(msk0, Imm(0))
+	PMOVMSKB(xmm0, msk)
+	CMPL(msk, Imm(0))
 	JNE(LabelRef("done"))
 
 	Label("valid")
