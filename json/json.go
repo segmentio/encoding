@@ -316,10 +316,11 @@ const (
 func (dec *Decoder) readValue() (v []byte, err error) {
 	var n int
 	var r []byte
+	var flags inputFlags
 
 	for {
 		if len(dec.remain) != 0 {
-			v, r, err = parseValue(dec.remain, 0)
+			v, r, err = parseValue(dec.remain, flags)
 			if err == nil {
 				dec.remain, n = skipSpacesN(r)
 				dec.inputOffset += int64(len(v) + n)
@@ -363,6 +364,7 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 			err = io.EOF
 		}
 		dec.remain, n = skipSpacesN(dec.buffer)
+		flags = inputFlagsFor(dec.remain)
 		dec.inputOffset += int64(n)
 		dec.err = err
 	}
