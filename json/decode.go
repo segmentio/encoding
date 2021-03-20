@@ -17,7 +17,7 @@ func (d decoder) decodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
 	if hasNullPrefix(b) {
 		return b[4:], nil
 	}
-	return inputError(b, nullType, d.flags)
+	return d.inputError(b, nullType)
 }
 
 func (d decoder) decodeBool(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -34,7 +34,7 @@ func (d decoder) decodeBool(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 
 	default:
-		return inputError(b, boolType, d.flags)
+		return d.inputError(b, boolType)
 	}
 }
 
@@ -223,12 +223,12 @@ func (d decoder) decodeFloat32(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	v, r, err := parseNumber(b)
 	if err != nil {
-		return inputError(b, float32Type, d.flags)
+		return d.inputError(b, float32Type)
 	}
 
 	f, err := strconv.ParseFloat(*(*string)(unsafe.Pointer(&v)), 32)
 	if err != nil {
-		return inputError(b, float32Type, d.flags)
+		return d.inputError(b, float32Type)
 	}
 
 	*(*float32)(p) = float32(f)
@@ -242,12 +242,12 @@ func (d decoder) decodeFloat64(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	v, r, err := parseNumber(b)
 	if err != nil {
-		return inputError(b, float64Type, d.flags)
+		return d.inputError(b, float64Type)
 	}
 
 	f, err := strconv.ParseFloat(*(*string)(unsafe.Pointer(&v)), 64)
 	if err != nil {
-		return inputError(b, float64Type, d.flags)
+		return d.inputError(b, float64Type)
 	}
 
 	*(*float64)(p) = f
@@ -261,7 +261,7 @@ func (d decoder) decodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	v, r, err := parseNumber(b)
 	if err != nil {
-		return inputError(b, numberType, d.flags)
+		return d.inputError(b, numberType)
 	}
 
 	if (d.flags & DontCopyNumber) != 0 {
@@ -281,7 +281,7 @@ func (d decoder) decodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 	s, r, new, err := parseStringUnquote(b, nil, d.flags)
 	if err != nil {
 		if len(b) == 0 || b[0] != '"' {
-			return inputError(b, stringType, d.flags)
+			return d.inputError(b, stringType)
 		}
 		return r, err
 	}
@@ -302,7 +302,7 @@ func (d decoder) decodeFromString(b []byte, p unsafe.Pointer, decode decodeFunc)
 
 	v, b, _, err := parseStringUnquote(b, nil, d.flags)
 	if err != nil {
-		return inputError(v, stringType, d.flags)
+		return d.inputError(v, stringType)
 	}
 
 	if v, err = decode(d, v, p); err != nil {
@@ -351,7 +351,7 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 
 	v, b, _, err := parseStringUnquote(b, nil, d.flags)
 	if err != nil {
-		return inputError(v, t, d.flags)
+		return d.inputError(v, t)
 	}
 
 	if hasLeadingZeroes(v) {
@@ -406,7 +406,7 @@ func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 	}
 
 	if len(b) < 2 {
-		return inputError(b, bytesType, d.flags)
+		return d.inputError(b, bytesType)
 	}
 
 	if b[0] != '"' {
@@ -414,14 +414,14 @@ func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 		if len(b) > 0 && b[0] == '[' {
 			return d.decodeSlice(b, p, 1, bytesType, decoder.decodeUint8)
 		}
-		return inputError(b, bytesType, d.flags)
+		return d.inputError(b, bytesType)
 	}
 
 	// The input string contains escaped sequences, we need to parse it before
 	// decoding it to match the encoding/json package behvaior.
 	src, r, _, err := parseStringUnquote(b, nil, d.flags)
 	if err != nil {
-		return inputError(b, bytesType, d.flags)
+		return d.inputError(b, bytesType)
 	}
 
 	dst := make([]byte, base64.StdEncoding.DecodedLen(len(src)))
@@ -447,7 +447,7 @@ func (d decoder) decodeDuration(b []byte, p unsafe.Pointer) ([]byte, error) {
 	if len(b) > 0 && b[0] != '"' {
 		v, r, err := parseInt(b, durationType, d.flags)
 		if err != nil {
-			return inputError(b, int32Type, d.flags)
+			return d.inputError(b, int32Type)
 		}
 
 		if v < math.MinInt64 || v > math.MaxInt64 {
@@ -459,19 +459,19 @@ func (d decoder) decodeDuration(b []byte, p unsafe.Pointer) ([]byte, error) {
 	}
 
 	if len(b) < 2 || b[0] != '"' {
-		return inputError(b, durationType, d.flags)
+		return d.inputError(b, durationType)
 	}
 
 	i := bytes.IndexByte(b[1:], '"') + 1
 	if i <= 0 {
-		return inputError(b, durationType, d.flags)
+		return d.inputError(b, durationType)
 	}
 
 	s := b[1:i] // trim quotes
 
 	v, err := time.ParseDuration(*(*string)(unsafe.Pointer(&s)))
 	if err != nil {
-		return inputError(b, durationType, d.flags)
+		return d.inputError(b, durationType)
 	}
 
 	*(*time.Duration)(p) = v
@@ -484,19 +484,19 @@ func (d decoder) decodeTime(b []byte, p unsafe.Pointer) ([]byte, error) {
 	}
 
 	if len(b) < 2 || b[0] != '"' {
-		return inputError(b, timeType, d.flags)
+		return d.inputError(b, timeType)
 	}
 
 	i := bytes.IndexByte(b[1:], '"') + 1
 	if i <= 0 {
-		return inputError(b, timeType, d.flags)
+		return d.inputError(b, timeType)
 	}
 
 	s := b[1:i] // trim quotes
 
 	v, err := time.Parse(time.RFC3339Nano, *(*string)(unsafe.Pointer(&s)))
 	if err != nil {
-		return inputError(b, timeType, d.flags)
+		return d.inputError(b, timeType)
 	}
 
 	*(*time.Time)(p) = v
@@ -509,7 +509,7 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 	}
 
 	if len(b) < 2 || b[0] != '[' {
-		return inputError(b, t, d.flags)
+		return d.inputError(b, t)
 	}
 	b = b[1:]
 
@@ -576,7 +576,7 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 	}
 
 	if len(b) < 2 {
-		return inputError(b, t, d.flags)
+		return d.inputError(b, t)
 	}
 
 	if b[0] != '[' {
@@ -586,7 +586,7 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 		if t.Elem().Kind() == reflect.Uint8 {
 			return d.decodeBytes(b, p)
 		}
-		return inputError(b, t, d.flags)
+		return d.inputError(b, t)
 	}
 
 	input := b
@@ -653,7 +653,7 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, t, d.flags)
+		return d.inputError(b, t)
 	}
 	i := 0
 	m := reflect.NewAt(t, p).Elem()
@@ -733,7 +733,7 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, mapStringInterfaceType, d.flags)
+		return d.inputError(b, mapStringInterfaceType)
 	}
 
 	i := 0
@@ -814,7 +814,7 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, mapStringRawMessageType, d.flags)
+		return d.inputError(b, mapStringRawMessageType)
 	}
 
 	i := 0
@@ -895,7 +895,7 @@ func (d decoder) decodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, mapStringStringType, d.flags)
+		return d.inputError(b, mapStringStringType)
 	}
 
 	i := 0
@@ -976,7 +976,7 @@ func (d decoder) decodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, mapStringStringSliceType, d.flags)
+		return d.inputError(b, mapStringStringSliceType)
 	}
 
 	i := 0
@@ -1061,7 +1061,7 @@ func (d decoder) decodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, mapStringBoolType, d.flags)
+		return d.inputError(b, mapStringBoolType)
 	}
 
 	i := 0
@@ -1141,7 +1141,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 	}
 
 	if len(b) < 2 || b[0] != '{' {
-		return inputError(b, st.typ, d.flags)
+		return d.inputError(b, st.typ)
 	}
 
 	var err error
@@ -1365,7 +1365,7 @@ func (d decoder) decodeUnmarshalTypeError(b []byte, p unsafe.Pointer, t reflect.
 func (d decoder) decodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 	v, r, err := parseValue(b, d.flags)
 	if err != nil {
-		return inputError(b, rawMessageType, d.flags)
+		return d.inputError(b, rawMessageType)
 	}
 
 	if (d.flags & DontCopyRawMessage) == 0 {
@@ -1402,7 +1402,7 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 		return b, err
 	}
 	if len(v) == 0 {
-		return inputError(v, t, d.flags)
+		return d.inputError(v, t)
 	}
 
 	switch v[0] {
@@ -1443,4 +1443,8 @@ func (d decoder) prependField(key, field string) string {
 		return key + "." + field
 	}
 	return key
+}
+
+func (d decoder) inputError(b []byte, t reflect.Type) ([]byte, error) {
+	return inputError(b, t, d.flags)
 }
