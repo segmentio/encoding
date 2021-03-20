@@ -2,20 +2,18 @@
 
 package ascii
 
-import (
-	"unsafe"
-)
+import "unsafe"
 
 //go:nosplit
-func validPrint16(s *byte, n uintptr) int {
+func valid16(s *byte, n uintptr) int {
 	p := unsafe.Pointer(s)
 	i := uintptr(0)
 
 	for n > 0 {
-		x := *(*uint64)(unsafe.Pointer(uintptr(p) + i))
-		y := *(*uint64)(unsafe.Pointer(uintptr(p) + i + 8))
+		lo := *(*uint64)(unsafe.Pointer(uintptr(p) + i))
+		hi := *(*uint64)(unsafe.Pointer(uintptr(p) + i + 8))
 
-		if hasLess64(x, 0x20) || hasMore64(x, 0x7e) || hasLess64(y, 0x20) || hasMore64(y, 0x7e) {
+		if (lo&0x8080808080808080) != 0 || (hi&0x8080808080808080) != 0 {
 			return 0
 		}
 

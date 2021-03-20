@@ -2,5 +2,5 @@
 
 package ascii
 
-// Validates that the string only contains printable ASCII characters.
-func validPrint16(p *byte, n uintptr) int
+// Validates that the string only contains ASCII characters.
+func valid16(p *byte, n uintptr) int
