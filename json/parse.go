@@ -47,6 +47,9 @@ func (flags inputFlags) has(f inputFlags) bool {
 }
 
 func inputFlagsFor(b []byte) (flags inputFlags) {
+	// Don't consider surrounding whitespace
+	b = skipSpaces(b)
+	b = b[:len(b)-trailingSpaces(b)]
 	if ascii.ValidPrint(b) {
 		flags |= validAsciiPrint
 	}
@@ -72,6 +75,19 @@ func skipSpacesN(b []byte) ([]byte, int) {
 		}
 	}
 	return nil, 0
+}
+
+func trailingSpaces(b []byte) int {
+	i := len(b) - 1
+loop:
+	for ; i >= 0; i-- {
+		switch b[i] {
+		case sp, ht, nl, cr:
+		default:
+			break loop
+		}
+	}
+	return len(b) - (i + 1)
 }
 
 // parseInt parses a decimal representation of an int64 from b.
