@@ -43,7 +43,7 @@ func (d decoder) decodeInt(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b, intType, d.flags)
+	v, r, err := d.parseInt(b, intType)
 	if err != nil {
 		return r, err
 	}
@@ -57,7 +57,7 @@ func (d decoder) decodeInt8(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b, int8Type, d.flags)
+	v, r, err := d.parseInt(b, int8Type)
 	if err != nil {
 		return r, err
 	}
@@ -75,7 +75,7 @@ func (d decoder) decodeInt16(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b, int16Type, d.flags)
+	v, r, err := d.parseInt(b, int16Type)
 	if err != nil {
 		return r, err
 	}
@@ -93,7 +93,7 @@ func (d decoder) decodeInt32(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b, int32Type, d.flags)
+	v, r, err := d.parseInt(b, int32Type)
 	if err != nil {
 		return r, err
 	}
@@ -111,7 +111,7 @@ func (d decoder) decodeInt64(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseInt(b, int64Type, d.flags)
+	v, r, err := d.parseInt(b, int64Type)
 	if err != nil {
 		return r, err
 	}
@@ -125,7 +125,7 @@ func (d decoder) decodeUint(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b, uintType, d.flags)
+	v, r, err := d.parseUint(b, uintType)
 	if err != nil {
 		return r, err
 	}
@@ -139,7 +139,7 @@ func (d decoder) decodeUintptr(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b, uintptrType, d.flags)
+	v, r, err := d.parseUint(b, uintptrType)
 	if err != nil {
 		return r, err
 	}
@@ -153,7 +153,7 @@ func (d decoder) decodeUint8(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b, uint8Type, d.flags)
+	v, r, err := d.parseUint(b, uint8Type)
 	if err != nil {
 		return r, err
 	}
@@ -171,7 +171,7 @@ func (d decoder) decodeUint16(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b, uint16Type, d.flags)
+	v, r, err := d.parseUint(b, uint16Type)
 	if err != nil {
 		return r, err
 	}
@@ -189,7 +189,7 @@ func (d decoder) decodeUint32(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b, uint32Type, d.flags)
+	v, r, err := d.parseUint(b, uint32Type)
 	if err != nil {
 		return r, err
 	}
@@ -207,7 +207,7 @@ func (d decoder) decodeUint64(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseUint(b, uint64Type, d.flags)
+	v, r, err := d.parseUint(b, uint64Type)
 	if err != nil {
 		return r, err
 	}
@@ -221,7 +221,7 @@ func (d decoder) decodeFloat32(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseNumber(b)
+	v, r, err := d.parseNumber(b)
 	if err != nil {
 		return d.inputError(b, float32Type)
 	}
@@ -240,7 +240,7 @@ func (d decoder) decodeFloat64(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseNumber(b)
+	v, r, err := d.parseNumber(b)
 	if err != nil {
 		return d.inputError(b, float64Type)
 	}
@@ -259,7 +259,7 @@ func (d decoder) decodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, err := parseNumber(b)
+	v, r, err := d.parseNumber(b)
 	if err != nil {
 		return d.inputError(b, numberType)
 	}
@@ -278,7 +278,7 @@ func (d decoder) decodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	s, r, new, err := parseStringUnquote(b, nil, d.flags)
+	s, r, new, err := d.parseStringUnquote(b, nil)
 	if err != nil {
 		if len(b) == 0 || b[0] != '"' {
 			return d.inputError(b, stringType)
@@ -300,7 +300,7 @@ func (d decoder) decodeFromString(b []byte, p unsafe.Pointer, decode decodeFunc)
 		return decode(d, b, p)
 	}
 
-	v, b, _, err := parseStringUnquote(b, nil, d.flags)
+	v, b, _, err := d.parseStringUnquote(b, nil)
 	if err != nil {
 		return d.inputError(v, stringType)
 	}
@@ -322,7 +322,7 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 	}
 
 	if len(b) > 0 && b[0] != '"' {
-		v, r, err := parseNumber(b)
+		v, r, err := d.parseNumber(b)
 		if err == nil {
 			// The encoding/json package will return a *json.UnmarshalTypeError if
 			// the input was a floating point number representation, even tho a
@@ -349,7 +349,7 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal \"\" into int")
 	}
 
-	v, b, _, err := parseStringUnquote(b, nil, d.flags)
+	v, b, _, err := d.parseStringUnquote(b, nil)
 	if err != nil {
 		return d.inputError(v, t)
 	}
@@ -384,10 +384,10 @@ func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Typ
 		}
 		// When the input value was a valid number representation we retain the
 		// error returned by the decoder.
-		if _, _, err := parseNumber(v); err != nil {
+		if _, _, err := d.parseNumber(v); err != nil {
 			// When the input value valid JSON we mirror the behavior of the
 			// encoding/json package and return a generic error.
-			if _, _, err := parseValue(v, d.flags); err == nil {
+			if _, _, err := d.parseValue(v); err == nil {
 				return b, fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into int", prefix(v))
 			}
 		}
@@ -419,7 +419,7 @@ func (d decoder) decodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	// The input string contains escaped sequences, we need to parse it before
 	// decoding it to match the encoding/json package behvaior.
-	src, r, _, err := parseStringUnquote(b, nil, d.flags)
+	src, r, _, err := d.parseStringUnquote(b, nil)
 	if err != nil {
 		return d.inputError(b, bytesType)
 	}
@@ -445,7 +445,7 @@ func (d decoder) decodeDuration(b []byte, p unsafe.Pointer) ([]byte, error) {
 	// flexible on how durations are formatted, but for the time being, it's
 	// been punted to go2 at the earliest: https://github.com/golang/go/issues/4712
 	if len(b) > 0 && b[0] != '"' {
-		v, r, err := parseInt(b, durationType, d.flags)
+		v, r, err := d.parseInt(b, durationType)
 		if err != nil {
 			return d.inputError(b, int32Type)
 		}
@@ -557,7 +557,7 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 			return b[1:], nil
 		}
 
-		_, b, err = parseValue(b, d.flags)
+		_, b, err = d.parseValue(b)
 		if err != nil {
 			return b, err
 		}
@@ -630,7 +630,7 @@ func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 
 		b, err = decode(d, b, unsafe.Pointer(uintptr(s.data)+(uintptr(s.len)*size)))
 		if err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -709,7 +709,7 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 		b = skipSpaces(b[1:])
 
 		if b, err = decodeValue(d, b, vptr); err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -790,7 +790,7 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 
 		b, err = d.decodeInterface(b, unsafe.Pointer(&val))
 		if err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -871,7 +871,7 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 
 		b, err = d.decodeRawMessage(b, unsafe.Pointer(&val))
 		if err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -952,7 +952,7 @@ func (d decoder) decodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 
 		b, err = d.decodeString(b, unsafe.Pointer(&val))
 		if err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -1034,7 +1034,7 @@ func (d decoder) decodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 
 		b, err = d.decodeSlice(b, unsafe.Pointer(&buf), stringSize, sliceStringType, decoder.decodeString)
 		if err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -1118,7 +1118,7 @@ func (d decoder) decodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 
 		b, err = d.decodeBool(b, unsafe.Pointer(&val))
 		if err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -1176,7 +1176,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
-		k, b, _, err = parseStringUnquote(b, nil, d.flags)
+		k, b, _, err = d.parseStringUnquote(b, nil)
 		if err != nil {
 			return objectKeyError(b, err)
 		}
@@ -1201,14 +1201,14 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 			if (d.flags & DisallowUnknownFields) != 0 {
 				return b, fmt.Errorf("json: unknown field %q", k)
 			}
-			if _, b, err = parseValue(b, d.flags); err != nil {
+			if _, b, err = d.parseValue(b); err != nil {
 				return b, err
 			}
 			continue
 		}
 
 		if b, err = f.codec.decode(d, b, unsafe.Pointer(uintptr(p)+f.offset)); err != nil {
-			if _, r, err := parseValue(input, d.flags); err != nil {
+			if _, r, err := d.parseValue(input); err != nil {
 				return r, err
 			} else {
 				b = r
@@ -1277,7 +1277,7 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b, err
 	}
 
-	v, b, err := parseValue(b, d.flags)
+	v, b, err := d.parseValue(b)
 	if err != nil {
 		return b, err
 	}
@@ -1352,7 +1352,7 @@ func (d decoder) decodeMaybeEmptyInterface(b []byte, p unsafe.Pointer, t reflect
 }
 
 func (d decoder) decodeUnmarshalTypeError(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
-	v, b, err := parseValue(b, d.flags)
+	v, b, err := d.parseValue(b)
 	if err != nil {
 		return b, err
 	}
@@ -1363,7 +1363,7 @@ func (d decoder) decodeUnmarshalTypeError(b []byte, p unsafe.Pointer, t reflect.
 }
 
 func (d decoder) decodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
-	v, r, err := parseValue(b, d.flags)
+	v, r, err := d.parseValue(b)
 	if err != nil {
 		return d.inputError(b, rawMessageType)
 	}
@@ -1377,7 +1377,7 @@ func (d decoder) decodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (d decoder) decodeJSONUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Type, pointer bool) ([]byte, error) {
-	v, b, err := parseValue(b, d.flags)
+	v, b, err := d.parseValue(b)
 	if err != nil {
 		return b, err
 	}
@@ -1397,7 +1397,7 @@ func (d decoder) decodeJSONUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Type, pointer bool) ([]byte, error) {
 	var value string
 
-	v, b, err := parseValue(b, d.flags)
+	v, b, err := d.parseValue(b)
 	if err != nil {
 		return b, err
 	}
@@ -1407,10 +1407,10 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 
 	switch v[0] {
 	case 'n':
-		_, _, err := parseNull(v)
+		_, _, err := d.parseNull(v)
 		return b, err
 	case '"':
-		s, _, _, err := parseStringUnquote(v, nil, d.flags)
+		s, _, _, err := d.parseStringUnquote(v, nil)
 		if err != nil {
 			return b, err
 		}
@@ -1446,5 +1446,12 @@ func (d decoder) prependField(key, field string) string {
 }
 
 func (d decoder) inputError(b []byte, t reflect.Type) ([]byte, error) {
-	return inputError(b, t, d.flags)
+	if len(b) == 0 {
+		return nil, unexpectedEOF(b)
+	}
+	_, r, err := d.parseValue(b)
+	if err != nil {
+		return r, err
+	}
+	return skipSpaces(r), unmarshalTypeError(b, t)
 }
