@@ -22,9 +22,10 @@ func TestParseString(t *testing.T) {
 		{`"\u0"`, ``, ``, `json: unicode code point must have at least 4 characters: 0"`},
 	}
 
+	d := decoder{}
 	for _, test := range tests {
 		t.Run(test.in, func(t *testing.T) {
-			out, ext, err := parseString([]byte(test.in))
+			out, ext, err := d.parseString([]byte(test.in))
 
 			if test.err == "" {
 				if err != nil {
@@ -68,9 +69,10 @@ func TestParseStringUnquote(t *testing.T) {
 		{`"\u0061\u0062\u0063"`, `abc`, ``},
 	}
 
+	d := decoder{}
 	for _, test := range tests {
 		t.Run(test.in, func(t *testing.T) {
-			out, ext, _, err := parseStringUnquote([]byte(test.in), nil)
+			out, ext, _, err := d.parseStringUnquote([]byte(test.in), nil)
 
 			if err != nil {
 				t.Errorf("%s => %s", test.in, err)
@@ -134,8 +136,9 @@ func TestAppendToLower(t *testing.T) {
 func BenchmarkParseString(b *testing.B) {
 	s := []byte(`"__segment_internal"`)
 
+	d := decoder{}
 	for i := 0; i != b.N; i++ {
-		parseString(s)
+		d.parseString(s)
 	}
 }
 
