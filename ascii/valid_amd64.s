@@ -13,10 +13,8 @@ loop64:
 	CMPQ      CX, $0x04
 	JL        loop32
 	VMOVUPS   (AX), Y0
-	VMOVUPS   32(AX), Y1
+	VPOR      32(AX), Y0, Y0
 	VPMOVMSKB Y0, BX
-	VPMOVMSKB Y1, BP
-	ORL       BP, BX
 	CMPL      BX, $0x00
 	JNE       done
 	SUBQ      $0x04, CX
