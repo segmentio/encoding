@@ -27,7 +27,7 @@ const (
 func internalParseFlags(b []byte) (flags ParseFlags) {
 	// Don't consider surrounding whitespace
 	b = skipSpaces(b)
-	b = b[:len(b)-trailingSpaces(b)]
+	b = trimTrailingSpaces(b)
 	if ascii.ValidPrint(b) {
 		flags |= validAsciiPrint
 	}
@@ -55,7 +55,14 @@ func skipSpacesN(b []byte) ([]byte, int) {
 	return nil, 0
 }
 
-func trailingSpaces(b []byte) int {
+func trimTrailingSpaces(b []byte) []byte {
+	if len(b) > 0 && b[len(b)-1] <= 0x20 {
+		b = trimTrailingSpacesN(b)
+	}
+	return b
+}
+
+func trimTrailingSpacesN(b []byte) []byte {
 	i := len(b) - 1
 loop:
 	for ; i >= 0; i-- {
@@ -65,7 +72,7 @@ loop:
 			break loop
 		}
 	}
-	return len(b) - (i + 1)
+	return b[:i+1]
 }
 
 // parseInt parses a decimal representation of an int64 from b.
