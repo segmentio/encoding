@@ -983,17 +983,6 @@ func syntaxError(b []byte, msg string, args ...interface{}) error {
 	return e
 }
 
-func inputError(b []byte, t reflect.Type) ([]byte, error) {
-	if len(b) == 0 {
-		return nil, unexpectedEOF(b)
-	}
-	_, r, err := parseValue(b)
-	if err != nil {
-		return r, err
-	}
-	return skipSpaces(r), unmarshalTypeError(b, t)
-}
-
 func objectKeyError(b []byte, err error) ([]byte, error) {
 	if len(b) == 0 {
 		return nil, unexpectedEOF(b)
