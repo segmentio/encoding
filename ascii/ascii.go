@@ -4,18 +4,18 @@ import (
 	. "github.com/klauspost/cpuid/v2"
 )
 
-var (
-	optimizedValid16      func(*byte, uintptr) int
-	optimizedValidPrint16 func(*byte, uintptr) int
-)
+var asm struct {
+	valid16      func(*byte, uintptr) int
+	validPrint16 func(*byte, uintptr) int
+}
 
 func init() {
 	if CPU.Supports(AVX, AVX2) {
-		optimizedValid16 = validAVX2
-		optimizedValidPrint16 = validPrintAVX2
+		asm.valid16 = validAVX2
+		asm.validPrint16 = validPrintAVX2
 	} else {
-		optimizedValid16 = valid16
-		optimizedValidPrint16 = validPrint16
+		asm.valid16 = valid16
+		asm.validPrint16 = validPrint16
 	}
 }
 

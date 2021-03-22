@@ -29,7 +29,7 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 	p := *(*unsafe.Pointer)(s)
 
 	if n >= 16 {
-		if optimizedValid16((*byte)(p), n/16) == 0 {
+		if asm.valid16((*byte)(p), n/16) == 0 {
 			return false
 		}
 		i = (n / 16) * 16

@@ -29,7 +29,7 @@ func validPrint(s unsafe.Pointer, n uintptr) bool {
 	i := uintptr(0)
 
 	if n >= 16 {
-		if optimizedValidPrint16((*byte)(p), n/16) == 0 {
+		if asm.validPrint16((*byte)(p), n/16) == 0 {
 			return false
 		}
 		i = ((n / 16) * 16)
