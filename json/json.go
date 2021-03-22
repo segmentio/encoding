@@ -150,7 +150,9 @@ const (
 type Kind uint
 
 const (
-	Null Kind = 1 // Null is not zero, so we keep zero for "uninitialized".
+	Undefined Kind = 0
+
+	Null Kind = 1 // Null is not zero, so we keep zero for "undefined".
 
 	Bool  Kind = 2 // Bit two is set to 1, means it's a boolean.
 	False Kind = 2 // Bool + 0

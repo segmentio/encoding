@@ -285,9 +285,9 @@ func (d decoder) parseNull(b []byte) ([]byte, []byte, Kind, error) {
 		return b[:4], b[4:], Null, nil
 	}
 	if len(b) < 4 {
-		return nil, b[len(b):], 0, unexpectedEOF(b)
+		return nil, b[len(b):], Undefined, unexpectedEOF(b)
 	}
-	return nil, b, 0, syntaxError(b, "expected 'null' but found invalid token")
+	return nil, b, Undefined, syntaxError(b, "expected 'null' but found invalid token")
 }
 
 func (d decoder) parseTrue(b []byte) ([]byte, []byte, Kind, error) {
@@ -295,9 +295,9 @@ func (d decoder) parseTrue(b []byte) ([]byte, []byte, Kind, error) {
 		return b[:4], b[4:], True, nil
 	}
 	if len(b) < 4 {
-		return nil, b[len(b):], 0, unexpectedEOF(b)
+		return nil, b[len(b):], Undefined, unexpectedEOF(b)
 	}
-	return nil, b, 0, syntaxError(b, "expected 'true' but found invalid token")
+	return nil, b, Undefined, syntaxError(b, "expected 'true' but found invalid token")
 }
 
 func (d decoder) parseFalse(b []byte) ([]byte, []byte, Kind, error) {
@@ -305,9 +305,9 @@ func (d decoder) parseFalse(b []byte) ([]byte, []byte, Kind, error) {
 		return b[:5], b[5:], False, nil
 	}
 	if len(b) < 5 {
-		return nil, b[len(b):], 0, unexpectedEOF(b)
+		return nil, b[len(b):], Undefined, unexpectedEOF(b)
 	}
-	return nil, b, 0, syntaxError(b, "expected 'false' but found invalid token")
+	return nil, b, Undefined, syntaxError(b, "expected 'false' but found invalid token")
 }
 
 func (d decoder) parseNumber(b []byte) (v, r []byte, kind Kind, err error) {
@@ -429,15 +429,15 @@ func (d decoder) parseUnicode(b []byte) (rune, int, error) {
 
 func (d decoder) parseString(b []byte) ([]byte, []byte, Kind, error) {
 	if len(b) < 2 {
-		return nil, b[len(b):], 0, unexpectedEOF(b)
+		return nil, b[len(b):], Undefined, unexpectedEOF(b)
 	}
 	if b[0] != '"' {
-		return nil, b, 0, syntaxError(b, "expected '\"' at the beginning of a string value")
+		return nil, b, Undefined, syntaxError(b, "expected '\"' at the beginning of a string value")
 	}
 
 	n := bytes.IndexByte(b[1:], '"') + 2
 	if n <= 1 {
-		return nil, b[len(b):], 0, syntaxError(b, "missing '\"' at the end of a string value")
+		return nil, b[len(b):], Undefined, syntaxError(b, "missing '\"' at the end of a string value")
 	}
 	if (d.flags.has(noBackslash) || bytes.IndexByte(b[1:n], '\\') < 0) &&
 		(d.flags.has(validAsciiPrint) || ascii.ValidPrint(b[1:n])) {
@@ -453,11 +453,11 @@ func (d decoder) parseString(b []byte) ([]byte, []byte, Kind, error) {
 				case 'u':
 					_, n, err := d.parseUnicode(b[i+1:])
 					if err != nil {
-						return nil, b[i+1+n:], 0, err
+						return nil, b[i+1+n:], Undefined, err
 					}
 					i += n
 				default:
-					return nil, b, 0, syntaxError(b, "invalid character '%c' in string escape code", b[i])
+					return nil, b, Undefined, syntaxError(b, "invalid character '%c' in string escape code", b[i])
 				}
 			}
 
@@ -466,12 +466,12 @@ func (d decoder) parseString(b []byte) ([]byte, []byte, Kind, error) {
 
 		default:
 			if b[i] < 0x20 {
-				return nil, b, 0, syntaxError(b, "invalid character '%c' in string escape code", b[i])
+				return nil, b, Undefined, syntaxError(b, "invalid character '%c' in string escape code", b[i])
 			}
 		}
 	}
 
-	return nil, b[len(b):], 0, syntaxError(b, "missing '\"' at the end of a string value")
+	return nil, b[len(b):], Undefined, syntaxError(b, "missing '\"' at the end of a string value")
 }
 
 func (d decoder) parseStringUnquote(b []byte, r []byte) ([]byte, []byte, bool, error) {
@@ -575,11 +575,11 @@ func appendCoerceInvalidUTF8(b []byte, s []byte) []byte {
 
 func (d decoder) parseObject(b []byte) ([]byte, []byte, Kind, error) {
 	if len(b) < 2 {
-		return nil, b[len(b):], 0, unexpectedEOF(b)
+		return nil, b[len(b):], Undefined, unexpectedEOF(b)
 	}
 
 	if b[0] != '{' {
-		return nil, b, 0, syntaxError(b, "expected '{' at the beginning of an object value")
+		return nil, b, Undefined, syntaxError(b, "expected '{' at the beginning of an object value")
 	}
 
 	var err error
@@ -592,7 +592,7 @@ func (d decoder) parseObject(b []byte) ([]byte, []byte, Kind, error) {
 		b = skipSpaces(b)
 
 		if len(b) == 0 {
-			return nil, b, 0, syntaxError(b, "cannot decode object from empty input")
+			return nil, b, Undefined, syntaxError(b, "cannot decode object from empty input")
 		}
 
 		if b[0] == '}' {
@@ -602,37 +602,37 @@ func (d decoder) parseObject(b []byte) ([]byte, []byte, Kind, error) {
 
 		if i != 0 {
 			if len(b) == 0 {
-				return nil, b, 0, syntaxError(b, "unexpected EOF after object field value")
+				return nil, b, Undefined, syntaxError(b, "unexpected EOF after object field value")
 			}
 			if b[0] != ',' {
-				return nil, b, 0, syntaxError(b, "expected ',' after object field value but found '%c'", b[0])
+				return nil, b, Undefined, syntaxError(b, "expected ',' after object field value but found '%c'", b[0])
 			}
 			b = skipSpaces(b[1:])
 			if len(b) == 0 {
-				return nil, b, 0, unexpectedEOF(b)
+				return nil, b, Undefined, unexpectedEOF(b)
 			}
 			if b[0] == '}' {
-				return nil, b, 0, syntaxError(b, "unexpected trailing comma after object field")
+				return nil, b, Undefined, syntaxError(b, "unexpected trailing comma after object field")
 			}
 		}
 
 		_, b, _, err = d.parseString(b)
 		if err != nil {
-			return nil, b, 0, err
+			return nil, b, Undefined, err
 		}
 		b = skipSpaces(b)
 
 		if len(b) == 0 {
-			return nil, b, 0, syntaxError(b, "unexpected EOF after object field key")
+			return nil, b, Undefined, syntaxError(b, "unexpected EOF after object field key")
 		}
 		if b[0] != ':' {
-			return nil, b, 0, syntaxError(b, "expected ':' after object field key but found '%c'", b[0])
+			return nil, b, Undefined, syntaxError(b, "expected ':' after object field key but found '%c'", b[0])
 		}
 		b = skipSpaces(b[1:])
 
 		_, b, _, err = d.parseValue(b)
 		if err != nil {
-			return nil, b, 0, err
+			return nil, b, Undefined, err
 		}
 
 		i++
@@ -641,11 +641,11 @@ func (d decoder) parseObject(b []byte) ([]byte, []byte, Kind, error) {
 
 func (d decoder) parseArray(b []byte) ([]byte, []byte, Kind, error) {
 	if len(b) < 2 {
-		return nil, b[len(b):], 0, unexpectedEOF(b)
+		return nil, b[len(b):], Undefined, unexpectedEOF(b)
 	}
 
 	if b[0] != '[' {
-		return nil, b, 0, syntaxError(b, "expected '[' at the beginning of array value")
+		return nil, b, Undefined, syntaxError(b, "expected '[' at the beginning of array value")
 	}
 
 	var err error
@@ -658,7 +658,7 @@ func (d decoder) parseArray(b []byte) ([]byte, []byte, Kind, error) {
 		b = skipSpaces(b)
 
 		if len(b) == 0 {
-			return nil, b, 0, syntaxError(b, "missing closing ']' after array value")
+			return nil, b, Undefined, syntaxError(b, "missing closing ']' after array value")
 		}
 
 		if b[0] == ']' {
@@ -668,23 +668,23 @@ func (d decoder) parseArray(b []byte) ([]byte, []byte, Kind, error) {
 
 		if i != 0 {
 			if len(b) == 0 {
-				return nil, b, 0, syntaxError(b, "unexpected EOF after array element")
+				return nil, b, Undefined, syntaxError(b, "unexpected EOF after array element")
 			}
 			if b[0] != ',' {
-				return nil, b, 0, syntaxError(b, "expected ',' after array element but found '%c'", b[0])
+				return nil, b, Undefined, syntaxError(b, "expected ',' after array element but found '%c'", b[0])
 			}
 			b = skipSpaces(b[1:])
 			if len(b) == 0 {
-				return nil, b, 0, unexpectedEOF(b)
+				return nil, b, Undefined, unexpectedEOF(b)
 			}
 			if b[0] == ']' {
-				return nil, b, 0, syntaxError(b, "unexpected trailing comma after object field")
+				return nil, b, Undefined, syntaxError(b, "unexpected trailing comma after object field")
 			}
 		}
 
 		_, b, _, err = d.parseValue(b)
 		if err != nil {
-			return nil, b, 0, err
+			return nil, b, Undefined, err
 		}
 
 		i++
@@ -693,7 +693,7 @@ func (d decoder) parseArray(b []byte) ([]byte, []byte, Kind, error) {
 
 func (d decoder) parseValue(b []byte) ([]byte, []byte, Kind, error) {
 	if len(b) == 0 {
-		return nil, b, 0, syntaxError(b, "unexpected end of JSON input")
+		return nil, b, Undefined, syntaxError(b, "unexpected end of JSON input")
 	}
 
 	var v []byte
