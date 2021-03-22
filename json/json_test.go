@@ -1777,3 +1777,27 @@ func BenchmarkUnmarshalField(b *testing.B) {
 
 	b.Log(v)
 }
+
+func TestKind(t *testing.T) {
+	for _, test := range []struct {
+		kind  Kind
+		class Kind
+	}{
+		{kind: 0, class: 0},
+		{kind: Null, class: Null},
+		{kind: False, class: Bool},
+		{kind: True, class: Bool},
+		{kind: Num, class: Num},
+		{kind: Uint, class: Num},
+		{kind: Int, class: Num},
+		{kind: Float, class: Num},
+		{kind: String, class: String},
+		{kind: Unescaped, class: String},
+		{kind: Array, class: Array},
+		{kind: Object, class: Object},
+	} {
+		if class := test.kind.Class(); class != test.class {
+			t.Errorf("class of kind(%d) mismatch: want=%d got=%d", test.kind, test.class, class)
+		}
+	}
+}

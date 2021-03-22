@@ -121,7 +121,7 @@ func (e encoder) encodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
 	}
 
 	d := decoder{}
-	_, _, err := d.parseNumber(stringToBytes(string(n)))
+	_, _, _, err := d.parseNumber(stringToBytes(string(n)))
 	if err != nil {
 		return b, err
 	}
@@ -845,7 +845,7 @@ func (e encoder) encodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 	} else {
 		var err error
 		d := decoder{}
-		s, _, err = d.parseValue(v)
+		s, _, _, err = d.parseValue(v)
 		if err != nil {
 			return b, &UnsupportedValueError{Value: reflect.ValueOf(v), Str: err.Error()}
 		}
@@ -878,7 +878,7 @@ func (e encoder) encodeJSONMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 	}
 
 	d := decoder{}
-	s, _, err := d.parseValue(j)
+	s, _, _, err := d.parseValue(j)
 	if err != nil {
 		return b, &MarshalerError{Type: t, Err: err}
 	}
