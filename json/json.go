@@ -55,7 +55,7 @@ type UnsupportedValueError = json.UnsupportedValueError
 
 // AppendFlags is a type used to represent configuration options that can be
 // applied when formatting json output.
-type AppendFlags int
+type AppendFlags uint
 
 const (
 	// EscapeHTML is a formatting flag used to to escape HTML in json strings.
@@ -74,7 +74,7 @@ const (
 
 // ParseFlags is a type used to represent configuration options that can be
 // applied when parsing json input.
-type ParseFlags int
+type ParseFlags uint
 
 func (flags ParseFlags) has(f ParseFlags) bool {
 	return (flags & f) != 0
@@ -85,7 +85,7 @@ func (f ParseFlags) kind() Kind {
 }
 
 func (f ParseFlags) withKind(kind Kind) ParseFlags {
-	return (f & ^(0xFF << kindOffset)) | (ParseFlags(kind) << kindOffset)
+	return (f & ^(ParseFlags(0xFF) << kindOffset)) | (ParseFlags(kind) << kindOffset)
 }
 
 const (
@@ -143,7 +143,7 @@ const (
 	// Bit offset where the kind of the json value is stored.
 	//
 	// See Kind in token.go for the enum.
-	kindOffset = 16
+	kindOffset ParseFlags = 16
 )
 
 // Kind represents the different kinds of value that exist in JSON.
