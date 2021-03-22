@@ -2,9 +2,9 @@
 
 #include "textflag.h"
 
-// func validPrint16(p *byte, n uintptr) int
+// func validPrintAVX2(p *byte, n uintptr) int
 // Requires: AVX, AVX2, SSE, SSE2, SSE4.1
-TEXT ·validPrint16(SB), NOSPLIT, $0-24
+TEXT ·validPrintAVX2(SB), NOSPLIT, $0-24
 	MOVQ p+0(FP), AX
 	MOVQ n+8(FP), CX
 	MOVQ $0x0000000000000000, DX

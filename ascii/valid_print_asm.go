@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	TEXT("validPrint16", NOSPLIT, "func(p *byte, n uintptr) int")
+	TEXT("validPrintAVX2", NOSPLIT, "func(p *byte, n uintptr) int")
 	Doc("Validates that the string only contains printable ASCII characters.")
 
 	p := Load(Param("p"), GP64())
@@ -67,9 +67,9 @@ func main() {
 	VPCMPGTB(minYMM, ymm1, ymm5) // compute the same for the next 32 bytes
 	VPCMPGTB(maxYMM, ymm1, ymm6)
 	VPANDN(ymm5, ymm6, ymm7)
-	VPAND(ymm4, ymm7, ymm8)      // combine masks
+	VPAND(ymm4, ymm7, ymm8) // combine masks
 	VPMOVMSKB(ymm8, msk0)
-	XORL(U32(0xFFFFFFFF), msk0)  // check for a zero somewhere
+	XORL(U32(0xFFFFFFFF), msk0) // check for a zero somewhere
 	JNE(LabelRef("done"))
 
 	SUBQ(Imm(4), n)

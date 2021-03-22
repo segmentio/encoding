@@ -1,5 +1,24 @@
 package ascii
 
+import (
+	. "github.com/klauspost/cpuid/v2"
+)
+
+var asm struct {
+	valid16      func(*byte, uintptr) int
+	validPrint16 func(*byte, uintptr) int
+}
+
+func init() {
+	if CPU.Supports(AVX, AVX2) {
+		asm.valid16 = validAVX2
+		asm.validPrint16 = validPrintAVX2
+	} else {
+		asm.valid16 = valid16
+		asm.validPrint16 = validPrint16
+	}
+}
+
 // https://graphics.stanford.edu/~seander/bithacks.html#HasLessInWord
 const (
 	hasLessConstL64 = (^uint64(0)) / 255

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	TEXT("valid16", NOSPLIT, "func(p *byte, n uintptr) int")
+	TEXT("validAVX2", NOSPLIT, "func(p *byte, n uintptr) int")
 	Doc("Validates that the string only contains ASCII characters.")
 
 	p := Load(Param("p"), GP64())
