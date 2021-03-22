@@ -1,6 +1,8 @@
 package json
 
-import "sync"
+import (
+	"sync"
+)
 
 // Tokenizer is an iterator-style type which can be used to progressively parse
 // through a json input.
@@ -78,7 +80,7 @@ type Tokenizer struct {
 	stack *stack
 
 	// Decoder used for parsing.
-	decoder decoder
+	decoder
 }
 
 // NewTokenizer constructs a new Tokenizer which reads its json input from b.
@@ -144,24 +146,31 @@ skipLoop:
 		return false
 	}
 
+	var kind Kind
 	switch t.json[0] {
 	case '"':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseString(t.json)
+		t.Value, t.json, kind, t.Err = t.parseString(t.json)
 	case 'n':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseNull(t.json)
+		t.Value, t.json, kind, t.Err = t.parseNull(t.json)
 	case 't':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseTrue(t.json)
+		t.Value, t.json, kind, t.Err = t.parseTrue(t.json)
 	case 'f':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseFalse(t.json)
+		t.Value, t.json, kind, t.Err = t.parseFalse(t.json)
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseNumber(t.json)
+		t.Value, t.json, kind, t.Err = t.parseNumber(t.json)
 	case '{', '}', '[', ']', ':', ',':
 		t.Delim, t.Value, t.json = Delim(t.json[0]), t.json[:1], t.json[1:]
+		switch t.Delim {
+		case '{':
+			kind = Object
+		case '[':
+			kind = Array
+		}
 	default:
 		t.Delim = 0
 		t.Value, t.json, t.Err = t.json[:1], t.json[1:], syntaxError(t.json, "expected token but found '%c'", t.json[0])
@@ -169,6 +178,7 @@ skipLoop:
 
 	t.Depth = t.depth()
 	t.Index = t.index()
+	t.flags = t.flags.withKind(kind)
 
 	if t.Delim == 0 {
 		t.IsKey = t.isKey

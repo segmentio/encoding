@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"math/bits"
 	"reflect"
 	"runtime"
 	"sync"
@@ -79,6 +80,14 @@ func (flags ParseFlags) has(f ParseFlags) bool {
 	return (flags & f) != 0
 }
 
+func (f ParseFlags) kind() Kind {
+	return Kind((f >> kindOffset) & 0xFF)
+}
+
+func (f ParseFlags) withKind(kind Kind) ParseFlags {
+	return (f & ^(0xFF << kindOffset)) | (ParseFlags(kind) << kindOffset)
+}
+
 const (
 	// DisallowUnknownFields is a parsing flag used to prevent decoding of
 	// objects to Go struct values when a field of the input does not match
@@ -130,7 +139,38 @@ const (
 	// contain a backslash. If the flag is unset, it's unknown whether the
 	// input contains a backslash.
 	noBackslash ParseFlags = 1 << 29
+
+	// Bit offset where the kind of the json value is stored.
+	//
+	// See Kind in token.go for the enum.
+	kindOffset = 16
 )
+
+// Kind represents the different kinds of value that exist in JSON.
+type Kind uint
+
+const (
+	Null Kind = 1 // Null is not zero, so we keep zero for "uninitialized".
+
+	Bool  Kind = 2 // Bit two is set to 1, means it's a boolean.
+	False Kind = 2 // Bool + 0
+	True  Kind = 3 // Bool + 1
+
+	Num   Kind = 4 // Bit three is set to 1, means it's a number.
+	Uint  Kind = 5 // Num + 1
+	Int   Kind = 6 // Num + 2
+	Float Kind = 7 // Num + 3
+
+	String    Kind = 8 // Bit four is set to 1, means it's a string.
+	Unescaped Kind = 9 // String + 1
+
+	Array  Kind = 16 // Equivalent to Delim == '['
+	Object Kind = 32 // Equivalent to Delim == '{'
+)
+
+func (k Kind) Class() Kind {
+	return k & Kind(1<<(bits.Len(uint(k))-1))
+}
 
 // Append acts like Marshal but appends the json representation to b instead of
 // always reallocating a new slice.
@@ -264,7 +304,7 @@ func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
 	b = skipSpaces(b)
 
 	if t == nil || p == nil || t.Kind() != reflect.Ptr {
-		_, r, err := d.parseValue(b)
+		_, r, _, err := d.parseValue(b)
 		r = skipSpaces(r)
 		if err != nil {
 			return r, err
@@ -288,7 +328,7 @@ func Parse(b []byte, x interface{}, flags ParseFlags) ([]byte, error) {
 func Valid(data []byte) bool {
 	data = skipSpaces(data)
 	d := decoder{flags: internalParseFlags(data)}
-	_, data, err := d.parseValue(data)
+	_, data, _, err := d.parseValue(data)
 	if err != nil {
 		return false
 	}
@@ -337,7 +377,7 @@ func (dec *Decoder) readValue() (v []byte, err error) {
 
 	for {
 		if len(dec.remain) != 0 {
-			v, r, err = d.parseValue(dec.remain)
+			v, r, _, err = d.parseValue(dec.remain)
 			if err == nil {
 				dec.remain, n = skipSpacesN(r)
 				dec.inputOffset += int64(len(v) + n)
