@@ -317,7 +317,7 @@ func (d decoder) decodeFromString(b []byte, p unsafe.Pointer, decode decodeFunc)
 }
 
 func (d decoder) decodeFromStringToInt(b []byte, p unsafe.Pointer, t reflect.Type, decode decodeFunc) ([]byte, error) {
-	if hasPrefix(b, "null") {
+	if hasNullPrefix(b) {
 		return decode(d, b, p)
 	}
 
@@ -683,7 +683,7 @@ func (d decoder) decodeMap(b []byte, p unsafe.Pointer, t, kt, vt reflect.Type, k
 			b = skipSpaces(b[1:])
 		}
 
-		if hasPrefix(b, "null") {
+		if hasNullPrefix(b) {
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
@@ -762,7 +762,7 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 			b = skipSpaces(b[1:])
 		}
 
-		if hasPrefix(b, "null") {
+		if hasNullPrefix(b) {
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
@@ -843,7 +843,7 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 			b = skipSpaces(b[1:])
 		}
 
-		if hasPrefix(b, "null") {
+		if hasNullPrefix(b) {
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
@@ -924,7 +924,7 @@ func (d decoder) decodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 			b = skipSpaces(b[1:])
 		}
 
-		if hasPrefix(b, "null") {
+		if hasNullPrefix(b) {
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
@@ -1006,7 +1006,7 @@ func (d decoder) decodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 			b = skipSpaces(b[1:])
 		}
 
-		if hasPrefix(b, "null") {
+		if hasNullPrefix(b) {
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
@@ -1090,7 +1090,7 @@ func (d decoder) decodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 			b = skipSpaces(b[1:])
 		}
 
-		if hasPrefix(b, "null") {
+		if hasNullPrefix(b) {
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
@@ -1164,7 +1164,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 		i++
 
-		if hasPrefix(b, "null") {
+		if hasNullPrefix(b) {
 			return b, syntaxError(b, "cannot decode object key string from 'null' value")
 		}
 
@@ -1386,7 +1386,7 @@ func (d decoder) decodeJSONUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Type, pointer bool) ([]byte, error) {
 	var value string
 
-	v, b, _, err := d.parseValue(b)
+	v, b, k, err := d.parseValue(b)
 	if err != nil {
 		return b, err
 	}
@@ -1394,11 +1394,11 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 		return d.inputError(v, t)
 	}
 
-	switch v[0] {
-	case 'n':
-		_, _, _, err := d.parseNull(v)
+	switch k.Class() {
+	case Null:
 		return b, err
-	case '"':
+
+	case String:
 		s, _, _, err := d.parseStringUnquote(v, nil)
 		if err != nil {
 			return b, err
@@ -1412,16 +1412,22 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 			u.Set(reflect.New(t))
 		}
 		return b, u.Interface().(encoding.TextUnmarshaler).UnmarshalText(s)
-	case '{':
-		value = "object"
-	case '[':
-		value = "array"
-	case 't':
-		value = "true"
-	case 'f':
-		value = "false"
-	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+
+	case Bool:
+		if k == True {
+			value = "true"
+		} else {
+			value = "false"
+		}
+
+	case Num:
 		value = "number"
+
+	case Object:
+		value = "object"
+
+	case Array:
+		value = "array"
 	}
 
 	return b, &UnmarshalTypeError{Value: value, Type: reflect.PtrTo(t)}
