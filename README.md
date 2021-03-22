@@ -18,7 +18,24 @@ performance library, we also aim for very low development and maintenance overhe
 by implementing APIs that can be used as drop-in replacements for the default
 solutions.
 
+## Requirements and Maintenance Schedule
+
+This package has no dependencies outside of the core runtime of Go.  It
+requires a recent version of Go.
+
+This package follows the same maintenance schedule as the [Go
+project](https://github.com/golang/go/wiki/Go-Release-Cycle#release-maintenance),
+meaning that issues relating to versions of Go which aren't supported by the Go
+team, or versions of this package which are older than 1 year, are unlikely to
+be considered.
+
+Additionally, we have fuzz tests which aren't a runtime required dependency but
+will be pulled in when running `go mod tidy`.  Please don't include these go.mod
+updates in change requests.
+
 ## encoding/json [![GoDoc](https://godoc.org/github.com/segmentio/encoding/json?status.svg)](https://godoc.org/github.com/segmentio/encoding/json)
+
+More details about the implementation of this package can be found [here](json/README.md).
 
 The `json` sub-package provides a re-implementation of the functionalities
 offered by the standard library's [`encoding/json`](https://golang.org/pkg/encoding/json/)
@@ -43,48 +60,50 @@ import (
 The improvement can be significant for code that heavily relies on serializing
 and deserializing JSON payloads. The CI pipeline runs benchmarks to compare the
 performance of the package with the standard library and other popular
-alternatives; here's an overview of the results (using Go v1.13):
+alternatives; here's an overview of the results:
 
-**Comparing to encoding/json**
+**Comparing to encoding/json (`v1.16.2`)**
 ```
-benchmark                                  old ns/op     new ns/op     delta
-BenchmarkMarshal/*json.codeResponse2       7589434       6581487       -13.28%
-BenchmarkUnmarshal/*json.codeResponse2     33979780      9130120       -73.13%
+name                           old time/op    new time/op     delta
+Marshal/*json.codeResponse2      7.11ms ± 2%     4.10ms ± 3%   -42.29%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2    30.0ms ± 3%      6.6ms ± 4%   -77.86%  (p=0.000 n=8+8)
 
-benchmark                                  old MB/s     new MB/s     speedup
-BenchmarkMarshal/*json.codeResponse2       255.68       294.84       1.15x
-BenchmarkUnmarshal/*json.codeResponse2     57.11        212.54       3.72x
+name                           old speed      new speed       delta
+Marshal/*json.codeResponse2     273MB/s ± 2%    473MB/s ± 3%   +73.29%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2  64.8MB/s ± 3%  292.5MB/s ± 3%  +351.66%  (p=0.000 n=8+8)
 
-benchmark                                  old allocs     new allocs     delta
-BenchmarkMarshal/*json.codeResponse2       0              0              +0.00%
-BenchmarkUnmarshal/*json.codeResponse2     76400          39             -99.95%
+name                           old alloc/op   new alloc/op    delta
+Marshal/*json.codeResponse2       0.00B           0.00B           ~     (all equal)
+Unmarshal/*json.codeResponse2    1.64MB ± 0%     0.01MB ± 5%   -99.63%  (p=0.000 n=8+7)
 
-benchmark                                  old bytes     new bytes     delta
-BenchmarkMarshal/*json.codeResponse2       0             0             +0.00%
-BenchmarkUnmarshal/*json.codeResponse2     1901670       8483          -99.55%
+name                           old allocs/op  new allocs/op   delta
+Marshal/*json.codeResponse2        0.00            0.00           ~     (all equal)
+Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 7%   -99.97%  (p=0.000 n=8+7)
 ```
 
-**Comparing to github.com/json-iterator/go**
+*Benchmarks were run on a Core i5-7267U CPU @ 3.10GHz.*
+
+**Comparing to github.com/json-iterator/go (`v1.1.10`)**
 ```
-benchmark                                  old ns/op     new ns/op     delta
-BenchmarkMarshal/*json.codeResponse2       15065785      6581487       -56.32%
-BenchmarkUnmarshal/*json.codeResponse2     10275368      9130120       -11.15%
+name                           old time/op    new time/op    delta
+Marshal/*json.codeResponse2      4.12ms ± 3%    4.10ms ± 3%     ~     (p=0.195 n=8+8)
+Unmarshal/*json.codeResponse2    7.55ms ± 1%    6.64ms ± 4%  -12.13%  (p=0.000 n=8+8)
 
-benchmark                                  old MB/s     new MB/s     speedup
-BenchmarkMarshal/*json.codeResponse2       128.80       294.84       2.29x
-BenchmarkUnmarshal/*json.codeResponse2     188.85       212.54       1.13x
+name                           old speed      new speed      delta
+Marshal/*json.codeResponse2     471MB/s ± 3%   473MB/s ± 3%     ~     (p=0.187 n=8+8)
+Unmarshal/*json.codeResponse2   257MB/s ± 1%   292MB/s ± 3%  +13.84%  (p=0.000 n=8+8)
 
-benchmark                                  old allocs     new allocs     delta
-BenchmarkMarshal/*json.codeResponse2       102212         0              -100.00%
-BenchmarkUnmarshal/*json.codeResponse2     37120          39             -99.89%
+name                           old alloc/op   new alloc/op   delta
+Marshal/*json.codeResponse2       0.00B          0.00B          ~     (all equal)
+Unmarshal/*json.codeResponse2    6.91kB ± 1%    6.04kB ± 5%  -12.57%  (p=0.001 n=7+7)
 
-benchmark                                  old bytes     new bytes     delta
-BenchmarkMarshal/*json.codeResponse2       3399409       0             -100.00%
-BenchmarkUnmarshal/*json.codeResponse2     1038339       8483          -99.18%
+name                           old allocs/op  new allocs/op  delta
+Marshal/*json.codeResponse2        0.00           0.00          ~     (all equal)
+Unmarshal/*json.codeResponse2      29.0 ± 0%      25.3 ± 7%  -12.81%  (p=0.001 n=7+7)
 ```
 
 Although this package aims to be a drop-in replacement of [`encoding/json`](https://golang.org/pkg/encoding/json/),
-it does not guarantee the same error messages. It will error in the same cases 
+it does not guarantee the same error messages. It will error in the same cases
 as the standard library, but the exact error message may be different.
 
 ## encoding/iso8601 [![GoDoc](https://godoc.org/github.com/segmentio/encoding/iso8601?status.svg)](https://godoc.org/github.com/segmentio/encoding/iso8601)
@@ -103,6 +122,6 @@ footprint.
 
 We've developed fast iso8601 validation functions that cause no heap allocations
 to remediate this problem. We added a validation step to determine whether
-the value is a date representation or a simple string. This reduced CPU and 
-memory usage by 5% in some programs that were doing `time.Parse` calls on very 
+the value is a date representation or a simple string. This reduced CPU and
+memory usage by 5% in some programs that were doing `time.Parse` calls on very
 hot code paths.

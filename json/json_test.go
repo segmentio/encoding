@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -21,6 +22,15 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 )
+
+// The encoding/json package does not export the msg field of json.SyntaxError,
+// so we use this replacement type in tests.
+type testSyntaxError struct {
+	msg    string
+	Offset int64
+}
+
+func (e *testSyntaxError) Error() string { return e.msg }
 
 var (
 	marshal    func([]byte, interface{}) ([]byte, error)
@@ -133,10 +143,10 @@ var testValues = [...]interface{}{
 	float64(math.MaxFloat64),
 
 	// number
-	json.Number("0"),
-	json.Number("1234567890"),
-	json.Number("-0.5"),
-	json.Number("-1e+2"),
+	Number("0"),
+	Number("1234567890"),
+	Number("-0.5"),
+	Number("-1e+2"),
 
 	// string
 	"",
@@ -190,6 +200,12 @@ var testValues = [...]interface{}{
 	makeMapStringBool(0),
 	makeMapStringBool(15),
 	makeMapStringBool(1020),
+	makeMapStringString(0),
+	makeMapStringString(15),
+	makeMapStringString(1020),
+	makeMapStringStringSlice(0),
+	makeMapStringStringSlice(15),
+	makeMapStringStringSlice(1020),
 	makeMapStringInterface(0),
 	makeMapStringInterface(15),
 	makeMapStringInterface(1020),
@@ -243,7 +259,7 @@ var testValues = [...]interface{}{
 	(*string)(nil),
 	new(int),
 
-	// json.Marshaler/json.Unmarshaler
+	// Marshaler/Unmarshaler
 	jsonValue{},
 	jsonValue{1, 2},
 
@@ -251,8 +267,8 @@ var testValues = [...]interface{}{
 	textValue{},
 	textValue{1, 2},
 
-	// json.RawMessage
-	json.RawMessage(`{
+	// RawMessage
+	RawMessage(`{
 	"answer": 42,
 	"hello": "world"
 }`),
@@ -286,6 +302,22 @@ func makeMapStringBool(n int) map[string]bool {
 	m := make(map[string]bool, n)
 	for i := 0; i != n; i++ {
 		m[strconv.Itoa(i)] = true
+	}
+	return m
+}
+
+func makeMapStringString(n int) map[string]string {
+	m := make(map[string]string, n)
+	for i := 0; i != n; i++ {
+		m[strconv.Itoa(i)] = fmt.Sprintf("%d Hello, world!", i)
+	}
+	return m
+}
+
+func makeMapStringStringSlice(n int) map[string][]string {
+	m := make(map[string][]string, n)
+	for i := 0; i != n; i++ {
+		m[strconv.Itoa(i)] = []string{strconv.Itoa(i), "Hello,", "world!"}
 	}
 	return m
 }
@@ -577,13 +609,13 @@ func (d *duration) UnmarshalJSON(b []byte) error {
 }
 
 var (
-	_ json.Marshaler = jsonValue{}
-	_ json.Marshaler = duration(0)
+	_ Marshaler = jsonValue{}
+	_ Marshaler = duration(0)
 
 	_ encoding.TextMarshaler = textValue{}
 
-	_ json.Unmarshaler = (*jsonValue)(nil)
-	_ json.Unmarshaler = (*duration)(nil)
+	_ Unmarshaler = (*jsonValue)(nil)
+	_ Unmarshaler = (*duration)(nil)
 
 	_ encoding.TextUnmarshaler = (*textValue)(nil)
 )
@@ -594,7 +626,7 @@ func TestDecodeStructFieldCaseInsensitive(t *testing.T) {
 		Type string
 	}{"unchanged"}
 
-	if err := json.Unmarshal(b, &s); err != nil {
+	if err := Unmarshal(b, &s); err != nil {
 		t.Error(err)
 	}
 
@@ -736,7 +768,7 @@ func TestDecodeLines(t *testing.T) {
 					}
 
 					switch err.(type) {
-					case *json.SyntaxError, *json.UnmarshalTypeError, *json.UnmarshalFieldError:
+					case *SyntaxError, *UnmarshalTypeError, *UnmarshalFieldError:
 						t.Log("unmarshal error", err)
 						continue
 					}
@@ -853,21 +885,15 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode single-element slice into []byte field
 			input: "{\"f\":[0],\"0\":[0]}",
-			value: struct {
-				F []byte
-			}{F: []byte{0}},
+			value: struct{ F []byte }{F: []byte{0}},
 		},
 		{ // decode multi-element slice into []byte field
 			input: "{\"F\":[3,1,1,1,9,9]}",
-			value: struct {
-				F []byte
-			}{F: []byte{3, 1, 1, 1, 9, 9}},
+			value: struct{ F []byte }{F: []byte{3, 1, 1, 1, 9, 9}},
 		},
 		{ // decode string with escape sequence into []byte field
 			input: "{\"F\":\"0p00\\r\"}",
-			value: struct {
-				F []byte
-			}{F: []byte("ҝ4")},
+			value: struct{ F []byte }{F: []byte("ҝ4")},
 		},
 		{ // decode unicode code points which fold into ascii characters
 			input: "{\"ſ\":\"8\"}",
@@ -877,37 +903,916 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode unicode code points which don't fold into ascii characters
 			input: "{\"İ\":\"\"}",
-			value: struct {
-				I map[string]string
-			}{I: nil},
+			value: struct{ I map[string]string }{I: nil},
 		},
 		{ // override pointer-to-pointer field clears the inner pointer only
 			input: "{\"o\":0,\"o\":null}",
-			value: struct {
-				O **int
-			}{O: new(*int)},
+			value: struct{ O **int }{O: new(*int)},
 		},
 		{ // subsequent occurrences of a map field retain keys previously loaded
 			input: "{\"i\":{\"\":null},\"i\":{}}",
-			value: struct {
-				I map[string]string
-			}{I: map[string]string{"": ""}},
+			value: struct{ I map[string]string }{I: map[string]string{"": ""}},
 		},
+		{ // an empty string is an invalid JSON input
+			input: "",
+		},
+		{ // ASCII character below 0x20 are invalid JSON input
+			input: "[\"\b\"]",
+		},
+		{ // random byte before any value
+			input: "\xad",
+		},
+		{ // cloud be the beginning of a false value but not
+			input: "f",
+			value: false,
+		},
+		{ // random ASCII character
+			input: "}",
+			value: []interface{}{},
+		},
+		{ // random byte after valid JSON, decoded to a nil type
+			input: "0\x93",
+		},
+		{ // random byte after valid JSON, decoded to a int type
+			input: "0\x93",
+			value: 0,
+		},
+		{ // random byte after valid JSON, decoded to a slice type
+			input: "0\x93",
+			value: []interface{}{},
+		},
+		{ // decode integer into slice
+			input: "0",
+			value: []interface{}{},
+		},
+		{ // decode integer with trailing space into slice
+			input: "0\t",
+			value: []interface{}{},
+		},
+		{ // decode integer with leading random bytes into slice
+			input: "\b0",
+			value: []interface{}{},
+		},
+		{ // decode string into slice followed by number
+			input: "\"\"0",
+			value: []interface{}{},
+		},
+		{ // decode what looks like an object followed by a number into a string
+			input: "{0",
+			value: "",
+		},
+		{ // decode what looks like an object followed by a number into a map
+			input: "{0",
+			value: map[string]string{},
+		},
+		{ // decode string into string with trailing random byte
+			input: "\"\"\f",
+			value: "",
+		},
+		{ // decode weird number value into nil
+			input: "-00",
+		},
+		{ // decode an invalid escaped sequence
+			input: "\"\\0\"",
+			value: "",
+		},
+		{ // decode what looks like an array followed by a number into a slice
+			input: "[9E600",
+			value: []interface{}{},
+		},
+		{ // decode a number which is too large to fit in a float64
+			input: "[1e900]",
+			value: []interface{}{},
+		},
+		{ // many nested arrays openings
+			input: "[[[[[[",
+			value: []interface{}{},
+		},
+		{ // decode a map with value type mismatch and missing closing character
+			input: "{\"\":0",
+			value: map[string]string{},
+		},
+		{ // decode a struct with value type mismatch and missing closing character
+			input: "{\"E\":\"\"",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode a map with value type mismatch
+			input: "{\"\":0}",
+			value: map[string]string{},
+		},
+		{ // decode number with exponent into integer field
+			input: "{\"e\":0e0}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode invalid integer representation into integer field
+			input: "{\"e\":00}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode unterminated array into byte slice
+			input: "{\"F\":[",
+			value: struct{ F []byte }{},
+		},
+		{ // attempt to decode string into in
+			input: "{\"S\":\"\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode object with null key into map
+			input: "{null:0}",
+			value: map[string]interface{}{},
+		},
+		{ // decode unquoted integer into struct field with string tag
+			input: "{\"S\":0}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // invalid base64 content when decoding string into byte slice
+			input: "{\"F\":\"0\"}",
+			value: struct{ F []byte }{},
+		},
+		{ // decode an object with a "null" string as key
+			input: "{\"null\":null}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode an invalid floating point number representation into an integer field with string tag
+			input: "{\"s\":8e800}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a string with leading zeroes into an integer field with string tag
+			input: "{\"S\":\"00\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a string with invalid leading sign and zeroes into an integer field with string tag
+			input: "{\"S\":\"+00\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a string with valid leading sign and zeroes into an integer field with string tag
+			input: "{\"S\":\"-00\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode non-ascii string into integer field with string tag
+			input: "{\"ſ\":\"\xbf\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode a valid floating point number representation into an integer field with string tag
+			input: "{\"S\":0.0}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with invalid leading sign to integer field with string tag
+			input: "{\"S\":\"+0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with valid leading sign to integer field with string tag
+			input: "{\"S\":\"-0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with object representation to integer field with string tag
+			input: "{\"s\":{}}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decoding integer with leading zeroes
+			input: "{\"o\":00}",
+			value: struct{ O **int }{},
+		},
+		{ // codeding string with invalid float representation into integer field with string tag
+			input: "{\"s\":\"0.\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // malformed negative integer in object value
+			input: "{\"N\":-00}",
+			value: struct{ N *int }{},
+		},
+		{ // integer overflow
+			input: "{\"a\":9223372036854775808}",
+			value: struct {
+				A int `json:",omitempty"`
+			}{},
+		},
+		{ // decode string with number followed by random byte into integer field with string tag
+			input: "{\"s\":\"0]\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode object into integer field
+			input: "{\"n\":{}}",
+			value: struct{ N *int }{},
+		},
+		{ // decode negative integer into unsigned type
+			input: "{\"E\":-0}",
+			value: struct{ E uint8 }{},
+		},
+		{ // decode string with number followed by random byte into integer field with string tag
+			input: "{\"s\":\"03�\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with leading zeroes into integer field with string tag
+			input: "{\"s\":\"03\"}",
+			value: struct {
+				S int `json:",string"`
+			}{S: 3},
+		},
+		{ // decode string containing what looks like an object into integer field with string tag
+			input: "{\"S\":\"{}\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode an empty string followed by the same field with a null value into a byte slice
+			input: "{\"F\":\"\",\"F\":null}",
+			value: struct{ F []byte }{},
+		},
+		{ // decode string containing a float into an integer field with string tag
+			input: "{\"S\":\"0e0\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with negative sign into a an integer field with string tag
+			input: "{\"s\":\"-\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode string with positive sign into a an integer field with string tag
+			input: "{\"s\":\"+\"}",
+			value: struct {
+				S int `json:",string"`
+			}{},
+		},
+		{ // decode an integer into a json unmarshaler
+			input: "{\"q\":0}",
+			value: struct {
+				Q testMarshaller
+			}{},
+		},
+		// This test fails because it appears that the encoding/json package
+		// will decode "q" before "s", so it returns an error about "q" being of
+		// the wrong type while this package will prase object keys in the order
+		// that they appear in the JSON input, so it detects the error from "s"
+		// first.
+		//
+		//{
+		//	input: "{\"s\":0,\"q\":0}",
+		//	value: struct {
+		//		Q testMarshaller
+		//		S int `json:",string"`
+		//	}{},
+		//},
 	}
 
 	for _, test := range tests {
 		t.Run("", func(t *testing.T) {
-			ptr := reflect.New(reflect.TypeOf(test.value)).Interface()
+			var ptr1 interface{}
+			var ptr2 interface{}
 
-			if err := Unmarshal([]byte(test.input), ptr); err != nil {
-				t.Fatal(err)
+			if test.value != nil {
+				ptr1 = reflect.New(reflect.TypeOf(test.value)).Interface()
+				ptr2 = reflect.New(reflect.TypeOf(test.value)).Interface()
 			}
 
-			if value := reflect.ValueOf(ptr).Elem().Interface(); !reflect.DeepEqual(test.value, value) {
-				t.Error("values mismatch")
-				t.Logf("expected: %#v", test.value)
-				t.Logf("found:    %#v", value)
+			err1 := json.Unmarshal([]byte(test.input), ptr1)
+			err2 := Unmarshal([]byte(test.input), ptr2)
+
+			if reflect.TypeOf(err1) != reflect.TypeOf(err2) {
+				t.Error("errors mismatch")
+				t.Logf("expected: %T: %v", err1, err1)
+				t.Logf("found:    %T: %v", err2, err2)
+			} else if err1 == nil && test.value != nil {
+				if value := reflect.ValueOf(ptr2).Elem().Interface(); !reflect.DeepEqual(test.value, value) {
+					t.Error("values mismatch")
+					t.Logf("expected: %#v", test.value)
+					t.Logf("found:    %#v", value)
+				}
 			}
 		})
+	}
+}
+
+func BenchmarkEasyjsonUnmarshalSmallStruct(b *testing.B) {
+	type Hashtag struct {
+		Indices []int  `json:"indices"`
+		Text    string `json:"text"`
+	}
+
+	//easyjson:json
+	type Entities struct {
+		Hashtags     []Hashtag `json:"hashtags"`
+		Urls         []*string `json:"urls"`
+		UserMentions []*string `json:"user_mentions"`
+	}
+
+	var json = []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
+
+	for i := 0; i < b.N; i++ {
+		var value Entities
+		if err := Unmarshal(json, &value); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+type testMarshaller struct {
+	v string
+}
+
+func (m *testMarshaller) MarshalJSON() ([]byte, error) {
+	return Marshal(m.v)
+}
+
+func (m *testMarshaller) UnmarshalJSON(data []byte) error {
+	return Unmarshal(data, &m.v)
+}
+
+func TestGithubIssue11(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/11
+	v := struct{ F float64 }{
+		F: math.NaN(),
+	}
+
+	_, err := Marshal(v)
+	if err == nil {
+		t.Error("no error returned when marshalling NaN value")
+	} else if s := err.Error(); !strings.Contains(s, "NaN") {
+		t.Error("error returned when marshalling NaN value does not mention 'NaN':", s)
+	} else {
+		t.Log(s)
+	}
+}
+
+type Issue13 struct {
+	Stringer fmt.Stringer
+	Field    int `json:"MyInt"`
+}
+
+type S string
+
+func (s S) String() string { return string(s) }
+
+func TestGithubIssue13(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/13
+	v := Issue13{}
+
+	b, err := Marshal(v)
+	if err != nil {
+		t.Error("unexpected errror:", err)
+	} else {
+		t.Log(string(b))
+	}
+
+	v = Issue13{Stringer: S("")}
+	if err := Unmarshal([]byte(`{"Stringer":null}`), &v); err != nil {
+		t.Error("unexpected error:", err)
+	}
+	if v.Stringer != nil {
+		t.Error("Stringer field was not overwritten")
+	}
+
+	v = Issue13{}
+	if err := Unmarshal([]byte(`{"Stringer":"whatever"}`), &v); err == nil {
+		t.Error("expected error but decoding string value into nil fmt.Stringer but got <nil>")
+	}
+
+	v = Issue13{Stringer: S("")}
+	if err := Unmarshal([]byte(`{"Stringer":"whatever"}`), &v); err == nil {
+		t.Error("expected error but decoding string value into non-pointer fmt.Stringer but got <nil>")
+	}
+
+	s := S("")
+	v = Issue13{Stringer: &s}
+	if err := Unmarshal([]byte(`{"Stringer":"whatever"}`), &v); err != nil {
+		t.Error("unexpected error decoding string value into pointer fmt.Stringer:", err)
+	}
+}
+
+func TestGithubIssue15(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/15
+	tests := []struct {
+		m interface{}
+		s string
+	}{
+		{
+			m: map[uint]bool{1: true, 123: true, 333: true, 42: true},
+			s: `{"1":true,"123":true,"333":true,"42":true}`,
+		},
+		{
+			m: map[int]bool{-1: true, -123: true, 333: true, 42: true},
+			s: `{"-1":true,"-123":true,"333":true,"42":true}`,
+		},
+	}
+
+	for _, test := range tests {
+		b, _ := Marshal(test.m)
+
+		if string(b) != test.s {
+			t.Error("map with integer keys must be ordered by their string representation, got", string(b))
+		}
+
+	}
+}
+
+type sliceA []byte
+
+func (sliceA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type sliceB []byte
+
+func (sliceB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type mapA map[string]string
+
+func (mapA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type mapB map[string]string
+
+func (mapB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type intPtrA int
+
+func (*intPtrA) MarshalJSON() ([]byte, error) {
+	return []byte(`"A"`), nil
+}
+
+type intPtrB int
+
+func (*intPtrB) MarshalText() ([]byte, error) {
+	return []byte("B"), nil
+}
+
+type structA struct{ I intPtrA }
+type structB struct{ I intPtrB }
+type structC struct{ M Marshaler }
+type structD struct{ M encoding.TextMarshaler }
+
+func TestGithubIssue16(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/16
+	tests := []struct {
+		value  interface{}
+		output string
+	}{
+		{value: sliceA(nil), output: `"A"`},
+		{value: sliceB(nil), output: `"B"`},
+		{value: mapA(nil), output: `"A"`},
+		{value: mapB(nil), output: `"B"`},
+		{value: intPtrA(1), output: `1`},
+		{value: intPtrB(2), output: `2`},
+		{value: new(intPtrA), output: `"A"`},
+		{value: new(intPtrB), output: `"B"`},
+		{value: (*intPtrA)(nil), output: `null`},
+		{value: (*intPtrB)(nil), output: `null`},
+		{value: structA{I: 1}, output: `{"I":1}`},
+		{value: structB{I: 2}, output: `{"I":2}`},
+		{value: structC{}, output: `{"M":null}`},
+		{value: structD{}, output: `{"M":null}`},
+		{value: &structA{I: 1}, output: `{"I":"A"}`},
+		{value: &structB{I: 2}, output: `{"I":"B"}`},
+		{value: &structC{}, output: `{"M":null}`},
+		{value: &structD{}, output: `{"M":null}`},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%T", test.value), func(t *testing.T) {
+			if b, _ := Marshal(test.value); string(b) != test.output {
+				t.Errorf(`%s != %s`, string(b), test.output)
+			}
+		})
+	}
+}
+
+func TestDecoderInputOffset(t *testing.T) {
+	checkOffset := func(o, expected int64) {
+		if o != expected {
+			t.Error("unexpected input offset", o, expected)
+		}
+	}
+
+	b := []byte(`{"userId": "blah"}{"userId": "blah"}
+	{"userId": "blah"}{"num": 0}`)
+	d := NewDecoder(bytes.NewReader(b))
+
+	var expected int64
+	checkOffset(d.InputOffset(), expected)
+
+	var a struct {
+		UserId string `json:"userId"`
+	}
+
+	if err := d.Decode(&a); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(18)
+	checkOffset(d.InputOffset(), expected)
+
+	if err := d.Decode(&a); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(38)
+	checkOffset(d.InputOffset(), expected)
+
+	if err := d.Decode(&a); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(56)
+	checkOffset(d.InputOffset(), expected)
+
+	var z struct {
+		Num int64 `json:"num"`
+	}
+	if err := d.Decode(&z); err != nil {
+		t.Error("unexpected decode error", err)
+	}
+	expected = int64(66)
+	checkOffset(d.InputOffset(), expected)
+}
+
+func TestGithubIssue18(t *testing.T) {
+	// https://github.com/segmentio/encoding/issues/18
+	b := []byte(`{
+	"userId": "blah",
+	}`)
+
+	d := NewDecoder(bytes.NewReader(b))
+
+	var a struct {
+		UserId string `json:"userId"`
+	}
+	switch err := d.Decode(&a).(type) {
+	case *SyntaxError:
+	default:
+		t.Error("expected syntax error but found:", err)
+	}
+
+	for i := 1; i <= 18; i++ { // up to the invalid ',' character
+		d := NewDecoder(bytes.NewReader(b[:i])) // cut somewhere in the middle
+		switch err := d.Decode(&a); err {
+		case io.ErrUnexpectedEOF:
+		default:
+			t.Error("expected 'unexpected EOF' error but found:", err)
+		}
+	}
+}
+
+func TestGithubIssue23(t *testing.T) {
+	t.Run("marshal-1", func(t *testing.T) {
+		type d struct{ S map[string]string }
+
+		b, _ := Marshal(map[string]d{"1": {S: map[string]string{"2": "3"}}})
+		if string(b) != `{"1":{"S":{"2":"3"}}}` {
+			t.Error(string(b))
+		}
+	})
+
+	t.Run("marshal-2", func(t *testing.T) {
+		type testInner struct {
+			InnerMap map[string]string `json:"inner_map"`
+		}
+
+		type testOuter struct {
+			OuterMap map[string]testInner `json:"outer_map"`
+		}
+
+		b, _ := Marshal(testOuter{
+			OuterMap: map[string]testInner{
+				"outer": {
+					InnerMap: map[string]string{"inner": "value"},
+				},
+			},
+		})
+
+		if string(b) != `{"outer_map":{"outer":{"inner_map":{"inner":"value"}}}}` {
+			t.Error(string(b))
+		}
+	})
+
+	t.Run("marshal-3", func(t *testing.T) {
+		type A struct{ A map[string]string }
+		type B struct{ B map[string]A }
+		type C struct{ C map[string]B }
+
+		b, _ := Marshal(C{
+			C: map[string]B{
+				"1": B{
+					B: map[string]A{
+						"2": A{
+							A: map[string]string{"3": "!"},
+						},
+					},
+				},
+			},
+		})
+
+		if string(b) != `{"C":{"1":{"B":{"2":{"A":{"3":"!"}}}}}}` {
+			t.Error(string(b))
+		}
+	})
+
+	t.Run("unmarshal-1", func(t *testing.T) {
+		var d struct{ S map[string]string }
+
+		if err := Unmarshal([]byte(`{"1":{"S":{"2":"3"}}}`), &d); err != nil {
+			t.Error(err)
+		}
+	})
+}
+
+func TestGithubIssue26(t *testing.T) {
+	type interfaceType interface{}
+
+	var value interfaceType
+	var data = []byte(`{}`)
+
+	if err := Unmarshal(data, &value); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestGithubIssue28(t *testing.T) {
+	type A struct {
+		Err error `json:"err"`
+	}
+
+	if b, err := Marshal(&A{Err: errors.New("ABC")}); err != nil {
+		t.Error(err)
+	} else if string(b) != `{"err":{}}` {
+		t.Error(string(b))
+	}
+
+}
+
+func TestGithubIssue41(t *testing.T) {
+	expectedString := `{"Zero":0,"Three":3}`
+	type M struct {
+		One int
+		Two int
+	}
+	type N struct {
+		Zero int
+		*M
+		Three int
+	}
+
+	if b, err := Marshal(N{Three: 3}); err != nil {
+		t.Error(err)
+	} else if string(b) != expectedString {
+		t.Error(
+			"got: ", string(b),
+			"expected: ", expectedString,
+		)
+	}
+
+}
+
+func TestGithubIssue44(t *testing.T) {
+	var out rawJsonString
+	if err := Unmarshal([]byte("null"), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out != "null" {
+		t.Errorf("wanted \"null\" but got %q", out)
+	}
+}
+
+type rawJsonString string
+
+func (r *rawJsonString) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 {
+		*r = "null"
+	} else {
+		*r = rawJsonString(b)
+	}
+	return nil
+}
+
+func TestSetTrustRawMessage(t *testing.T) {
+	buf := &bytes.Buffer{}
+	enc := NewEncoder(buf)
+	enc.SetTrustRawMessage(true)
+
+	// "Good" values are encoded in the regular way
+	m := map[string]json.RawMessage{
+		"k": json.RawMessage(`"value"`),
+	}
+	if err := enc.Encode(m); err != nil {
+		t.Error(err)
+	}
+
+	b := buf.Bytes()
+	exp := []byte(`{"k":"value"}`)
+	exp = append(exp, '\n')
+	if bytes.Compare(exp, b) != 0 {
+		t.Error(
+			"unexpected encoding:",
+			"expected", exp,
+			"got", b,
+		)
+	}
+
+	// "Bad" values are encoded without checking and throwing an error
+	buf.Reset()
+	m = map[string]json.RawMessage{
+		"k": json.RawMessage(`bad"value`),
+	}
+	if err := enc.Encode(m); err != nil {
+		t.Error(err)
+	}
+
+	b = buf.Bytes()
+	exp = []byte(`{"k":bad"value}`)
+	exp = append(exp, '\n')
+	if bytes.Compare(exp, b) != 0 {
+		t.Error(
+			"unexpected encoding:",
+			"expected", exp,
+			"got", b,
+		)
+	}
+}
+
+func TestEscapeString(t *testing.T) {
+	b := Escape(`value`)
+	x := []byte(`"value"`)
+
+	if !bytes.Equal(x, b) {
+		t.Error(
+			"unexpected encoding:",
+			"expected", string(x),
+			"got", string(b),
+		)
+	}
+}
+
+func TestAppendEscape(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		b := AppendEscape([]byte{}, `value`, AppendFlags(0))
+		exp := []byte(`"value"`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+
+	t.Run("escaped", func(t *testing.T) {
+		b := AppendEscape([]byte{}, `"escaped"	<value>`, EscapeHTML)
+		exp := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+
+	t.Run("build", func(t *testing.T) {
+		b := []byte{}
+		b = append(b, '{')
+		b = AppendEscape(b, `key`, EscapeHTML)
+		b = append(b, ':')
+		b = AppendEscape(b, `"escaped"	<value>`, EscapeHTML)
+		b = append(b, '}')
+		exp := []byte(`{"key":"\"escaped\"\t\u003cvalue\u003e"}`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+}
+
+func TestUnescapeString(t *testing.T) {
+	b := Unescape([]byte(`"value"`))
+	x := []byte(`value`)
+
+	if !bytes.Equal(x, b) {
+		t.Error(
+			"unexpected decoding:",
+			"expected", string(x),
+			"got", string(b),
+		)
+	}
+}
+
+func TestAppendUnescape(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		out := AppendUnescape([]byte{}, []byte(`"value"`), ParseFlags(0))
+		exp := []byte("value")
+		if bytes.Compare(exp, out) != 0 {
+			t.Error(
+				"unexpected decoding:",
+				"expected", exp,
+				"got", out,
+			)
+		}
+	})
+
+	t.Run("escaped", func(t *testing.T) {
+		b := AppendUnescape([]byte{}, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
+		exp := []byte(`"escaped"	<value>`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", exp,
+				"got", b,
+			)
+		}
+	})
+
+	t.Run("build", func(t *testing.T) {
+		b := []byte{}
+		b = append(b, []byte(`{"key":`)...)
+		b = AppendUnescape(b, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
+		b = append(b, '}')
+		exp := []byte(`{"key":"escaped"	<value>}`)
+		if bytes.Compare(exp, b) != 0 {
+			t.Error(
+				"unexpected encoding:",
+				"expected", string(exp),
+				"got", string(b),
+			)
+		}
+	})
+}
+
+func BenchmarkUnescape(b *testing.B) {
+	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+	out := []byte{}
+	for i := 0; i < b.N; i++ {
+		out = Unescape(s)
+	}
+
+	b.Log(string(out))
+}
+
+func BenchmarkUnmarshalField(b *testing.B) {
+	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
+	var v string
+
+	for i := 0; i < b.N; i++ {
+		json.Unmarshal(s, &v)
+	}
+
+	b.Log(v)
+}
+
+func TestKind(t *testing.T) {
+	for _, test := range []struct {
+		kind  Kind
+		class Kind
+	}{
+		{kind: 0, class: 0},
+		{kind: Null, class: Null},
+		{kind: False, class: Bool},
+		{kind: True, class: Bool},
+		{kind: Num, class: Num},
+		{kind: Uint, class: Num},
+		{kind: Int, class: Num},
+		{kind: Float, class: Num},
+		{kind: String, class: String},
+		{kind: Unescaped, class: String},
+		{kind: Array, class: Array},
+		{kind: Object, class: Object},
+	} {
+		if class := test.kind.Class(); class != test.class {
+			t.Errorf("class of kind(%d) mismatch: want=%d got=%d", test.kind, test.class, class)
+		}
 	}
 }

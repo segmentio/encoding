@@ -1,6 +1,6 @@
 benchmark.dir ?= results
 benchmark.batch ?= 1000
-benchmark.count ?= 20
+benchmark.count ?= 8
 
 benchmark.encoding.json := $(benchmark.dir)/encoding-json
 benchmark.github.com.json-iterator.go := $(benchmark.dir)/json-iterator
@@ -69,13 +69,12 @@ benchmark.out := \
 	$(benchmark.vmihailenco.msgpack.zstd).txt \
 	$(benchmark.tinylib.msgp.zstd).txt
 
-benchcmp := ${GOPATH}/bin/benchcmp
 benchstat := ${GOPATH}/bin/benchstat
 
 all:
 
-$(benchcmp):
-	go install golang.org/x/tools/cmd/benchcmp
+$(benchstat):
+	go install golang.org/x/perf/cmd/benchstat
 
 $(benchmark.cmd.dir)/message.pb.go: $(benchmark.cmd.dir)/message.proto
 	@protoc -I. \
@@ -86,12 +85,12 @@ Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types:.\
 		$(benchmark.cmd.dir)/message.proto
 
-bench: $(benchcmp) $(benchmark.out)
+bench: $(benchstat) $(benchmark.out)
 	@for file in $(benchmark.out); do \
 		echo '======' $$(basename $$file | sed 's/.txt//') '======'; \
 		cat $$(echo $$file | sed 's/.txt/.log/'); \
 		echo; \
-		$(benchcmp) $(benchmark.encoding.json).txt $$file; \
+		$(benchstat) $(benchmark.encoding.json).txt $$file; \
 		echo; \
 	done
 
