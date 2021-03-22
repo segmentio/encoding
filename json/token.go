@@ -1,6 +1,10 @@
 package json
 
-import "sync"
+import (
+	"strconv"
+	"sync"
+	"unsafe"
+)
 
 // Tokenizer is an iterator-style type which can be used to progressively parse
 // through a json input.
@@ -12,31 +16,18 @@ import "sync"
 // Here is a common pattern to use a tokenizer:
 //
 //	for t := json.NewTokenizer(b); t.Next(); {
-//		switch t.Delim {
-//		case '{':
+//		switch k := t.Kind(); k.Class() {
+//		case json.Null:
 //			...
-//		case '}':
+//		case json.Bool:
 //			...
-//		case '[':
+//		case json.Num:
 //			...
-//		case ']':
+//		case json.String:
 //			...
-//		case ':':
+//		case json.Array:
 //			...
-//		case ',':
-//			...
-//		}
-//
-//		switch {
-//		case t.Value.String():
-//			...
-//		case t.Value.Null():
-//			...
-//		case t.Value.True():
-//			...
-//		case t.Value.False():
-//			...
-//		case t.Value.Number():
+//		case json.Object:
 //			...
 //		}
 //	}
@@ -78,7 +69,7 @@ type Tokenizer struct {
 	stack *stack
 
 	// Decoder used for parsing.
-	decoder decoder
+	decoder
 }
 
 // NewTokenizer constructs a new Tokenizer which reads its json input from b.
@@ -144,24 +135,31 @@ skipLoop:
 		return false
 	}
 
+	var kind Kind
 	switch t.json[0] {
 	case '"':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseString(t.json)
+		t.Value, t.json, kind, t.Err = t.parseString(t.json)
 	case 'n':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseNull(t.json)
+		t.Value, t.json, kind, t.Err = t.parseNull(t.json)
 	case 't':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseTrue(t.json)
+		t.Value, t.json, kind, t.Err = t.parseTrue(t.json)
 	case 'f':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseFalse(t.json)
+		t.Value, t.json, kind, t.Err = t.parseFalse(t.json)
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		t.Delim = 0
-		t.Value, t.json, t.Err = t.decoder.parseNumber(t.json)
+		t.Value, t.json, kind, t.Err = t.parseNumber(t.json)
 	case '{', '}', '[', ']', ':', ',':
 		t.Delim, t.Value, t.json = Delim(t.json[0]), t.json[:1], t.json[1:]
+		switch t.Delim {
+		case '{':
+			kind = Object
+		case '[':
+			kind = Array
+		}
 	default:
 		t.Delim = 0
 		t.Value, t.json, t.Err = t.json[:1], t.json[1:], syntaxError(t.json, "expected token but found '%c'", t.json[0])
@@ -169,6 +167,7 @@ skipLoop:
 
 	t.Depth = t.depth()
 	t.Index = t.index()
+	t.flags = t.flags.withKind(kind)
 
 	if t.Delim == 0 {
 		t.IsKey = t.isKey
@@ -234,6 +233,75 @@ func (t *Tokenizer) pop(expect scope) error {
 	return nil
 }
 
+// Kind returns the kind of the value that the tokenizer is currently positioned
+// on.
+func (t *Tokenizer) Kind() Kind { return t.flags.kind() }
+
+// String returns a byte slice containing the value of the json string that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on a string, the behavior is undefined.
+func (t *Tokenizer) Bool() bool { return t.flags.kind() == True }
+
+// Int returns a byte slice containing the value of the json number that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on an integer, the behavior is undefined.
+func (t *Tokenizer) Int() int64 {
+	i, _, _ := t.parseInt(t.Value, int64Type)
+	return i
+}
+
+// Uint returns a byte slice containing the value of the json number that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on a positive integer, the behavior is
+// undefined.
+func (t *Tokenizer) Uint() uint64 {
+	u, _, _ := t.parseUint(t.Value, uint64Type)
+	return u
+}
+
+// Float returns a byte slice containing the value of the json number that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on a number, the behavior is undefined.
+func (t *Tokenizer) Float() float64 {
+	f, _ := strconv.ParseFloat(*(*string)(unsafe.Pointer(&t.Value)), 64)
+	return f
+}
+
+// String returns a byte slice containing the value of the json string that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// When possible, the returned byte slice references the backing array of the
+// tokenizer. A new slice is only allocated if the tokenizer needed to unescape
+// the json string.
+//
+// If the tokenizer is not positioned on a string, the behavior is undefined.
+func (t *Tokenizer) String() []byte {
+	if t.flags.kind() == Unescaped && len(t.Value) > 1 {
+		return t.Value[1 : len(t.Value)-1] // unquote
+	}
+	s, _, _, _ := t.parseStringUnquote(t.Value, nil)
+	return s
+}
+
 // RawValue represents a raw json value, it is intended to carry null, true,
 // false, number, and string values only.
 type RawValue []byte
@@ -264,19 +332,14 @@ func (v RawValue) Number() bool {
 // AppendUnquote writes the unquoted version of the string value in v into b.
 func (v RawValue) AppendUnquote(b []byte) []byte {
 	d := decoder{}
-	s, r, new, err := d.parseStringUnquote(v, b)
+	s, r, _, err := d.parseStringUnquote(v, b)
 	if err != nil {
 		panic(err)
 	}
 	if len(r) != 0 {
 		panic(syntaxError(r, "unexpected trailing tokens after json value"))
 	}
-	if new {
-		b = s
-	} else {
-		b = append(b, s...)
-	}
-	return b
+	return append(b, s...)
 }
 
 // Unquote returns the unquoted version of the string value in v.

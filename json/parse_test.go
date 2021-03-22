@@ -25,7 +25,7 @@ func TestParseString(t *testing.T) {
 	d := decoder{}
 	for _, test := range tests {
 		t.Run(test.in, func(t *testing.T) {
-			out, ext, err := d.parseString([]byte(test.in))
+			out, ext, _, err := d.parseString([]byte(test.in))
 
 			if test.err == "" {
 				if err != nil {
