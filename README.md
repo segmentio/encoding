@@ -64,24 +64,21 @@ alternatives; here's an overview of the results:
 
 **Comparing to encoding/json (`v1.16.2`)**
 ```
-goos: linux
-goarch: amd64
-
 name                           old time/op    new time/op     delta
-Marshal/*json.codeResponse2      7.07ms ± 2%     4.09ms ± 1%   -42.17%  (p=0.001 n=7+7)
-Unmarshal/*json.codeResponse2    30.0ms ± 2%      8.4ms ± 6%   -72.03%  (p=0.000 n=8+8)
+Marshal/*json.codeResponse2      7.11ms ± 2%     4.10ms ± 3%   -42.29%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2    30.0ms ± 3%      6.6ms ± 4%   -77.86%  (p=0.000 n=8+8)
 
 name                           old speed      new speed       delta
-Marshal/*json.codeResponse2     275MB/s ± 2%    475MB/s ± 1%   +72.92%  (p=0.001 n=7+7)
-Unmarshal/*json.codeResponse2  64.8MB/s ± 2%  232.1MB/s ± 6%  +258.16%  (p=0.000 n=8+8)
+Marshal/*json.codeResponse2     273MB/s ± 2%    473MB/s ± 3%   +73.29%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2  64.8MB/s ± 3%  292.5MB/s ± 3%  +351.66%  (p=0.000 n=8+8)
 
 name                           old alloc/op   new alloc/op    delta
 Marshal/*json.codeResponse2       0.00B           0.00B           ~     (all equal)
-Unmarshal/*json.codeResponse2    1.64MB ± 0%     0.01MB ± 9%   -99.54%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2    1.64MB ± 0%     0.01MB ± 5%   -99.63%  (p=0.000 n=8+7)
 
 name                           old allocs/op  new allocs/op   delta
 Marshal/*json.codeResponse2        0.00            0.00           ~     (all equal)
-Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 8%   -99.96%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 7%   -99.97%  (p=0.000 n=8+7)
 ```
 
 *Benchmarks were run on a Core i5-7267U CPU @ 3.10GHz.*
@@ -89,20 +86,20 @@ Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 8%   -99.96%  (p=0.0
 **Comparing to github.com/json-iterator/go (`v1.1.10`)**
 ```
 name                           old time/op    new time/op    delta
-Marshal/*json.codeResponse2      4.12ms ± 3%    4.09ms ± 1%     ~     (p=1.000 n=8+7)
-Unmarshal/*json.codeResponse2    7.55ms ± 1%    8.38ms ± 6%  +10.91%  (p=0.000 n=8+8)
+Marshal/*json.codeResponse2      4.12ms ± 3%    4.10ms ± 3%     ~     (p=0.195 n=8+8)
+Unmarshal/*json.codeResponse2    7.55ms ± 1%    6.64ms ± 4%  -12.13%  (p=0.000 n=8+8)
 
 name                           old speed      new speed      delta
-Marshal/*json.codeResponse2     471MB/s ± 3%   475MB/s ± 1%     ~     (p=0.980 n=8+7)
-Unmarshal/*json.codeResponse2   257MB/s ± 1%   232MB/s ± 6%   -9.67%  (p=0.000 n=8+8)
+Marshal/*json.codeResponse2     471MB/s ± 3%   473MB/s ± 3%     ~     (p=0.187 n=8+8)
+Unmarshal/*json.codeResponse2   257MB/s ± 1%   292MB/s ± 3%  +13.84%  (p=0.000 n=8+8)
 
 name                           old alloc/op   new alloc/op   delta
 Marshal/*json.codeResponse2       0.00B          0.00B          ~     (all equal)
-Unmarshal/*json.codeResponse2    6.91kB ± 1%    7.48kB ± 9%   +8.24%  (p=0.001 n=7+8)
+Unmarshal/*json.codeResponse2    6.91kB ± 1%    6.04kB ± 5%  -12.57%  (p=0.001 n=7+7)
 
 name                           old allocs/op  new allocs/op  delta
 Marshal/*json.codeResponse2        0.00           0.00          ~     (all equal)
-Unmarshal/*json.codeResponse2      29.0 ± 0%      31.5 ± 8%   +8.62%  (p=0.002 n=7+8)
+Unmarshal/*json.codeResponse2      29.0 ± 0%      25.3 ± 7%  -12.81%  (p=0.001 n=7+7)
 ```
 
 Although this package aims to be a drop-in replacement of [`encoding/json`](https://golang.org/pkg/encoding/json/),
