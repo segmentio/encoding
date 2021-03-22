@@ -16,31 +16,18 @@ import (
 // Here is a common pattern to use a tokenizer:
 //
 //	for t := json.NewTokenizer(b); t.Next(); {
-//		switch t.Delim {
-//		case '{':
+//		switch k := t.Kind(); k.Class() {
+//		case json.Null:
 //			...
-//		case '}':
+//		case json.Bool:
 //			...
-//		case '[':
+//		case json.Num:
 //			...
-//		case ']':
+//		case json.String:
 //			...
-//		case ':':
+//		case json.Array:
 //			...
-//		case ',':
-//			...
-//		}
-//
-//		switch {
-//		case t.Value.String():
-//			...
-//		case t.Value.Null():
-//			...
-//		case t.Value.True():
-//			...
-//		case t.Value.False():
-//			...
-//		case t.Value.Number():
+//		case json.Object:
 //			...
 //		}
 //	}
