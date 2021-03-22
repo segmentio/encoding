@@ -2,7 +2,9 @@ package json
 
 import (
 	"bytes"
+	"encoding/binary"
 	"math"
+	"math/bits"
 	"reflect"
 	"unicode"
 	"unicode/utf16"
@@ -435,7 +437,24 @@ func (d decoder) parseString(b []byte) ([]byte, []byte, Kind, error) {
 		return nil, b, Undefined, syntaxError(b, "expected '\"' at the beginning of a string value")
 	}
 
-	n := bytes.IndexByte(b[1:], '"') + 2
+	var n int
+	if len(b) >= 9 {
+		// This is an optimization for short strings. We read 8 bytes,
+		// and XOR each with 0x22 (") so that these bytes (and only
+		// these bytes) are now zero. We use the hasless(u,1) trick
+		// from https://graphics.stanford.edu/~seander/bithacks.html#ZeroInWord
+		// to determine whether any bytes are zero. Finally, we CTZ
+		// to find the index of that byte.
+		u := binary.LittleEndian.Uint64(b[1:])
+		u ^= 0x2222222222222222
+		mask := (u - 0x0101010101010101) & ^u & 0x8080808080808080
+		if mask != 0 {
+			n = bits.TrailingZeros64(mask)/8 + 2
+			goto found
+		}
+	}
+	n = bytes.IndexByte(b[1:], '"') + 2
+found:
 	if n <= 1 {
 		return nil, b[len(b):], Undefined, syntaxError(b, "missing '\"' at the end of a string value")
 	}
