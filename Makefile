@@ -25,19 +25,19 @@ $(benchstat):
 # This compares segmentio/encoding/json to the standard golang encoding/json;
 # for more in-depth benchmarks, see the `benchmarks` directory.
 bench-simple: $(benchcmp)
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package encoding/json | tee encoding-json.txt
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package github.com/json-iterator/go | tee json-iterator.txt
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json | tee segmentio-encoding-json.txt
-	benchcmp encoding-json.txt segmentio-encoding-json.txt
-	benchcmp json-iterator.txt segmentio-encoding-json.txt
+	@go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count 5 ./json -package encoding/json | tee encoding-json.txt
+	@go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count 5 ./json -package github.com/json-iterator/go | tee json-iterator.txt
+	@go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count 5 ./json | tee segmentio-encoding-json.txt
+	benchstat encoding-json.txt segmentio-encoding-json.txt
+	benchstat json-iterator.txt segmentio-encoding-json.txt
 
 bench-master: $(benchstat)
 	git stash
 	git checkout master
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -count 8 | tee /tmp/segmentio-encoding-json-master.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -cpu 1 ./json -count 5 | tee /tmp/segmentio-encoding-json-master.txt
 	git checkout -
 	git stash pop
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -count 8 | tee /tmp/segmentio-encoding-json.txt
+	@go test -v -run '^$$' -bench /codeResponse -benchmem -cpu 1 ./json -count 5 | tee /tmp/segmentio-encoding-json.txt
 	benchstat /tmp/segmentio-encoding-json-master.txt /tmp/segmentio-encoding-json.txt
 
 update-golang-test: $(golang.test.files)
