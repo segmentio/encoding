@@ -60,50 +60,46 @@ import (
 The improvement can be significant for code that heavily relies on serializing
 and deserializing JSON payloads. The CI pipeline runs benchmarks to compare the
 performance of the package with the standard library and other popular
-alternatives; here's an overview of the results (using Go v1.13):
+alternatives; here's an overview of the results:
 
-**Comparing to encoding/json**
+**Comparing to encoding/json (`v1.16.2`)**
 ```
-goos: linux
-goarch: amd64
-
 name                           old time/op    new time/op     delta
-Marshal/*json.codeResponse2      9.05ms ±12%     6.40ms ±23%   -29.34%  (p=0.000 n=8+8)
-Unmarshal/*json.codeResponse2    35.3ms ± 7%      9.6ms ± 0%   -72.83%  (p=0.001 n=7+7)
+Marshal/*json.codeResponse2      7.11ms ± 2%     4.10ms ± 3%   -42.29%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2    30.0ms ± 3%      6.6ms ± 4%   -77.86%  (p=0.000 n=8+8)
 
 name                           old speed      new speed       delta
-Marshal/*json.codeResponse2     215MB/s ±13%    310MB/s ±20%   +43.80%  (p=0.000 n=8+8)
-Unmarshal/*json.codeResponse2  55.1MB/s ± 7%  202.5MB/s ± 0%  +267.41%  (p=0.001 n=7+7)
+Marshal/*json.codeResponse2     273MB/s ± 2%    473MB/s ± 3%   +73.29%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2  64.8MB/s ± 3%  292.5MB/s ± 3%  +351.66%  (p=0.000 n=8+8)
 
 name                           old alloc/op   new alloc/op    delta
 Marshal/*json.codeResponse2       0.00B           0.00B           ~     (all equal)
-Unmarshal/*json.codeResponse2    1.86MB ± 1%     0.01MB ± 1%   -99.52%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2    1.64MB ± 0%     0.01MB ± 5%   -99.63%  (p=0.000 n=8+7)
 
 name                           old allocs/op  new allocs/op   delta
 Marshal/*json.codeResponse2        0.00            0.00           ~     (all equal)
-Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 0%   -99.95%  (p=0.000 n=8+8)
+Unmarshal/*json.codeResponse2     76.4k ± 0%       0.0k ± 7%   -99.97%  (p=0.000 n=8+7)
 ```
 
-**Comparing to github.com/json-iterator/go**
+*Benchmarks were run on a Core i5-7267U CPU @ 3.10GHz.*
+
+**Comparing to github.com/json-iterator/go (`v1.1.10`)**
 ```
-goos: linux
-goarch: amd64
+name                           old time/op    new time/op    delta
+Marshal/*json.codeResponse2      4.12ms ± 3%    4.10ms ± 3%     ~     (p=0.195 n=8+8)
+Unmarshal/*json.codeResponse2    7.55ms ± 1%    6.64ms ± 4%  -12.13%  (p=0.000 n=8+8)
 
-name                           old time/op    new time/op     delta
-Marshal/*json.codeResponse2      29.9ms ± 4%      6.4ms ±23%   -78.61%  (p=0.000 n=7+8)
-Unmarshal/*json.codeResponse2    12.6ms ± 6%      9.6ms ± 0%   -23.77%  (p=0.001 n=7+7)
+name                           old speed      new speed      delta
+Marshal/*json.codeResponse2     471MB/s ± 3%   473MB/s ± 3%     ~     (p=0.187 n=8+8)
+Unmarshal/*json.codeResponse2   257MB/s ± 1%   292MB/s ± 3%  +13.84%  (p=0.000 n=8+8)
 
-name                           old speed      new speed       delta
-Marshal/*json.codeResponse2    64.9MB/s ± 4%  309.8MB/s ±20%  +377.19%  (p=0.000 n=7+8)
-Unmarshal/*json.codeResponse2   152MB/s ±10%    202MB/s ± 0%   +32.97%  (p=0.000 n=8+7)
+name                           old alloc/op   new alloc/op   delta
+Marshal/*json.codeResponse2       0.00B          0.00B          ~     (all equal)
+Unmarshal/*json.codeResponse2    6.91kB ± 1%    6.04kB ± 5%  -12.57%  (p=0.001 n=7+7)
 
-name                           old alloc/op   new alloc/op    delta
-Marshal/*json.codeResponse2      3.40MB ± 0%     0.00MB       -100.00%  (p=0.000 n=8+8)
-Unmarshal/*json.codeResponse2    1.03MB ± 0%     0.01MB ± 1%   -99.14%  (p=0.001 n=6+8)
-
-name                           old allocs/op  new allocs/op   delta
-Marshal/*json.codeResponse2        102k ± 0%         0k       -100.00%  (p=0.000 n=8+8)
-Unmarshal/*json.codeResponse2     37.1k ± 0%       0.0k ± 0%   -99.89%  (p=0.000 n=6+8)
+name                           old allocs/op  new allocs/op  delta
+Marshal/*json.codeResponse2        0.00           0.00          ~     (all equal)
+Unmarshal/*json.codeResponse2      29.0 ± 0%      25.3 ± 7%  -12.81%  (p=0.001 n=7+7)
 ```
 
 Although this package aims to be a drop-in replacement of [`encoding/json`](https://golang.org/pkg/encoding/json/),
