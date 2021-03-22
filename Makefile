@@ -24,9 +24,10 @@ $(benchstat):
 
 # This compares segmentio/encoding/json to the standard golang encoding/json;
 # for more in-depth benchmarks, see the `benchmarks` directory.
+count ?= 5
 bench-simple: $(benchstat)
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -package encoding/json -count 8 | tee /tmp/encoding-json.txt
-	@go test -v -run '^$$' -bench /codeResponse -benchmem -benchtime 3s -cpu 1 ./json -count 8 | tee /tmp/segmentio-encoding-json.txt
+	@go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count $(count) ./json -package encoding/json | tee /tmp/encoding-json.txt
+	@go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count $(count) ./json | tee /tmp/segmentio-encoding-json.txt
 	benchstat /tmp/encoding-json.txt /tmp/segmentio-encoding-json.txt
 
 bench-master: $(benchstat)
