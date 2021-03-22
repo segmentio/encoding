@@ -1,7 +1,9 @@
 package json
 
 import (
+	"strconv"
 	"sync"
+	"unsafe"
 )
 
 // Tokenizer is an iterator-style type which can be used to progressively parse
@@ -244,6 +246,75 @@ func (t *Tokenizer) pop(expect scope) error {
 	return nil
 }
 
+// Kind returns the kind of the value that the tokenizer is currently positioned
+// on.
+func (t *Tokenizer) Kind() Kind { return t.flags.kind() }
+
+// String returns a byte slice containing the value of the json string that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on a string, the behavior is undefined.
+func (t *Tokenizer) Bool() bool { return t.flags.kind() == True }
+
+// Int returns a byte slice containing the value of the json number that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on an integer, the behavior is undefined.
+func (t *Tokenizer) Int() int64 {
+	i, _, _ := t.parseInt(t.Value, int64Type)
+	return i
+}
+
+// Uint returns a byte slice containing the value of the json number that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on a positive integer, the behavior is
+// undefined.
+func (t *Tokenizer) Uint() uint64 {
+	u, _, _ := t.parseUint(t.Value, uint64Type)
+	return u
+}
+
+// Float returns a byte slice containing the value of the json number that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// If the tokenizer is not positioned on a number, the behavior is undefined.
+func (t *Tokenizer) Float() float64 {
+	f, _ := strconv.ParseFloat(*(*string)(unsafe.Pointer(&t.Value)), 64)
+	return f
+}
+
+// String returns a byte slice containing the value of the json string that the
+// tokenizer is currently pointing at.
+//
+// This method must only be called after checking the kind of the token via a
+// call to Kind.
+//
+// When possible, the returned byte slice references the backing array of the
+// tokenizer. A new slice is only allocated if the tokenizer needed to unescape
+// the json string.
+//
+// If the tokenizer is not positioned on a string, the behavior is undefined.
+func (t *Tokenizer) String() []byte {
+	if t.flags.kind() == Unescaped && len(t.Value) > 1 {
+		return t.Value[1 : len(t.Value)-1] // unquote
+	}
+	s, _, _, _ := t.parseStringUnquote(t.Value, nil)
+	return s
+}
+
 // RawValue represents a raw json value, it is intended to carry null, true,
 // false, number, and string values only.
 type RawValue []byte
@@ -274,19 +345,14 @@ func (v RawValue) Number() bool {
 // AppendUnquote writes the unquoted version of the string value in v into b.
 func (v RawValue) AppendUnquote(b []byte) []byte {
 	d := decoder{}
-	s, r, new, err := d.parseStringUnquote(v, b)
+	s, r, _, err := d.parseStringUnquote(v, b)
 	if err != nil {
 		panic(err)
 	}
 	if len(r) != 0 {
 		panic(syntaxError(r, "unexpected trailing tokens after json value"))
 	}
-	if new {
-		b = s
-	} else {
-		b = append(b, s...)
-	}
-	return b
+	return append(b, s...)
 }
 
 // Unquote returns the unquoted version of the string value in v.
