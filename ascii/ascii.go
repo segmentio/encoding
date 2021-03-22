@@ -1,5 +1,24 @@
 package ascii
 
+import (
+	. "github.com/klauspost/cpuid/v2"
+)
+
+var (
+	optimizedValid16      func(*byte, uintptr) int
+	optimizedValidPrint16 func(*byte, uintptr) int
+)
+
+func init() {
+	if CPU.Supports(AVX, AVX2) {
+		optimizedValid16 = validAVX2
+		optimizedValidPrint16 = validPrintAVX2
+	} else {
+		optimizedValid16 = valid16
+		optimizedValidPrint16 = validPrint16
+	}
+}
+
 // https://graphics.stanford.edu/~seander/bithacks.html#HasLessInWord
 const (
 	hasLessConstL64 = (^uint64(0)) / 255

@@ -1,9 +1,7 @@
 //go:generate go run valid_asm.go -out valid_amd64.s -stubs valid_amd64.go
 package ascii
 
-import (
-	"unsafe"
-)
+import "unsafe"
 
 // Valid returns true if b contains only ASCII characters.
 func Valid(b []byte) bool {
@@ -31,7 +29,7 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 	p := *(*unsafe.Pointer)(s)
 
 	if n >= 16 {
-		if valid16((*byte)(p), n/16) == 0 {
+		if optimizedValid16((*byte)(p), n/16) == 0 {
 			return false
 		}
 		i = (n / 16) * 16
@@ -63,4 +61,24 @@ func valid(s unsafe.Pointer, n uintptr) bool {
 		return true
 	}
 	return (x & 0x80808080) == 0
+}
+
+//go:nosplit
+func valid16(s *byte, n uintptr) int {
+	p := unsafe.Pointer(s)
+	i := uintptr(0)
+
+	for n > 0 {
+		lo := *(*uint64)(unsafe.Pointer(uintptr(p) + i))
+		hi := *(*uint64)(unsafe.Pointer(uintptr(p) + i + 8))
+
+		if (lo&0x8080808080808080) != 0 || (hi&0x8080808080808080) != 0 {
+			return 0
+		}
+
+		i += 16
+		n--
+	}
+
+	return 1
 }

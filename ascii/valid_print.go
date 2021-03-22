@@ -29,7 +29,7 @@ func validPrint(s unsafe.Pointer, n uintptr) bool {
 	i := uintptr(0)
 
 	if n >= 16 {
-		if validPrint16((*byte)(p), n/16) == 0 {
+		if optimizedValidPrint16((*byte)(p), n/16) == 0 {
 			return false
 		}
 		i = ((n / 16) * 16)
@@ -63,4 +63,24 @@ func validPrint(s unsafe.Pointer, n uintptr) bool {
 		return true
 	}
 	return !(hasLess32(x, 0x20) || hasMore32(x, 0x7e))
+}
+
+//go:nosplit
+func validPrint16(s *byte, n uintptr) int {
+	p := unsafe.Pointer(s)
+	i := uintptr(0)
+
+	for n > 0 {
+		x := *(*uint64)(unsafe.Pointer(uintptr(p) + i))
+		y := *(*uint64)(unsafe.Pointer(uintptr(p) + i + 8))
+
+		if hasLess64(x, 0x20) || hasMore64(x, 0x7e) || hasLess64(y, 0x20) || hasMore64(y, 0x7e) {
+			return 0
+		}
+
+		i += 16
+		n--
+	}
+
+	return 1
 }
