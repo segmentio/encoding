@@ -1,4 +1,4 @@
-// +build go1.16
+// +build go1.17
 
 package json
 
