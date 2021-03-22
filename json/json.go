@@ -169,7 +169,7 @@ const (
 )
 
 // Class returns the class of k.
-func (k Kind) Class() Kind { return Kind(1 << (bits.Len(uint(k)) - 1)) }
+func (k Kind) Class() Kind { return Kind(1 << uint(bits.Len(uint(k))-1)) }
 
 // Append acts like Marshal but appends the json representation to b instead of
 // always reallocating a new slice.
