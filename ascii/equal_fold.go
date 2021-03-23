@@ -1,6 +1,9 @@
+//go:generate go run equal_fold_asm.go -out equal_fold_amd64.s -stubs equal_fold_amd64.go
 package ascii
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 // EqualFold is a version of bytes.EqualFold designed to work on ASCII input
 // instead of UTF-8.
@@ -32,25 +35,33 @@ func EqualFoldString(a, b string) bool {
 	n := uintptr(len(a))
 	p := *(*unsafe.Pointer)(unsafe.Pointer(&a))
 	q := *(*unsafe.Pointer)(unsafe.Pointer(&b))
-	r := unsafe.Pointer(uintptr(p) + n)
-
-	if n >= 8 {
-		k := (n / 8) * 8
-		x := unsafe.Pointer(uintptr(p) + k)
-
-		for uintptr(p) < uintptr(x) {
-			const mask = 0xDFDFDFDFDFDFDFDF
-
-			if (*(*uint64)(p) & mask) != (*(*uint64)(q) & mask) {
-				return false
-			}
-
-			p = unsafe.Pointer(uintptr(p) + 8)
-			q = unsafe.Pointer(uintptr(q) + 8)
+	// If there is more than 32 bytes to copy, use the AVX optimized version,
+	// otherwise the overhead of the function call tends to be greater than
+	// looping 2 or 3 times over 8 bytes.
+	if n >= 32 && asm.equalFoldAVX2 != nil {
+		if asm.equalFoldAVX2((*byte)(p), (*byte)(q), n) == 0 {
+			return false
 		}
+
+		k := (n / 16) * 16
+		p = unsafe.Pointer(uintptr(p) + k)
+		q = unsafe.Pointer(uintptr(q) + k)
+		n -= k
 	}
 
-	if (uintptr(r) - uintptr(p)) >= 4 {
+	for n >= 8 {
+		const mask = 0xDFDFDFDFDFDFDFDF
+
+		if (*(*uint64)(p) & mask) != (*(*uint64)(q) & mask) {
+			return false
+		}
+
+		p = unsafe.Pointer(uintptr(p) + 8)
+		q = unsafe.Pointer(uintptr(q) + 8)
+		n -= 8
+	}
+
+	if n >= 4 {
 		const mask = 0xDFDFDFDF
 
 		if (*(*uint32)(p) & mask) != (*(*uint32)(q) & mask) {
@@ -59,9 +70,10 @@ func EqualFoldString(a, b string) bool {
 
 		p = unsafe.Pointer(uintptr(p) + 4)
 		q = unsafe.Pointer(uintptr(q) + 4)
+		n -= 4
 	}
 
-	if (uintptr(r) - uintptr(p)) >= 2 {
+	if n >= 2 {
 		const mask = 0xDFDF
 
 		if (*(*uint16)(p) & mask) != (*(*uint16)(q) & mask) {
@@ -70,14 +82,11 @@ func EqualFoldString(a, b string) bool {
 
 		p = unsafe.Pointer(uintptr(p) + 2)
 		q = unsafe.Pointer(uintptr(q) + 2)
+		n -= 2
 	}
 
-	if uintptr(p) < uintptr(r) {
-		const mask = 0xDF
-		return (*(*uint8)(p) & mask) == (*(*uint8)(q) & mask)
-	}
-
-	return true
+	const mask = 0xDF
+	return n == 0 || ((*(*uint8)(p) & mask) == (*(*uint8)(q) & mask))
 }
 
 func HasPrefixFoldString(s, prefix string) bool {

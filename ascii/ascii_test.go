@@ -174,6 +174,17 @@ func TestEqualFold(t *testing.T) {
 			if !EqualFoldString(test, lower) {
 				t.Errorf("%q does not match %q", test, lower)
 			}
+
+			if len(test) > 1 {
+				reverse := make([]byte, len(test))
+				for i := range reverse {
+					reverse[i] = test[len(test)-(i+1)]
+				}
+
+				if EqualFoldString(test, string(reverse)) {
+					t.Errorf("%q matches %q", test, reverse)
+				}
+			}
 		})
 	}
 }

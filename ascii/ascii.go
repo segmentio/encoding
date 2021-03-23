@@ -7,17 +7,16 @@ import (
 )
 
 var asm struct {
-	valid16      func(*byte, uintptr) int
-	validPrint16 func(*byte, uintptr) int
+	equalFoldAVX2  func(*byte, *byte, uintptr) int
+	validAVX2      func(*byte, uintptr) int
+	validPrintAVX2 func(*byte, uintptr) int
 }
 
 func init() {
 	if CPU.Supports(AVX, AVX2) {
+		asm.equalFoldAVX2 = equalFoldAVX2
 		asm.valid16 = validAVX2
 		asm.validPrint16 = validPrintAVX2
-	} else {
-		asm.valid16 = valid16
-		asm.validPrint16 = validPrint16
 	}
 }
 
