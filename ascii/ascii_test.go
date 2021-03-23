@@ -8,6 +8,10 @@ import (
 
 var testStrings = [...]string{
 	"",
+	"a",
+	"ab",
+	"abc",
+	"abcd",
 	"hello",
 	"Hello World!",
 	"Hello\"World!",

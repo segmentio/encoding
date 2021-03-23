@@ -74,8 +74,8 @@ func EqualFoldString(a, b string) bool {
 
 	switch n {
 	case 3:
-		x := uint32(*(*uint16)(p)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + 2)))
-		y := uint32(*(*uint16)(q)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(q) + 2)))
+		x := uint32(*(*uint16)(p)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + 2)))<<16
+		y := uint32(*(*uint16)(q)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(q) + 2)))<<16
 		return (x & 0xDFDFDF) == (y & 0xDFDFDF)
 	case 2:
 		return (*(*uint16)(p) & 0xDFDF) == (*(*uint16)(q) & 0xDFDF)
