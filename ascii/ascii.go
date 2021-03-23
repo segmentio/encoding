@@ -1,6 +1,8 @@
 package ascii
 
 import (
+	"unsafe"
+
 	. "github.com/klauspost/cpuid/v2"
 )
 
@@ -52,4 +54,8 @@ func hasMore64(x, n uint64) bool {
 //go:nosplit
 func hasMore32(x, n uint32) bool {
 	return (((x + (hasMoreConstL32 * (127 - n))) | x) & hasMoreConstR32) != 0
+}
+
+func unsafeString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
 }

@@ -3,6 +3,7 @@ package ascii
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 var testStrings = [...]string{
@@ -28,6 +29,16 @@ var testStrings = [...]string{
 	"some kind of long string with only ascii characters.",
 	"some kind of long string with a non-ascii character at the end.\xff",
 	strings.Repeat("1234567890", 1000),
+}
+
+var testStringsUTF8 []string
+
+func init() {
+	for _, test := range testStrings {
+		if utf8.ValidString(test) {
+			testStringsUTF8 = append(testStringsUTF8, test)
+		}
+	}
 }
 
 func testString(s string, f func(byte) bool) bool {
@@ -91,4 +102,92 @@ func limit(s string) string {
 		return s[:17] + "..."
 	}
 	return s
+}
+
+func TestHasPrefixFold(t *testing.T) {
+	for _, test := range testStringsUTF8 {
+		t.Run(limit(test), func(t *testing.T) {
+			prefix := test
+			if len(prefix) > 0 {
+				prefix = prefix[:len(prefix)/2]
+			}
+			upper := strings.ToUpper(prefix)
+			lower := strings.ToLower(prefix)
+
+			if !HasPrefixFoldString(test, prefix) {
+				t.Errorf("%q does not match %q", test, prefix)
+			}
+
+			if !HasPrefixFoldString(test, upper) {
+				t.Errorf("%q does not match %q", test, upper)
+			}
+
+			if !HasPrefixFoldString(test, lower) {
+				t.Errorf("%q does not match %q", test, lower)
+			}
+		})
+	}
+}
+
+func TestHasSuffixFold(t *testing.T) {
+	for _, test := range testStringsUTF8 {
+		t.Run(limit(test), func(t *testing.T) {
+			suffix := test
+			if len(suffix) > 0 {
+				suffix = suffix[len(suffix)/2:]
+			}
+			upper := strings.ToUpper(suffix)
+			lower := strings.ToLower(suffix)
+
+			if !HasSuffixFoldString(test, suffix) {
+				t.Errorf("%q does not match %q", test, suffix)
+			}
+
+			if !HasSuffixFoldString(test, upper) {
+				t.Errorf("%q does not match %q", test, upper)
+			}
+
+			if !HasSuffixFoldString(test, lower) {
+				t.Errorf("%q does not match %q", test, lower)
+			}
+		})
+	}
+}
+
+func TestEqualFold(t *testing.T) {
+	// Only test valid UTF-8 otherwise ToUpper/ToLower will convert invalid
+	// characters to UTF-8 placeholders, which breaks the case-insensitive
+	// equality.
+	for _, test := range testStringsUTF8 {
+		t.Run(limit(test), func(t *testing.T) {
+			upper := strings.ToUpper(test)
+			lower := strings.ToLower(test)
+
+			if !EqualFoldString(test, test) {
+				t.Errorf("%q does not match %q", test, test)
+			}
+
+			if !EqualFoldString(test, upper) {
+				t.Errorf("%q does not match %q", test, upper)
+			}
+
+			if !EqualFoldString(test, lower) {
+				t.Errorf("%q does not match %q", test, lower)
+			}
+		})
+	}
+}
+
+func BenchmarkEqualFold(b *testing.B) {
+	for _, test := range testStringsUTF8 {
+		b.Run(limit(test), func(b *testing.B) {
+			other := test + "_" // not the same pointer
+
+			for i := 0; i < b.N; i++ {
+				_ = EqualFoldString(test, other[:len(test)]) // same length
+			}
+
+			b.SetBytes(int64(len(test)))
+		})
+	}
 }
