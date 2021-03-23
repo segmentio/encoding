@@ -1,21 +1,22 @@
 package ascii
 
 import (
+	"unsafe"
+
 	. "github.com/klauspost/cpuid/v2"
 )
 
 var asm struct {
-	valid16      func(*byte, uintptr) int
-	validPrint16 func(*byte, uintptr) int
+	equalFoldAVX2  func(*byte, *byte, uintptr) int
+	validAVX2      func(*byte, uintptr) int
+	validPrintAVX2 func(*byte, uintptr) int
 }
 
 func init() {
 	if CPU.Supports(AVX, AVX2) {
-		asm.valid16 = validAVX2
-		asm.validPrint16 = validPrintAVX2
-	} else {
-		asm.valid16 = valid16
-		asm.validPrint16 = validPrint16
+		asm.equalFoldAVX2 = equalFoldAVX2
+		asm.validAVX2 = validAVX2
+		asm.validPrintAVX2 = validPrintAVX2
 	}
 }
 
@@ -52,4 +53,8 @@ func hasMore64(x, n uint64) bool {
 //go:nosplit
 func hasMore32(x, n uint32) bool {
 	return (((x + (hasMoreConstL32 * (127 - n))) | x) & hasMoreConstR32) != 0
+}
+
+func unsafeString(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
 }
