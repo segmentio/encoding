@@ -28,18 +28,7 @@ func EqualFoldString(a, b string) bool {
 	}
 
 	for i := 0; i < len(a); i++ {
-		c := a[i]
-		d := b[i]
-
-		if 'A' <= c && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-
-		if 'A' <= d && d <= 'Z' {
-			d += 'a' - 'A'
-		}
-
-		if c != d {
+		if (a[i] & 0xDF) != (b[i] & 0xDF) {
 			return false
 		}
 	}
