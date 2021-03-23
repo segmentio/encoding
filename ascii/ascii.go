@@ -15,8 +15,8 @@ var asm struct {
 func init() {
 	if CPU.Supports(AVX, AVX2) {
 		asm.equalFoldAVX2 = equalFoldAVX2
-		asm.valid16 = validAVX2
-		asm.validPrint16 = validPrintAVX2
+		asm.validAVX2 = validAVX2
+		asm.validPrintAVX2 = validPrintAVX2
 	}
 }
 

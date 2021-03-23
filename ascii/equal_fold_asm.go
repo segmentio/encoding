@@ -14,7 +14,7 @@ func main() {
 	p := Load(Param("a"), GP64())
 	q := Load(Param("b"), GP64())
 	n := Load(Param("n"), GP64())
-	SHRQ(Imm(4), n)
+	SHRQ(Imm(4), n) // n /= 16
 
 	eq := GP64()
 	MOVQ(U64(0), eq)

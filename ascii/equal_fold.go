@@ -42,7 +42,6 @@ func EqualFoldString(a, b string) bool {
 		if asm.equalFoldAVX2((*byte)(p), (*byte)(q), n) == 0 {
 			return false
 		}
-
 		k := (n / 16) * 16
 		p = unsafe.Pointer(uintptr(p) + k)
 		q = unsafe.Pointer(uintptr(q) + k)
@@ -73,20 +72,18 @@ func EqualFoldString(a, b string) bool {
 		n -= 4
 	}
 
-	if n >= 2 {
-		const mask = 0xDFDF
-
-		if (*(*uint16)(p) & mask) != (*(*uint16)(q) & mask) {
-			return false
-		}
-
-		p = unsafe.Pointer(uintptr(p) + 2)
-		q = unsafe.Pointer(uintptr(q) + 2)
-		n -= 2
+	switch n {
+	case 3:
+		x := uint32(*(*uint16)(p)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + 2)))
+		y := uint32(*(*uint16)(q)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(q) + 2)))
+		return (x & 0xDFDFDF) == (y & 0xDFDFDF)
+	case 2:
+		return (*(*uint16)(p) & 0xDFDF) == (*(*uint16)(q) & 0xDFDF)
+	case 1:
+		return (*(*uint8)(p) & 0xDF) == (*(*uint8)(q) & 0xDF)
+	default:
+		return true
 	}
-
-	const mask = 0xDF
-	return n == 0 || ((*(*uint8)(p) & mask) == (*(*uint8)(q) & mask))
 }
 
 func HasPrefixFoldString(s, prefix string) bool {

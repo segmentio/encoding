@@ -2,6 +2,17 @@
 
 package ascii
 
-func validAVX2(s *byte, n uintptr) int { return valid16(s, n) }
+// Placeholders for AVX2 function names so compilation works on non-amd64
+// platforms.
 
-func validPrintAVX2(s *byte, n uintptr) int { return validPrint16(s, n) }
+func equalFoldAVX2(*byte, *byte, uintptr) int {
+	return 0
+}
+
+func validAVX2(*byte, uintptr) int {
+	return 0
+}
+
+func validPrintAVX2(*byte, uintptr) int {
+	return 0
+}
