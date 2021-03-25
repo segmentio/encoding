@@ -39,6 +39,10 @@ func Parse(input string) (time.Time, error) {
 		minute := (t2>>48&0xF)*10 + (t2 >> 56)
 		second := (t3>>8&0xF)*10 + (t3 >> 16)
 
+		if month > 12 || day > 31 || hour >= 24 || minute >= 60 || second >= 60 {
+			goto fallback
+		}
+
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
 		return time.Unix(unixSeconds, 0), nil
 	}
@@ -54,7 +58,7 @@ const (
 
 	// Generate masks that replace the separators with a numeric byte.
 	// The input must have valid separators. XOR with the separator bytes
-	// to zero them out and then XOR with 0x30 to replace them '0'.
+	// to zero them out and then XOR with 0x30 to replace them with '0'.
 	replace1 = mask1 ^ 0x3000003000000000
 	replace2 = mask2 ^ 0x0000300000300000
 	replace3 = mask3 ^ 0x3030303030000030
@@ -79,7 +83,7 @@ func nonNumeric(u uint64) uint64 {
 }
 
 func daysSinceEpoch(year, month, day uint64) uint64 {
-	// From https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html.
+	// Derived from https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html.
 	monthAdjusted := month - 3
 	var carry uint64
 	if monthAdjusted > month {
