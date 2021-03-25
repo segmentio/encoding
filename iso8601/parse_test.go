@@ -1,6 +1,7 @@
 package iso8601
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -34,6 +35,22 @@ func TestParse(t *testing.T) {
 				t.Errorf("unexpected time: %v vs expected %v", actual, expect)
 			}
 		})
+	}
+
+	// Check all ~3.7M YYYY-MM-DD dates
+	for year := 0; year <= 9999; year++ {
+		for month := 1; month <= 12; month++ {
+			for day := 1; day <= 31; day++ {
+				input := fmt.Sprintf("%04d-%02d-%02dT00:00:00Z", year, month, day)
+				expect, expectErr := time.Parse(time.RFC3339Nano, input)
+				actual, actualErr := Parse(input)
+				if (expectErr != nil) != (actualErr != nil) {
+					t.Errorf("unexpected error for %v: %v vs. %v expected", input, actualErr, expectErr)
+				} else if !actual.Equal(expect) {
+					t.Errorf("unexpected time for %v: %v vs. %v expected", input, actual, expect)
+				}
+			}
+		}
 	}
 }
 
