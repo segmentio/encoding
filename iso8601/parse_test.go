@@ -72,6 +72,8 @@ func TestParse(t *testing.T) {
 
 func TestParseInvalid(t *testing.T) {
 	for _, input := range []string{
+		"XXXXXXXXXXXXXXXXXXXX",
+		"00000000000000000000",
 		"1900-02-29T00:00:00Z", // 28 days in month (not a leap year)
 		"2021-02-29T00:00:00Z", // 28 days in month (not a leap year)
 		"2021-02-30T00:00:00Z", // 28 days in month
@@ -87,6 +89,10 @@ func TestParseInvalid(t *testing.T) {
 		"2000-12-31T24:00:00Z", // invalid hour
 		"2000-12-31T23:60:00Z", // invalid minute
 		"2000-12-31T23:59:60Z", // invalid second
+		"1999-01-01 23:45:00Z", // missing T separator
+		"1999 01 01T23:45:00Z", // missing date separators
+		"1999-01-01T23 45 00Z", // missing time separators
+		"1999-01-01T23:45:00 ", // missing timezone
 	} {
 		t.Run(input, func(t *testing.T) {
 			ts, err := time.Parse(time.RFC3339Nano, input)
