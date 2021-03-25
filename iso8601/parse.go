@@ -19,22 +19,27 @@ func Parse(input string) (time.Time, error) {
 		// them with a '0' (0x30) byte and check all bytes are now numeric.
 		// If it's not input we can handle on the fast path, pass it off to
 		// time.Parse().
-		if !match(t1, mask1) || !match(t2, mask2) || !match(t3, mask3) ||
-			(nonNumeric(t1^zero1)|nonNumeric(t2^zero2)|nonNumeric(t3^zero3)) != 0 {
-
+		if !match(t1, mask1) || !match(t2, mask2) || !match(t3, mask3) {
+			goto fallback
+		}
+		t1 ^= replace1
+		t2 ^= replace2
+		t3 ^= replace3
+		if (nonNumeric(t1) | nonNumeric(t2) | nonNumeric(t3)) != 0 {
 			goto fallback
 		}
 
-		// TODO: there's probably a faster way to extract the integers, e.g. see
-		//  https://kholdstare.github.io/technical/2020/05/26/faster-integer-parsing.html
-		year := uint32(b[0]-'0')*1000 + uint32(b[1]-'0')*100 + uint32(b[2]-'0')*10 + uint32(b[3]-'0')
-		month := uint32(b[5]-'0')*10 + uint32(b[6]-'0')
-		day := uint32(b[8]-'0')*10 + uint32(b[9]-'0')
-		hour := uint32(b[11]-'0')*10 + uint32(b[12]-'0')
-		minute := uint32(b[14]-'0')*10 + uint32(b[15]-'0')
-		second := uint32(b[17]-'0')*10 + uint32(b[18]-'0')
+		t1 -= zero
+		t2 -= zero
+		t3 -= zero
+		year := (t1&0xF)*1000 + (t1>>8&0xF)*100 + (t1>>16&0xF)*10 + (t1 >> 24 & 0xF)
+		month := (t1>>40&0xF)*10 + (t1 >> 48 & 0xF)
+		day := (t2&0xF)*10 + (t2 >> 8 & 0xF)
+		hour := (t2>>24&0xF)*10 + (t2 >> 32 & 0xF)
+		minute := (t2>>48&0xF)*10 + (t2 >> 56)
+		second := (t3>>8&0xF)*10 + (t3 >> 16)
 
-		unixSeconds := int64(daysSinceEpoch(year, month, day)) + int64(hour*3600+minute*60+second)
+		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
 		return time.Unix(unixSeconds, 0), nil
 	}
 
@@ -50,9 +55,9 @@ const (
 	// Generate masks that replace the separators with a numeric byte.
 	// The input must have valid separators. XOR with the separator bytes
 	// to zero them out and then XOR with 0x30 to replace them '0'.
-	zero1 = mask1 ^ 0x3000003000000000
-	zero2 = mask2 ^ 0x0000300000300000
-	zero3 = mask3 ^ 0x3030303030000030
+	replace1 = mask1 ^ 0x3000003000000000
+	replace2 = mask2 ^ 0x0000300000300000
+	replace3 = mask3 ^ 0x3030303030000030
 
 	zero = 0x3030303030303030
 	msb  = 0x8080808080808080
@@ -73,14 +78,14 @@ func nonNumeric(u uint64) uint64 {
 	return ((u - zero) | (u + 0x4646464646464646) | u) & msb
 }
 
-func daysSinceEpoch(year, month, day uint32) uint32 {
-	// Derived from https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html.
+func daysSinceEpoch(year, month, day uint64) uint64 {
+	// From https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html.
 	monthAdjusted := month - 3
-	var carry uint32
+	var carry uint64
 	if monthAdjusted > month {
 		carry = 1
 	}
-	var adjust uint32
+	var adjust uint64
 	if carry == 1 {
 		adjust = 12
 	}

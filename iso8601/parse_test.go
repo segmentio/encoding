@@ -7,6 +7,7 @@ import (
 
 func TestParse(t *testing.T) {
 	for _, input := range []string{
+		"1987-12-16T23:45:12Z",
 		"2006-01-02T15:04:05Z",
 		"2006-01-02T15:04:05.123Z",
 		"2006-01-02T15:04:05.123456Z",
