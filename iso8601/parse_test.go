@@ -176,6 +176,7 @@ func TestParseInvalid(t *testing.T) {
 		"1999-01 01T23:45:00.123Z", // missing date separator (2)
 		"1999-01-01T23 45:00.123Z", // missing time separator (1)
 		"1999-01-01T23:45 00.123Z", // missing time separator (2)
+		"1999-01-01T23:45:00 123Z", // missing time separator (3)
 		"1999-01-01T23:45:00.123 ", // missing timezone
 		"1999-01-01t23:45:00.123Z", // lowercase T
 		"1999-01-01T23:45:00.123z", // lowercase Z
