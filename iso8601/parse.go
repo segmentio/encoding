@@ -39,7 +39,7 @@ func Parse(input string) (time.Time, error) {
 		minute := (t2>>48&0xF)*10 + (t2 >> 56)
 		second := (t3>>8&0xF)*10 + (t3 >> 16)
 
-		if month > 12 || day > 31 || hour >= 24 || minute >= 60 || second >= 60 {
+		if month > 12 || day > 31 || hour >= 24 || minute >= 60 || second >= 60 || month == 0 || day == 0 {
 			goto fallback
 		} else if month == 2 && (day > 29 || (day == 29 && !isLeapYear(year))) {
 			goto fallback

@@ -37,11 +37,27 @@ func TestParse(t *testing.T) {
 		})
 	}
 
-	// Check all ~3.7M YYYY-MM-DD dates
+	// Check ~4M YYYY-MM-DD dates.
 	for year := 0; year <= 9999; year++ {
-		for month := 1; month <= 12; month++ {
-			for day := 1; day <= 31; day++ {
+		for month := 0; month <= 13; month++ {
+			for day := 0; day <= 32; day++ {
 				input := fmt.Sprintf("%04d-%02d-%02dT00:00:00Z", year, month, day)
+				expect, expectErr := time.Parse(time.RFC3339Nano, input)
+				actual, actualErr := Parse(input)
+				if (expectErr != nil) != (actualErr != nil) {
+					t.Errorf("unexpected error for %v: %v vs. %v expected", input, actualErr, expectErr)
+				} else if !actual.Equal(expect) {
+					t.Errorf("unexpected time for %v: %v vs. %v expected", input, actual, expect)
+				}
+			}
+		}
+	}
+
+	// Check all ~1M HH:MM:SS times.
+	for hour := 0; hour < 100; hour++ {
+		for minute := 0; minute < 100; minute++ {
+			for second := 0; second < 100; second++ {
+				input := fmt.Sprintf("2000-01-01T%02d-%02d-%02dZ", hour, minute, second)
 				expect, expectErr := time.Parse(time.RFC3339Nano, input)
 				actual, actualErr := Parse(input)
 				if (expectErr != nil) != (actualErr != nil) {
@@ -65,7 +81,9 @@ func TestParseInvalid(t *testing.T) {
 		"2021-09-31T00:00:00Z", // 30 days in month
 		"2021-11-31T00:00:00Z", // 30 days in month
 		"2000-13-01T00:00:00Z", // invalid month
+		"2000-00-01T00:00:00Z", // invalid month
 		"2000-12-32T00:00:00Z", // invalid day
+		"2000-12-00T00:00:00Z", // invalid day
 		"2000-12-31T24:00:00Z", // invalid hour
 		"2000-12-31T23:60:00Z", // invalid minute
 		"2000-12-31T23:59:60Z", // invalid second
