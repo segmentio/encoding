@@ -41,6 +41,13 @@ func Parse(input string) (time.Time, error) {
 
 		if month > 12 || day > 31 || hour >= 24 || minute >= 60 || second >= 60 {
 			goto fallback
+		} else if day == 31 {
+			switch month {
+			case 4, 6, 9, 11:
+				goto fallback
+			}
+		} else if month == 2 && day == 29 && !isLeapYear(year) {
+			goto fallback
 		}
 
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
@@ -97,6 +104,10 @@ func daysSinceEpoch(year, month, day uint64) uint64 {
 	monthDays := ((monthAdjusted+adjust)*62719 + 769) / 2048
 	leapDays := yearAdjusted/4 - yearAdjusted/100 + yearAdjusted/400
 	return yearAdjusted*365 + leapDays + monthDays + (day - 1) - 2472632
+}
+
+func isLeapYear(y uint64) bool {
+	return (y%4) == 0 && ((y%100) != 0 || (y%400) == 0)
 }
 
 func unsafeStringToBytes(s string) []byte {
