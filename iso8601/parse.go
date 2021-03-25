@@ -41,13 +41,13 @@ func Parse(input string) (time.Time, error) {
 
 		if month > 12 || day > 31 || hour >= 24 || minute >= 60 || second >= 60 {
 			goto fallback
+		} else if month == 2 && (day > 29 || (day == 29 && !isLeapYear(year))) {
+			goto fallback
 		} else if day == 31 {
 			switch month {
 			case 4, 6, 9, 11:
 				goto fallback
 			}
-		} else if month == 2 && day == 29 && !isLeapYear(year) {
-			goto fallback
 		}
 
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)

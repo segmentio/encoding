@@ -39,8 +39,10 @@ func TestParse(t *testing.T) {
 
 func TestParseInvalid(t *testing.T) {
 	for _, input := range []string{
-		"1900-02-29T00:00:00Z", // not a leap year
-		"2021-02-29T00:00:00Z", // not a leap year
+		"1900-02-29T00:00:00Z", // 28 days in month (not a leap year)
+		"2021-02-29T00:00:00Z", // 28 days in month (not a leap year)
+		"2021-02-30T00:00:00Z", // 28 days in month
+		"2021-02-31T00:00:00Z", // 28 days in month
 		"2021-04-31T00:00:00Z", // 30 days in month
 		"2021-06-31T00:00:00Z", // 30 days in month
 		"2021-09-31T00:00:00Z", // 30 days in month
