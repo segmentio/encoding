@@ -107,9 +107,15 @@ func TestParseInvalid(t *testing.T) {
 	}
 }
 
-func BenchmarkParseSeconds(b *testing.B) {
+func BenchmarkParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Parse("2006-01-02T15:04:05Z")
+	}
+}
+
+func BenchmarkParseInvalid(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Parse("2006-01-02T15:04:05X")
 	}
 }
 
