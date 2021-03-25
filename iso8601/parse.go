@@ -2,8 +2,18 @@ package iso8601
 
 import (
 	"encoding/binary"
+	"errors"
 	"time"
 	"unsafe"
+)
+
+var (
+	errInvalidTimestamp = errors.New("invalid ISO8601 timestamp")
+	errMonthOutOfRange  = errors.New("month out of range")
+	errDayOutOfRange    = errors.New("day out of range")
+	errHourOutOfRange   = errors.New("hour out of range")
+	errMinuteOutOfRange = errors.New("minute out of range")
+	errSecondOutOfRange = errors.New("second out of range")
 )
 
 // Parse parses an ISO8601 string, e.g. "2021-03-25T21:36:12Z".
@@ -20,13 +30,13 @@ func Parse(input string) (time.Time, error) {
 		// If it's not input we can handle on the fast path, pass it off to
 		// time.Parse().
 		if !match(t1, mask1) || !match(t2, mask2) || !match(t3, mask3) {
-			goto fallback
+			return time.Time{}, errInvalidTimestamp
 		}
 		t1 ^= replace1
 		t2 ^= replace2
 		t3 ^= replace3
 		if (nonNumeric(t1) | nonNumeric(t2) | nonNumeric(t3)) != 0 {
-			goto fallback
+			return time.Time{}, errInvalidTimestamp
 		}
 
 		t1 -= zero
@@ -39,22 +49,14 @@ func Parse(input string) (time.Time, error) {
 		minute := (t2>>48&0xF)*10 + (t2 >> 56)
 		second := (t3>>8&0xF)*10 + (t3 >> 16)
 
-		if month > 12 || day > 31 || hour >= 24 || minute >= 60 || second >= 60 || month == 0 || day == 0 {
-			goto fallback
-		} else if month == 2 && (day > 29 || (day == 29 && !isLeapYear(year))) {
-			goto fallback
-		} else if day == 31 {
-			switch month {
-			case 4, 6, 9, 11:
-				goto fallback
-			}
+		if err := validate(year, month, day, hour, minute, second); err != nil {
+			return time.Time{}, err
 		}
 
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
 		return time.Unix(unixSeconds, 0), nil
 	}
 
-fallback:
 	return time.Parse(time.RFC3339Nano, input)
 }
 
@@ -76,6 +78,34 @@ const (
 	zero = lsb * '0'
 	nine = lsb * '9'
 )
+
+func validate(year, month, day, hour, minute, second uint64) error {
+	if day == 0 || day > 31 {
+		return errDayOutOfRange
+	}
+	if month == 0 || month > 12 {
+		return errMonthOutOfRange
+	}
+	if hour >= 24 {
+		return errHourOutOfRange
+	}
+	if minute >= 60 {
+		return errMinuteOutOfRange
+	}
+	if second >= 60 {
+		return errSecondOutOfRange
+	}
+	if month == 2 && (day > 29 || (day == 29 && !isLeapYear(year))) {
+		return errDayOutOfRange
+	}
+	if day == 31 {
+		switch month {
+		case 4, 6, 9, 11:
+			return errDayOutOfRange
+		}
+	}
+	return nil
+}
 
 func match(u, mask uint64) bool {
 	return (u & mask) == mask

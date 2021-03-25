@@ -100,9 +100,7 @@ func TestParseInvalid(t *testing.T) {
 				t.Fatalf("expected time.Parse('%s') error, got %v", input, ts)
 			}
 			ts, actualErr := Parse(input)
-			if actualErr == nil {
-				t.Fatalf("expected Parse('%s') error %v, got %v", input, err, ts)
-			} else if err.Error() != actualErr.Error() {
+			if (err != nil) != (actualErr != nil) {
 				t.Fatalf("expected Parse('%s') error %v, got %v", input, err, actualErr)
 			}
 		})
