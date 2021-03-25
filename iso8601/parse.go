@@ -70,9 +70,11 @@ const (
 	replace2 = mask2 ^ 0x0000300000300000
 	replace3 = mask3 ^ 0x3030303030000030
 
-	zero = 0x3030303030303030
-	nine = 0x3939393939393939
-	msb  = 0x8080808080808080
+	lsb = ^uint64(0) / 255
+	msb = lsb * 0x80
+
+	zero = lsb * '0'
+	nine = lsb * '9'
 )
 
 func match(u, mask uint64) bool {
@@ -87,7 +89,7 @@ func nonNumeric(u uint64) uint64 {
 	// when adding 0x46, include the MSB from the input bytes in the final mask.
 	// Remove all but the MSBs and then you're left with a mask where each
 	// non-numeric byte from the input has its MSB set in the output.
-	return ((u - zero) | (u + (^uint64(msb) - nine)) | u) & msb
+	return ((u - zero) | (u + (^msb - nine)) | u) & msb
 }
 
 func daysSinceEpoch(year, month, day uint64) uint64 {
