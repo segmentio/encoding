@@ -52,7 +52,7 @@ func Parse(input string) (time.Time, error) {
 		}
 
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
-		return time.Unix(unixSeconds, 0), nil
+		return time.Unix(unixSeconds, 0).UTC(), nil
 
 	case 24: // YYYY-MM-DDTHH:MM:SS.MMMZ
 		t1 := binary.LittleEndian.Uint64(b)
@@ -89,7 +89,7 @@ func Parse(input string) (time.Time, error) {
 		}
 
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
-		return time.Unix(unixSeconds, int64(millis*1e6)), nil
+		return time.Unix(unixSeconds, int64(millis*1e6)).UTC(), nil
 
 	default:
 		return time.Parse(time.RFC3339Nano, input)
