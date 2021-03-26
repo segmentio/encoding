@@ -42,6 +42,8 @@ func TestParse(t *testing.T) {
 				t.Error(err)
 			} else if !actual.Equal(expect) {
 				t.Errorf("unexpected time: %v vs expected %v", actual, expect)
+			} else if actual.Location().String() != expect.Location().String() {
+				t.Errorf("unexpected timezone: %v vs expected %v", actual.Location().String(), expect.Location().String())
 			}
 		})
 	}
