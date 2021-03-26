@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/segmentio/encoding/iso8601"
 )
 
 func (d decoder) decodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -486,7 +488,7 @@ func (d decoder) decodeTime(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	s := b[1:i] // trim quotes
 
-	v, err := time.Parse(time.RFC3339Nano, *(*string)(unsafe.Pointer(&s)))
+	v, err := iso8601.Parse(*(*string)(unsafe.Pointer(&s)))
 	if err != nil {
 		return d.inputError(b, timeType)
 	}
