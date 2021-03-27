@@ -23,24 +23,30 @@ func ValidPrintString(s string) bool {
 	p := *(*unsafe.Pointer)(unsafe.Pointer(&s))
 	n := uintptr(len(s))
 
-	if n >= 32 && asm.validPrintAVX2 != nil {
-		if asm.validPrintAVX2((*byte)(p), n) == 0 {
-			return false
+	if n >= 8 {
+		if n > 32 && asm.validPrintAVX2 != nil {
+			if asm.validPrintAVX2((*byte)(p), n) == 0 {
+				return false
+			}
+			k := (n / 16) * 16
+			p = unsafe.Pointer(uintptr(p) + k)
+			n -= k
 		}
-		k := (n / 16) * 16
-		p = unsafe.Pointer(uintptr(p) + k)
-		n -= k
+
+		for n > 8 {
+			if hasLess64(*(*uint64)(p), 0x20) || hasMore64(*(*uint64)(p), 0x7e) {
+				return false
+			}
+			p = unsafe.Pointer(uintptr(p) + 8)
+			n -= 8
+		}
+
+		if n == 8 {
+			return !(hasLess64(*(*uint64)(p), 0x20) || hasMore64(*(*uint64)(p), 0x7e))
+		}
 	}
 
-	for n >= 8 {
-		if hasLess64(*(*uint64)(p), 0x20) || hasMore64(*(*uint64)(p), 0x7e) {
-			return false
-		}
-		p = unsafe.Pointer(uintptr(p) + 8)
-		n -= 8
-	}
-
-	if n >= 4 {
+	if n > 4 {
 		if hasLess32(*(*uint32)(p), 0x20) || hasMore32(*(*uint32)(p), 0x7e) {
 			return false
 		}
@@ -50,6 +56,8 @@ func ValidPrintString(s string) bool {
 
 	var x uint32
 	switch n {
+	case 4:
+		x = 0x20202020 | *(*uint32)(p)
 	case 3:
 		x = 0x20000000 | uint32(*(*uint16)(p)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + 2)))<<16
 	case 2:
