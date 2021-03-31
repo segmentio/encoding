@@ -16,12 +16,12 @@ func Assign(typ, dst, src unsafe.Pointer) {
 	typedmemmove(typ, dst, src)
 }
 
-func MapAssign(t, m, k unsafe.Pointer) uintptr {
-	return uintptr(mapassign(t, m, k))
+func MapAssign(t, m, k unsafe.Pointer) unsafe.Pointer {
+	return mapassign(t, m, k)
 }
 
-func MakeMap(t unsafe.Pointer, cap int) uintptr {
-	return uintptr(makemap(t, cap))
+func MakeMap(t unsafe.Pointer, cap int) unsafe.Pointer {
+	return makemap(t, cap)
 }
 
 type MapIter struct{ hiter }
@@ -45,9 +45,9 @@ func (it *MapIter) HasNext() bool {
 	return it.key != nil
 }
 
-func (it *MapIter) Key() uintptr { return uintptr(it.key) }
+func (it *MapIter) Key() unsafe.Pointer { return it.key }
 
-func (it *MapIter) Value() uintptr { return uintptr(it.value) }
+func (it *MapIter) Value() unsafe.Pointer { return it.value }
 
 // copied from src/runtime/map.go, all pointer types replaced with
 // unsafe.Pointer.

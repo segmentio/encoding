@@ -41,7 +41,7 @@ func sliceSizeFuncOf(t reflect.Type, r *repeatedField) sizeFunc {
 
 		if v := (*Slice)(p); v != nil {
 			for i := 0; i < v.Len(); i++ {
-				elem := unsafe.Pointer(v.Index(i, elemSize))
+				elem := v.Index(i, elemSize)
 				size := r.codec.size(elem, wantzero)
 				n += tagSize + size
 				if r.embedded {
@@ -64,7 +64,7 @@ func sliceEncodeFuncOf(t reflect.Type, r *repeatedField) encodeFunc {
 
 		if s := (*Slice)(p); s != nil {
 			for i := 0; i < s.Len(); i++ {
-				elem := unsafe.Pointer(s.Index(i, elemSize))
+				elem := s.Index(i, elemSize)
 				size := r.codec.size(elem, wantzero)
 
 				n := copy(b[offset:], tagData)
@@ -108,7 +108,7 @@ func sliceDecodeFuncOf(t reflect.Type, r *repeatedField) decodeFunc {
 			*s = growSlice(elemType, s)
 		}
 
-		n, err := r.codec.decode(b, unsafe.Pointer(s.Index(i, elemSize)), noflags)
+		n, err := r.codec.decode(b, s.Index(i, elemSize), noflags)
 		if err == nil {
 			s.SetLen(i + 1)
 		}

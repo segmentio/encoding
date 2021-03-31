@@ -28,6 +28,9 @@ func ValidPrintString(s string) bool {
 			if asm.validPrintAVX2((*byte)(p), n) == 0 {
 				return false
 			}
+			if (n % 16) == 0 {
+				return true
+			}
 			k := (n / 16) * 16
 			p = unsafe.Pointer(uintptr(p) + k)
 			n -= k
