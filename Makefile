@@ -10,14 +10,25 @@ go-fuzz-build := ${GOPATH}/bin/go-fuzz-build
 go-fuzz-corpus := ${GOPATH}/src/github.com/dvyukov/go-fuzz-corpus
 go-fuzz-dep := ${GOPATH}/src/github.com/dvyukov/go-fuzz/go-fuzz-dep
 
-test:
-	go test -v -cover ./ascii
-	go test -v -cover ./json
-	go test -v -cover ./proto
-	go test -v -cover -tags go1.15 ./json
-	go test -v -cover ./iso8601
-	go run ./json/bugs/issue11/main.go
-	go run ./json/bugs/issue18/main.go
+test: test-ascii test-json test-json-bugs test-json-1.17 test-proto test-iso8601
+
+test-ascii:
+	go test -cover -race ./ascii
+
+test-json:
+	go test -cover -race ./json
+
+test-json-bugs:
+	go test -cover -race ./json/bugs/...
+
+test-json-1.17:
+	go test -cover -race -tags go1.17 ./json
+
+test-proto:
+	go test -cover -race ./proto
+
+test-iso8601:
+	go test -cover -race ./iso8601
 
 $(benchstat):
 	GO111MODULE=off go get -u golang.org/x/perf/cmd/benchstat

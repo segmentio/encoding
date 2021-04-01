@@ -6,7 +6,7 @@ jobs:
     steps:
       - checkout
       - run: go mod download
-      - run: make test
+      - run: make test -j8
 
   benchmark:
     docker:

@@ -50,8 +50,8 @@ func mapSizeFuncOf(t reflect.Type, f *mapField) sizeFunc {
 		defer m.Done()
 
 		for m.Init(pointer(t), p); m.HasNext(); m.Next() {
-			keySize := f.keyCodec.size(unsafe.Pointer(m.Key()), wantzero)
-			valSize := f.valCodec.size(unsafe.Pointer(m.Value()), wantzero)
+			keySize := f.keyCodec.size(m.Key(), wantzero)
+			valSize := f.valCodec.size(m.Value(), wantzero)
 
 			if keySize > 0 {
 				n += keyTagSize + keySize
@@ -105,8 +105,8 @@ func mapEncodeFuncOf(t reflect.Type, f *mapField) encodeFunc {
 		defer m.Done()
 
 		for m.Init(pointer(t), p); m.HasNext(); m.Next() {
-			key := unsafe.Pointer(m.Key())
-			val := unsafe.Pointer(m.Value())
+			key := m.Key()
+			val := m.Value()
 
 			keySize := f.keyCodec.size(key, wantzero)
 			valSize := f.valCodec.size(val, wantzero)
@@ -220,7 +220,7 @@ func mapDecodeFuncOf(t reflect.Type, f *mapField, seen map[reflect.Type]*codec) 
 	return func(b []byte, p unsafe.Pointer, _ flags) (int, error) {
 		m := (*unsafe.Pointer)(p)
 		if *m == nil {
-			*m = unsafe.Pointer(MakeMap(mtype, 10))
+			*m = MakeMap(mtype, 10)
 		}
 		if len(b) == 0 {
 			return 0, nil
@@ -233,7 +233,7 @@ func mapDecodeFuncOf(t reflect.Type, f *mapField, seen map[reflect.Type]*codec) 
 
 		n, err := structCodec.decode(b, s, noflags)
 		if err == nil {
-			v := unsafe.Pointer(MapAssign(mtype, *m, s))
+			v := MapAssign(mtype, *m, s)
 			Assign(vtype, v, unsafe.Pointer(uintptr(s)+valueOffset))
 		}
 

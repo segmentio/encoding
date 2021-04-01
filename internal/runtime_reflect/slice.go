@@ -20,8 +20,8 @@ func (s *Slice) SetLen(n int) {
 	s.len = n
 }
 
-func (s *Slice) Index(i int, elemSize uintptr) uintptr {
-	return uintptr(s.data) + (uintptr(i) * elemSize)
+func (s *Slice) Index(i int, elemSize uintptr) unsafe.Pointer {
+	return unsafe.Pointer(uintptr(s.data) + (uintptr(i) * elemSize))
 }
 
 func MakeSlice(elemType unsafe.Pointer, len, cap int) Slice {
