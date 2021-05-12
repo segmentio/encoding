@@ -1673,7 +1673,6 @@ func TestGithubIssue63(t *testing.T) {
 
 				type MyStruct3 struct {
 					*MyStruct2
-					A int `json:"a"`
 				}
 
 				return MyStruct3{
@@ -1684,7 +1683,6 @@ func TestGithubIssue63(t *testing.T) {
 						},
 						Code: 1,
 					},
-					A: 2,
 				}
 			},
 		},
