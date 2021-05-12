@@ -1606,32 +1606,99 @@ func (r *rawJsonString) UnmarshalJSON(b []byte) error {
 // as we were still looking to the parent struct to start and only using offsets
 // which resulted in the wrong values being extracted.
 func TestGithubIssue63(t *testing.T) {
-	expectedString := `{"my_field":"test","my_other_field":"testing","code":1}`
+	spec := []struct {
+		description string
+		input       func() interface{}
+		expected    string
+	}{
+		{
+			description: "original",
+			expected:    `{"my_field":"test","code":0}`,
+			input: func() interface{} {
+				type MyStruct struct {
+					MyField string `json:"my_field,omitempty"`
+				}
 
-	type MyStruct struct {
-		MyField      string `json:"my_field,omitempty"`
-		MyOtherField string `json:"my_other_field"`
-		MyEmptyField string `json:"my_empty_field,omitempty"`
-	}
+				type MyStruct2 struct {
+					*MyStruct
+					Code int `json:"code"`
+				}
 
-	type MyStruct2 struct {
-		*MyStruct
-		Code int `json:"code"`
-	}
-
-	input := MyStruct2{
-		MyStruct: &MyStruct{
-			MyField:      "test",
-			MyOtherField: "testing",
+				return MyStruct2{
+					MyStruct: &MyStruct{
+						MyField: "test",
+					},
+					Code: 0,
+				}
+			},
 		},
-		Code: 1,
+		{
+			description: "additional fields",
+			expected:    `{"my_field":"test","my_other_field":"testing","code":1}`,
+			input: func() interface{} {
+				type MyStruct struct {
+					MyField      string `json:"my_field,omitempty"`
+					MyOtherField string `json:"my_other_field"`
+					MyEmptyField string `json:"my_empty_field,omitempty"`
+				}
+
+				type MyStruct2 struct {
+					*MyStruct
+					Code int `json:"code"`
+				}
+
+				return MyStruct2{
+					MyStruct: &MyStruct{
+						MyField:      "test",
+						MyOtherField: "testing",
+					},
+					Code: 1,
+				}
+			},
+		},
+		{
+			description: "multiple embed levels",
+			expected:    `{"my_field":"test","my_other_field":"testing","code":1}`,
+			input: func() interface{} {
+				type MyStruct struct {
+					MyField      string `json:"my_field,omitempty"`
+					MyOtherField string `json:"my_other_field"`
+					MyEmptyField string `json:"my_empty_field,omitempty"`
+				}
+
+				type MyStruct2 struct {
+					*MyStruct
+					Code int `json:"code"`
+				}
+
+				type MyStruct3 struct {
+					*MyStruct2
+					A int `json:"a"`
+				}
+
+				return MyStruct3{
+					MyStruct2: &MyStruct2{
+						MyStruct: &MyStruct{
+							MyField:      "test",
+							MyOtherField: "testing",
+						},
+						Code: 1,
+					},
+					A: 2,
+				}
+			},
+		},
 	}
 
-	if b, err := Marshal(input); err != nil {
-		t.Error(err)
-	} else if string(b) != expectedString {
-		t.Errorf("got:      %s", string(b))
-		t.Errorf("expected: %s", expectedString)
+	for _, test := range spec {
+		t.Run(test.description, func(t *testing.T) {
+			if b, err := Marshal(test.input()); err != nil {
+				t.Error(err)
+			} else if string(b) != test.expected {
+				t.Errorf("got:      %s", string(b))
+				t.Errorf("expected: %s", test.expected)
+			}
+		})
 	}
 }
 
