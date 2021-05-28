@@ -21,7 +21,7 @@ func main() {
 	Comment("Initialize 128 bits registers.")
 	min := GP64()
 	max := GP64()
-	MOVQ(U64(0x1919191919191919), min)
+	MOVQ(U64(0x1F1F1F1F1F1F1F1F), min)
 	MOVQ(U64(0x7E7E7E7E7E7E7E7E), max)
 
 	minXMM := XMM()

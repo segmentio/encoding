@@ -60,7 +60,7 @@ func ValidPrintString(s string) bool {
 	var x uint32
 	switch n {
 	case 4:
-		x = 0x20202020 | *(*uint32)(p)
+		x = *(*uint32)(p)
 	case 3:
 		x = 0x20000000 | uint32(*(*uint16)(p)) | uint32(*(*uint8)(unsafe.Pointer(uintptr(p) + 2)))<<16
 	case 2:
