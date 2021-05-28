@@ -28,6 +28,8 @@ var testStrings = [...]string{
 	"\x80",
 	"\x7F",
 	"\xFF",
+	"\x1fxxx",
+	"\x1fxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 	"a string of 16B.",
 	"an invalid string of 32B. \x00......",
 	"some kind of long string with only ascii characters.",
