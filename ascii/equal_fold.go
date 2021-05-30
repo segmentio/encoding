@@ -38,6 +38,18 @@ func EqualFoldString(a, b string) bool {
 	// Pre-check to avoid the other tests that would all evaluate to false.
 	// For very small strings, this helps reduce the processing overhead.
 	if n >= 8 {
+		// If there is more than 32 bytes to copy, use the AVX optimized version,
+		// otherwise the overhead of the function call tends to be greater than
+		// looping 2 or 3 times over 8 bytes.
+		if n >= 32 && asm.equalFoldAVX2 != nil {
+			if asm.equalFoldAVX2((*byte)(p), (*byte)(q), n) == 0 {
+				return false
+			}
+			k := (n / 16) * 16
+			p = unsafe.Pointer(uintptr(p) + k)
+			q = unsafe.Pointer(uintptr(q) + k)
+			n -= k
+		}
 		for n >= 8 {
 			c |= lower[*(*uint8)(unsafe.Pointer(uintptr(p) + 0))] ^ lower[*(*uint8)(unsafe.Pointer(uintptr(q) + 0))]
 			c |= lower[*(*uint8)(unsafe.Pointer(uintptr(p) + 1))] ^ lower[*(*uint8)(unsafe.Pointer(uintptr(q) + 1))]
