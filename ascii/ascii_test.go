@@ -1,6 +1,8 @@
 package ascii
 
 import (
+	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -155,6 +157,37 @@ func TestHasSuffixFold(t *testing.T) {
 
 			if !HasSuffixFoldString(test, lower) {
 				t.Errorf("%q does not match %q", test, lower)
+			}
+		})
+	}
+}
+
+func TestEqualFoldASCII(t *testing.T) {
+	pairs := [...][2]byte{
+		{0, ' '},
+		{'@', '`'},
+		{'[', '{'},
+		{'_', 127},
+	}
+
+	for _, pair := range pairs {
+		t.Run(fmt.Sprintf("0x%02x=0x%02x", pair[0], pair[1]), func(t *testing.T) {
+			for i := 1; i <= 256; i++ {
+				a := bytes.Repeat([]byte{'x'}, i)
+				b := bytes.Repeat([]byte{'X'}, i)
+
+				if !EqualFold(a, b) {
+					t.Errorf("%q does not match %q", a, b)
+					break
+				}
+
+				a[0] = pair[0]
+				b[0] = pair[1]
+
+				if EqualFold(a, b) {
+					t.Errorf("%q matches %q", a, b)
+					break
+				}
 			}
 		})
 	}
