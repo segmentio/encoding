@@ -767,8 +767,17 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		f := &st.fields[i]
 		v := unsafe.Pointer(uintptr(p) + f.offset)
 
-		if f.omitempty && f.empty(v) {
-			continue
+		if f.omitempty {
+			if f.ptr {
+				v2 := *(*unsafe.Pointer)(v)
+				v3 := unsafe.Pointer(uintptr(v2) + f.ptrOffset)
+
+				if f.empty(v3) {
+					continue
+				}
+			} else if f.empty(v) {
+				continue
+			}
 		}
 
 		if escapeHTML {
