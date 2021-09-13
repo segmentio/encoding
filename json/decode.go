@@ -3,7 +3,6 @@ package json
 import (
 	"bytes"
 	"encoding"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -12,6 +11,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/segmentio/asm/base64"
 	"github.com/segmentio/encoding/iso8601"
 )
 

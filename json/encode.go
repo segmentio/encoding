@@ -2,7 +2,6 @@ package json
 
 import (
 	"encoding"
-	"encoding/base64"
 	"math"
 	"reflect"
 	"sort"
@@ -11,6 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 	"unsafe"
+
+	"github.com/segmentio/asm/base64"
 )
 
 const hex = "0123456789abcdef"
