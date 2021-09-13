@@ -1,8 +1,4 @@
-github.com/klauspost/cpuid/v2 v2.0.5 h1:qnfhwbFriwDIX51QncuNU5mEMf+6KE3t7O8V2KQl3Dg=
-github.com/klauspost/cpuid/v2 v2.0.5/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
 github.com/klauspost/cpuid/v2 v2.0.6 h1:dQ5ueTiftKxp0gyjKSx5+8BtPWkyQbd95m8Gys/RarI=
 github.com/klauspost/cpuid/v2 v2.0.6/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
-github.com/segmentio/asm v0.2.2 h1:rpLCNSRpLSZnPikYp9dc0Fv4CX5DqR75mFDejdxQUmc=
-github.com/segmentio/asm v0.2.2/go.mod h1:4EUJGaKsB8ImLUwOGORVsNd9vTRDeh44JGsY4aKp5I4=
-github.com/segmentio/asm v0.3.0 h1:Uk5kgsL3SKm39KVE9TP9Ll4BvoUnzpcIlihgZ1QDx2o=
-github.com/segmentio/asm v0.3.0/go.mod h1:4EUJGaKsB8ImLUwOGORVsNd9vTRDeh44JGsY4aKp5I4=
+github.com/segmentio/asm v1.0.0 h1:GMF7/2eLkte13LERSOmPI766AJXJDRlsqqiN8T7Mfmk=
+github.com/segmentio/asm v1.0.0/go.mod h1:4EUJGaKsB8ImLUwOGORVsNd9vTRDeh44JGsY4aKp5I4=
