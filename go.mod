@@ -2,4 +2,4 @@ module github.com/segmentio/encoding
 
 go 1.14
 
-require github.com/segmentio/asm v1.0.0
+require github.com/segmentio/asm v1.0.1
