@@ -1,0 +1,46 @@
+name: Go
+
+on: [pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        go:
+        - 1.14
+        - 1.15
+        - 1.16
+        - &latestGoVersion 1.17
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Go ${{ matrix.go }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Download Dependencies
+      run: go mod download
+
+    - name: Run Tests
+      run: make test
+
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: *latestGoVersion
+
+    - name: Download Dependencies
+      run: go mod download
+
+    - name: Run Simple Benchmarks
+      run: make bench-simple count=1
