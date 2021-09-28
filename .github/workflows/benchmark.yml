@@ -28,7 +28,7 @@ jobs:
     - name: Upload Benchmarks
       uses: actions/upload-artifact@v2
       with:
-        name: bench-${{ matrix.ref }}
+        name: ${{ matrix.ref }}
         path: bench.txt
 
   benchstat:
