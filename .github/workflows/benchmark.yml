@@ -1,0 +1,57 @@
+name: Benchmark
+
+on:
+- pull_request
+
+jobs:
+  benchmark:
+    strategy:
+      matrix:
+        ref:
+        - master
+        - ${{ github.sha }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Steup Go
+      uses: actions/setup-go@v2
+
+    - name: Checkout ${{ matrix.ref }}
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ matrix.ref }}
+
+    - name: Benchmark ${{ matrix.ref }}
+      run: go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count 1 ./json | tee bench.txt
+
+    - name: Upload Benchmark
+      uses: actions/upload-artifact@v2
+      with:
+        name: bench-${{ matrix.ref }}
+        path: bench.txt
+
+  benchstat:
+    needs: [benchmark]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Steup Go
+      uses: actions/setup-go@v2
+
+    - name: Install benchstat
+      run: go get -u golang.org/x/perf/cmd/benchstat
+
+    - name: Download Benchmark Results
+      uses: actions/download-artifact@v2
+      with:
+        path: .
+
+    - name: Run Benchstat
+      run: benchstat ./main/bench.txt ./${{ github.sha }}/bench.txt | tee benchstat.txt
+
+    - name: Upload Benchstat Results
+      uses: actions/upload-artifact@v2
+      with:
+        name: benchstat
+        path: benchstat.txt

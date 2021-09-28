@@ -1,4 +1,4 @@
-name: Go
+name: Test
 
 on:
 - pull_request
@@ -28,18 +28,3 @@ jobs:
 
     - name: Run Tests
       run: make test
-
-  benchmark:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Setup Go
-      uses: actions/setup-go@v2
-
-    - name: Download Dependencies
-      run: go mod download
-
-    - name: Run Simple Benchmarks
-      run: make bench-simple count=1
