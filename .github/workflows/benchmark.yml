@@ -22,10 +22,10 @@ jobs:
       with:
         ref: ${{ matrix.ref }}
 
-    - name: Benchmark
+    - name: Run Benchmarks
       run: go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count 1 ./json | tee bench.txt
 
-    - name: Upload Benchmark
+    - name: Upload Benchmarks
       uses: actions/upload-artifact@v2
       with:
         name: bench-${{ matrix.ref }}
@@ -38,8 +38,10 @@ jobs:
     steps:
     - name: Steup Go
       uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
 
-    - name: Install Benchstat
+    - name: Setup Benchstat
       run: go install golang.org/x/perf/cmd/benchstat@latest
 
     - name: Download Benchmark Results
