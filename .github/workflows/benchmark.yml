@@ -50,7 +50,7 @@ jobs:
         path: .
 
     - name: Run Benchstat
-      run: benchstat ./main/bench.txt ./${{ github.sha }}/bench.txt | tee benchstat.txt
+      run: benchstat ./master/bench.txt ./${{ github.sha }}/bench.txt | tee benchstat.txt
 
     - name: Upload Benchstat Results
       uses: actions/upload-artifact@v2
