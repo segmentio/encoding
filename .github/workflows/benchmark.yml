@@ -16,6 +16,8 @@ jobs:
     steps:
     - name: Steup Go
       uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
 
     - name: Checkout
       uses: actions/checkout@v2
@@ -23,7 +25,7 @@ jobs:
         ref: ${{ matrix.ref }}
 
     - name: Run Benchmarks
-      run: go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count 5 ./json | tee bench.txt
+      run: go test -v -run '^$' -bench '(Marshal|Unmarshal)$/codeResponse' -benchmem -benchtime 3s -cpu 1 -count 5 ./json | tee bench.txt
 
     - name: Upload Benchmarks
       uses: actions/upload-artifact@v2
