@@ -11,7 +11,7 @@ jobs:
         - 1.14
         - 1.15
         - 1.16
-        - &latestGoVersion 1.17
+        - 1.17
 
     runs-on: ubuntu-latest
 
@@ -37,8 +37,6 @@ jobs:
 
     - name: Setup Go
       uses: actions/setup-go@v2
-      with:
-        go-version: *latestGoVersion
 
     - name: Download Dependencies
       run: go mod download
