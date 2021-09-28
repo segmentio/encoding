@@ -25,7 +25,7 @@ jobs:
         ref: ${{ matrix.ref }}
 
     - name: Run Benchmarks
-      run: go test -v -run '^$' -bench '(Marshal|Unmarshal)$/codeResponse' -benchmem -cpu 1 -count 5 ./json | tee bench.txt
+      run: go test -v -run '^$' -bench '(Marshal|Unmarshal)$/codeResponse' -benchmem -benchtime 3s -cpu 1 -count 5 ./json | tee bench.txt
 
     - name: Upload Benchmarks
       uses: actions/upload-artifact@v2
