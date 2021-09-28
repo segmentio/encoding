@@ -17,12 +17,12 @@ jobs:
     - name: Steup Go
       uses: actions/setup-go@v2
 
-    - name: Checkout ${{ matrix.ref }}
+    - name: Checkout
       uses: actions/checkout@v2
       with:
         ref: ${{ matrix.ref }}
 
-    - name: Benchmark ${{ matrix.ref }}
+    - name: Benchmark
       run: go test -v -run '^$$' -bench '(Marshal|Unmarshal)$$/codeResponse' -benchmem -cpu 1 -count 1 ./json | tee bench.txt
 
     - name: Upload Benchmark
@@ -39,8 +39,8 @@ jobs:
     - name: Steup Go
       uses: actions/setup-go@v2
 
-    - name: Install benchstat
-      run: go get -u golang.org/x/perf/cmd/benchstat
+    - name: Install Benchstat
+      run: go install golang.org/x/perf/cmd/benchstat@latest
 
     - name: Download Benchmark Results
       uses: actions/download-artifact@v2
