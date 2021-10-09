@@ -474,9 +474,164 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canA
 				st.ficaseIndex[s] = f
 			}
 		}
+
+		st.lookup = buildLookup(st.fields)
 	}
 
 	return st
+}
+
+func buildLookup(f []structField) fieldLookup {
+	switch len(f) {
+	case 0:
+		return noFieldLookup
+	case 1:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			return nil
+		}
+	case 2:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			if string(k) == f[1].name {
+				return &f[1]
+			}
+			return nil
+		}
+	case 3:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			if string(k) == f[1].name {
+				return &f[1]
+			}
+			if string(k) == f[2].name {
+				return &f[2]
+			}
+			return nil
+		}
+	case 4:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			if string(k) == f[1].name {
+				return &f[1]
+			}
+			if string(k) == f[2].name {
+				return &f[2]
+			}
+			if string(k) == f[3].name {
+				return &f[3]
+			}
+			return nil
+		}
+	case 5:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			if string(k) == f[1].name {
+				return &f[1]
+			}
+			if string(k) == f[2].name {
+				return &f[2]
+			}
+			if string(k) == f[3].name {
+				return &f[3]
+			}
+			if string(k) == f[4].name {
+				return &f[4]
+			}
+			return nil
+		}
+	case 6:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			if string(k) == f[1].name {
+				return &f[1]
+			}
+			if string(k) == f[2].name {
+				return &f[2]
+			}
+			if string(k) == f[3].name {
+				return &f[3]
+			}
+			if string(k) == f[4].name {
+				return &f[4]
+			}
+			if string(k) == f[5].name {
+				return &f[5]
+			}
+			return nil
+		}
+	case 7:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			if string(k) == f[1].name {
+				return &f[1]
+			}
+			if string(k) == f[2].name {
+				return &f[2]
+			}
+			if string(k) == f[3].name {
+				return &f[3]
+			}
+			if string(k) == f[4].name {
+				return &f[4]
+			}
+			if string(k) == f[5].name {
+				return &f[5]
+			}
+			if string(k) == f[6].name {
+				return &f[6]
+			}
+			return nil
+		}
+	case 8:
+		return func(k []byte) *structField {
+			if string(k) == f[0].name {
+				return &f[0]
+			}
+			if string(k) == f[1].name {
+				return &f[1]
+			}
+			if string(k) == f[2].name {
+				return &f[2]
+			}
+			if string(k) == f[3].name {
+				return &f[3]
+			}
+			if string(k) == f[4].name {
+				return &f[4]
+			}
+			if string(k) == f[5].name {
+				return &f[5]
+			}
+			if string(k) == f[6].name {
+				return &f[6]
+			}
+			if string(k) == f[7].name {
+				return &f[7]
+			}
+			return nil
+		}
+	default:
+		return nil
+	}
+}
+
+func noFieldLookup([]byte) *structField {
+	return nil
 }
 
 func constructStructEncodeFunc(st *structType) encodeFunc {
@@ -930,9 +1085,12 @@ type structType struct {
 	fields      []structField
 	fieldsIndex map[string]*structField
 	ficaseIndex map[string]*structField
+	lookup      fieldLookup
 	typ         reflect.Type
 	inlined     bool
 }
+
+type fieldLookup func([]byte) *structField
 
 type structField struct {
 	codec     codec

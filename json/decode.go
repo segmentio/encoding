@@ -1184,7 +1184,12 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 		b = skipSpaces(b[1:])
 
-		f := st.fieldsIndex[string(k)]
+		var f *structField
+		if st.lookup != nil {
+			f = st.lookup(k)
+		} else {
+			f = st.fieldsIndex[string(k)]
+		}
 
 		if f == nil && (d.flags&DontMatchCaseInsensitiveStructFields) == 0 {
 			key = appendToLower(buf[:0], k)
