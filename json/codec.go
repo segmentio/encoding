@@ -12,6 +12,8 @@ import (
 	"time"
 	"unicode"
 	"unsafe"
+
+	"github.com/segmentio/asm/keyset"
 )
 
 type codec struct {
@@ -474,6 +476,14 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canA
 				st.ficaseIndex[s] = f
 			}
 		}
+
+		if len(st.fields) <= 8 {
+			keys := make([][]byte, len(st.fields))
+			for i, f := range st.fields {
+				keys[i] = []byte(f.name)
+			}
+			st.lookup = keyset.New(keys)
+		}
 	}
 
 	return st
@@ -930,9 +940,12 @@ type structType struct {
 	fields      []structField
 	fieldsIndex map[string]*structField
 	ficaseIndex map[string]*structField
+	lookup      keyset.Lookup
 	typ         reflect.Type
 	inlined     bool
 }
+
+type fieldLookup func([]byte) int
 
 type structField struct {
 	codec     codec
