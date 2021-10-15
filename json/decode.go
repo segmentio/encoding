@@ -12,6 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/segmentio/asm/base64"
+	"github.com/segmentio/asm/keyset"
 	"github.com/segmentio/encoding/iso8601"
 )
 
@@ -1184,7 +1185,14 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		}
 		b = skipSpaces(b[1:])
 
-		f := st.fieldsIndex[string(k)]
+		var f *structField
+		if len(st.keyset) != 0 {
+			if n := keyset.Lookup(st.keyset, k); n < len(st.fields) {
+				f = &st.fields[n]
+			}
+		} else {
+			f = st.fieldsIndex[string(k)]
+		}
 
 		if f == nil && (d.flags&DontMatchCaseInsensitiveStructFields) == 0 {
 			key = appendToLower(buf[:0], k)

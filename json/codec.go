@@ -12,6 +12,8 @@ import (
 	"time"
 	"unicode"
 	"unsafe"
+
+	"github.com/segmentio/asm/keyset"
 )
 
 type codec struct {
@@ -474,6 +476,17 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canA
 				st.ficaseIndex[s] = f
 			}
 		}
+
+		// At a certain point the linear scan provided by keyset is less
+		// efficient than a map. The 32 was chosen based on benchmarks in the
+		// segmentio/asm repo run with an Intel Kaby Lake processor and go1.17.
+		if len(st.fields) <= 32 {
+			keys := make([][]byte, len(st.fields))
+			for i, f := range st.fields {
+				keys[i] = []byte(f.name)
+			}
+			st.keyset = keyset.New(keys)
+		}
 	}
 
 	return st
@@ -930,6 +943,7 @@ type structType struct {
 	fields      []structField
 	fieldsIndex map[string]*structField
 	ficaseIndex map[string]*structField
+	keyset      []byte
 	typ         reflect.Type
 	inlined     bool
 }
