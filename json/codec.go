@@ -477,7 +477,7 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canA
 			}
 		}
 
-		if len(st.fields) <= 8 {
+		if len(st.fields) <= 32 {
 			keys := make([][]byte, len(st.fields))
 			for i, f := range st.fields {
 				keys[i] = []byte(f.name)
