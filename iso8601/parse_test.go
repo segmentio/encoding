@@ -38,6 +38,7 @@ func TestParse(t *testing.T) {
 		"2006-01-02T15:04:05.123+10:00",
 		"2006-01-02T15:04:05.123-08:00",
 		"2006-01-02T15:04:05.123456Z",
+		"2021-10-16T07:55:07.6257+10:00",
 	} {
 		t.Run(input, func(t *testing.T) {
 			expect, err := time.Parse(time.RFC3339Nano, input)

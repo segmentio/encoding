@@ -101,8 +101,9 @@ func Parse(input string) (time.Time, error) {
 		// If separators are all valid, replace them with a '0' (0x30) byte and
 		// check all bytes are now numeric.
 		if !match(t1, mask1) || !match(t2, mask2) || !match(t5, mask5) || !match(t6, mask6) {
-			// Note that there
-			return time.Time{}, errInvalidTimestamp
+			// The timestamp might still be valid! It might have a truncated
+			// sub-second component followed by a timezone.
+			goto fallback
 		}
 		t1 ^= replace1
 		t2 ^= replace2
@@ -130,10 +131,10 @@ func Parse(input string) (time.Time, error) {
 
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
 		return time.Unix(unixSeconds, int64(nanos)).UTC(), nil
-
-	default:
-		return time.Parse(time.RFC3339Nano, input)
 	}
+
+fallback:
+	return time.Parse(time.RFC3339Nano, input)
 }
 
 const (
