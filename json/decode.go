@@ -1186,7 +1186,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		b = skipSpaces(b[1:])
 
 		var f *structField
-		if st.keyset != nil {
+		if len(st.keyset) != 0 {
 			if n := keyset.Lookup(st.keyset, k); n < len(st.fields) {
 				f = &st.fields[n]
 			}

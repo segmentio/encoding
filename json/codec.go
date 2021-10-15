@@ -477,6 +477,9 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canA
 			}
 		}
 
+		// At a certain point the linear scan provided by keyset is less
+		// efficient than a map. The 32 was chosen based on benchmarks in the
+		// segmentio/asm repo run with an Intel Kaby Lake processor and go1.17.
 		if len(st.fields) <= 32 {
 			keys := make([][]byte, len(st.fields))
 			for i, f := range st.fields {
@@ -944,8 +947,6 @@ type structType struct {
 	typ         reflect.Type
 	inlined     bool
 }
-
-type fieldLookup func([]byte) int
 
 type structField struct {
 	codec     codec
