@@ -482,7 +482,7 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canA
 			for i, f := range st.fields {
 				keys[i] = []byte(f.name)
 			}
-			st.lookup = keyset.New(keys)
+			st.keyset = keyset.New(keys)
 		}
 	}
 
@@ -940,7 +940,7 @@ type structType struct {
 	fields      []structField
 	fieldsIndex map[string]*structField
 	ficaseIndex map[string]*structField
-	lookup      keyset.Lookup
+	keyset      []byte
 	typ         reflect.Type
 	inlined     bool
 }

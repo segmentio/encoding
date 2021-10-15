@@ -2,3 +2,5 @@ github.com/klauspost/cpuid/v2 v2.0.6 h1:dQ5ueTiftKxp0gyjKSx5+8BtPWkyQbd95m8Gys/R
 github.com/klauspost/cpuid/v2 v2.0.6/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
 github.com/segmentio/asm v1.0.2-0.20211014012751-ad0b4299c61b h1:L9mkB4bZt/9mr31XlgKo7OjuSICwMqyLBAy0r/Eo4nc=
 github.com/segmentio/asm v1.0.2-0.20211014012751-ad0b4299c61b/go.mod h1:4EUJGaKsB8ImLUwOGORVsNd9vTRDeh44JGsY4aKp5I4=
+github.com/segmentio/asm v1.0.2-0.20211015032919-10ad4e7d1199 h1:NGm0pSMYYb/gXYwIpHWGWRZkxXmebyIPxB4HzZ9TRPk=
+github.com/segmentio/asm v1.0.2-0.20211015032919-10ad4e7d1199/go.mod h1:4EUJGaKsB8ImLUwOGORVsNd9vTRDeh44JGsY4aKp5I4=
