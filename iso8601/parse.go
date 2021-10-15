@@ -91,6 +91,46 @@ func Parse(input string) (time.Time, error) {
 		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
 		return time.Unix(unixSeconds, int64(millis*1e6)).UTC(), nil
 
+	case 30: // YYYY-MM-DDTHH:MM:SS.NNNNNNNNNZ
+		t1 := binary.LittleEndian.Uint64(b)
+		t2 := binary.LittleEndian.Uint64(b[8:])
+		t5 := binary.LittleEndian.Uint64(b[16:])
+		t6 := binary.LittleEndian.Uint64(b[22:])
+
+		// Check for valid separators by masking input with "    -  -  T  :  :  .         Z".
+		// If separators are all valid, replace them with a '0' (0x30) byte and
+		// check all bytes are now numeric.
+		if !match(t1, mask1) || !match(t2, mask2) || !match(t5, mask5) || !match(t6, mask6) {
+			// Note that there
+			return time.Time{}, errInvalidTimestamp
+		}
+		t1 ^= replace1
+		t2 ^= replace2
+		t5 ^= replace5
+		t6 ^= replace6
+		if (nonNumeric(t1) | nonNumeric(t2) | nonNumeric(t5) | nonNumeric(t6)) != 0 {
+			return time.Time{}, errInvalidTimestamp
+		}
+
+		t1 -= zero
+		t2 -= zero
+		t5 -= zero
+		t6 -= zero
+		year := (t1&0xF)*1000 + (t1>>8&0xF)*100 + (t1>>16&0xF)*10 + (t1 >> 24 & 0xF)
+		month := (t1>>40&0xF)*10 + (t1 >> 48 & 0xF)
+		day := (t2&0xF)*10 + (t2 >> 8 & 0xF)
+		hour := (t2>>24&0xF)*10 + (t2 >> 32 & 0xF)
+		minute := (t2>>48&0xF)*10 + (t2 >> 56)
+		second := (t5>>8&0xF)*10 + (t5 >> 16 & 0xF)
+		nanos := (t5>>32&0xF)*1e8 + (t5>>40&0xF)*1e7 + (t6&0xf)*1e6 + (t6>>8&0xf)*1e5 + (t6>>16&0xf)*1e4 + (t6>>24&0xf)*1e3 + (t6>>32&0xf)*100 + (t6>>40&0xf)*10 + (t6 >> 48 & 0xf)
+
+		if err := validate(year, month, day, hour, minute, second); err != nil {
+			return time.Time{}, err
+		}
+
+		unixSeconds := int64(daysSinceEpoch(year, month, day))*86400 + int64(hour*3600+minute*60+second)
+		return time.Unix(unixSeconds, int64(nanos)).UTC(), nil
+
 	default:
 		return time.Parse(time.RFC3339Nano, input)
 	}
@@ -101,6 +141,8 @@ const (
 	mask2 = 0x00003a0000540000 // DDTHH:MM
 	mask3 = 0x000000005a00003a // :SSZ____
 	mask4 = 0x5a0000002e00003a // :SS.MMMZ
+	mask5 = 0x000000002e00003a // :SS.NNNN
+	mask6 = 0x5a00000000000000 // NNNNNNNZ
 
 	// Generate masks that replace the separators with a numeric byte.
 	// The input must have valid separators. XOR with the separator bytes
@@ -109,6 +151,8 @@ const (
 	replace2 = mask2 ^ 0x0000300000300000
 	replace3 = mask3 ^ 0x3030303030000030
 	replace4 = mask4 ^ 0x3000000030000030
+	replace5 = mask5 ^ 0x0000000030000030
+	replace6 = mask6 ^ 0x3000000000000000
 
 	lsb = ^uint64(0) / 255
 	msb = lsb * 0x80
