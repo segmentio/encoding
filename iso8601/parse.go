@@ -134,7 +134,15 @@ func Parse(input string) (time.Time, error) {
 	}
 
 fallback:
-	return time.Parse(time.RFC3339Nano, input)
+	t, err := time.Parse(time.RFC3339Nano, input)
+	if err != nil {
+		// Override (and don't wrap) the error here. The error returned by
+		// time.Parse() is dynamic, and includes a reference to the input
+		// string. By overriding the error, we guarantee that the input string
+		// doesn't escape.
+		return time.Time{}, errInvalidTimestamp
+	}
+	return t, nil
 }
 
 const (
