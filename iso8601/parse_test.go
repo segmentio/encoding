@@ -196,6 +196,18 @@ func TestParse(t *testing.T) {
 			t.Errorf("unexpected time for %v: %v vs. %v expected", input, actual, expect)
 		}
 	}
+
+	// Check with trailing zeroes omitted.
+	for n := 1; n < 1e9; n <<= 1 {
+		input := fmt.Sprintf("2000-01-01T00:00:00.%dZ", n)
+		expect, expectErr := time.Parse(time.RFC3339Nano, input)
+		actual, actualErr := Parse(input)
+		if (expectErr != nil) != (actualErr != nil) {
+			t.Errorf("unexpected error for %v: %v vs. %v expected", input, actualErr, expectErr)
+		} else if !actual.Equal(expect) {
+			t.Errorf("unexpected time for %v: %v vs. %v expected", input, actual, expect)
+		}
+	}
 }
 
 func TestParseInvalid(t *testing.T) {
@@ -376,6 +388,8 @@ func TestParseInvalid(t *testing.T) {
 		"1999-01-01T23:45:00.1234567X9Z",
 		"1999-01-01T23:45:00.12345678XZ",
 		"1999-01-01T23:45:00.123456789X",
+
+		"2000-01-01T00:00:00.Z", // missing number after decimal point
 	} {
 		t.Run(input, func(t *testing.T) {
 			ts, err := time.Parse(time.RFC3339Nano, input)
@@ -416,6 +430,6 @@ func BenchmarkParseNanoseconds(b *testing.B) {
 
 func BenchmarkParseInvalid(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		Parse("2006-01-02T15:04:05X")
+		Parse("2006-01-02T15:04:05.XZ")
 	}
 }
