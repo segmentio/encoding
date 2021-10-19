@@ -25,7 +25,7 @@ func Parse(input string) (time.Time, error) {
 		}
 
 		t1 := binary.LittleEndian.Uint64(b)
-		t2 := binary.LittleEndian.Uint64(b[8:])
+		t2 := binary.LittleEndian.Uint64(b[8:16])
 		t3 := uint64(b[16]) | uint64(b[17])<<8 | uint64(b[18])<<16 | uint64('Z')<<24
 
 		// Check for valid separators by masking input with "    -  -  T  :  :  Z".
@@ -52,14 +52,12 @@ func Parse(input string) (time.Time, error) {
 		second := (t3>>8&0xF)*10 + (t3 >> 16)
 
 		nanos := int64(0)
-		if len(b) != 20 {
-			for i := 20; i < len(b)-1; i++ {
-				c := b[i]
+		if len(b) > 20 {
+			for _, c := range b[20 : len(b)-1] {
 				if c < '0' || c > '9' {
 					return time.Time{}, errInvalidTimestamp
 				}
-				nanos *= 10
-				nanos += int64(c - '0')
+				nanos = (nanos * 10) + int64(c-'0')
 			}
 			nanos *= pow10[30-len(b)]
 		}
