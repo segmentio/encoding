@@ -277,7 +277,7 @@ encodeFields:
 			}
 		}
 
-		if isZero(x) {
+		if !f.flags.have(required) && isZero(x) {
 			continue encodeFields
 		}
 

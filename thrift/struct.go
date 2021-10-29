@@ -10,9 +10,10 @@ import (
 type flags int16
 
 const (
-	noflags flags = 0
-	enum    flags = 1 << 0
-	union   flags = 1 << 1
+	noflags  flags = 0
+	enum     flags = 1 << 0
+	union    flags = 1 << 1
+	required flags = 1 << 2
 )
 
 func (f flags) have(x flags) bool {
@@ -59,6 +60,8 @@ func forEachStructField(t reflect.Type, index []int, do func(structField)) {
 				flags = flags.with(enum)
 			case "union":
 				flags = flags.with(union)
+			case "required":
+				flags = flags.with(required)
 			}
 		}
 

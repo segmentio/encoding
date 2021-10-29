@@ -225,8 +225,8 @@ var marshalTestValues = [...]struct {
 }
 
 type Point2D struct {
-	X float64 `thrift:"1"`
-	Y float64 `thrift:"2"`
+	X float64 `thrift:"1,required"`
+	Y float64 `thrift:"2,required"`
 }
 
 type RecursiveStruct struct {

@@ -359,9 +359,15 @@ type structDecoder struct {
 
 func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 	v.Set(dec.zero)
-	union := flags.have(union)
 
-	return readStruct(r, func(r Reader, f Field) error {
+	union := flags.have(union)
+	bits := [1]uint64{}
+	seen := bits[:]
+	if len(dec.fields) > 64 {
+		seen = make([]uint64, (len(dec.fields)/64)+1)
+	}
+
+	err := readStruct(r, func(r Reader, f Field) error {
 		i := int(f.ID) - int(dec.minID)
 		if i < 0 || i >= len(dec.fields) || dec.fields[i].decode == nil {
 			return skipField(r, f)
@@ -389,8 +395,22 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 			v.Set(dec.zero)
 		}
 
+		seen[i/64] |= 1 << (i % 64)
 		return field.decode(r, x, field.flags)
 	})
+	if err != nil {
+		return err
+	}
+
+	for i := range dec.fields {
+		f := &dec.fields[i]
+
+		if f.flags.have(required) && ((seen[i/64]>>(i%64))&1) == 0 {
+			return fmt.Errorf("missing required field id %d in thrift struct", f.id)
+		}
+	}
+
+	return nil
 }
 
 type structDecoderField struct {
