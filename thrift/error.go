@@ -73,7 +73,7 @@ type decodeErrorList struct {
 }
 
 func (d *decodeErrorList) Error() string {
-	return fmt.Sprintf("%s[index=%d]", d.list, d.index)
+	return fmt.Sprintf("%d/%d:%s", d.index, d.list.Size, d.list)
 }
 
 type decodeErrorSet struct {
@@ -82,7 +82,7 @@ type decodeErrorSet struct {
 }
 
 func (d *decodeErrorSet) Error() string {
-	return fmt.Sprintf("%s[index=%d]", d.set, d.index)
+	return fmt.Sprintf("%d/%d:%s", d.index, d.set.Size, d.set)
 }
 
 type decodeErrorMap struct {
@@ -91,5 +91,5 @@ type decodeErrorMap struct {
 }
 
 func (d *decodeErrorMap) Error() string {
-	return fmt.Sprintf("%s[index=%d]", d._map, d.index)
+	return fmt.Sprintf("%d/%d:%s", d.index, d._map.Size, d._map)
 }

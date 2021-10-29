@@ -41,7 +41,7 @@ type Field struct {
 }
 
 func (f Field) String() string {
-	return fmt.Sprintf("FIELD<%s>(%d)", f.Type, f.ID)
+	return fmt.Sprintf("%d:FIELD<%s>", f.ID, f.Type)
 }
 
 type Type int8
@@ -99,13 +99,13 @@ type List struct {
 }
 
 func (l List) String() string {
-	return fmt.Sprintf("LIST<%s>(%d)", l.Type, l.Size)
+	return fmt.Sprintf("LIST<%s>", l.Type)
 }
 
 type Set List
 
 func (s Set) String() string {
-	return fmt.Sprintf("SET<%s>(%d)", s.Type, s.Size)
+	return fmt.Sprintf("SET<%s>", s.Type)
 }
 
 type Map struct {
@@ -115,7 +115,7 @@ type Map struct {
 }
 
 func (m Map) String() string {
-	return fmt.Sprintf("MAP<%s,%s>(%d)", m.Key, m.Value, m.Size)
+	return fmt.Sprintf("MAP<%s,%s>", m.Key, m.Value)
 }
 
 func TypeOf(t reflect.Type) Type {
