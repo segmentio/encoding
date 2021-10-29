@@ -1,17 +1,16 @@
 package thrift
 
 import (
-	"bufio"
 	"io"
 )
 
 type Protocol interface {
-	NewReader(r *bufio.Reader) Reader
-	NewWriter(w *bufio.Writer) Writer
+	NewReader(r io.Reader) Reader
+	NewWriter(w io.Writer) Writer
 }
 
 type Reader interface {
-	io.Reader
+	Reader() io.Reader
 	ReadBool() (bool, error)
 	ReadInt8() (int8, error)
 	ReadInt16() (int16, error)
@@ -24,11 +23,12 @@ type Reader interface {
 	ReadMessage() (Message, error)
 	ReadField() (Field, error)
 	ReadList() (List, error)
+	ReadSet() (Set, error)
 	ReadMap() (Map, error)
 }
 
 type Writer interface {
-	io.Writer
+	Writer() io.Writer
 	WriteBool(bool) error
 	WriteInt8(int8) error
 	WriteInt16(int16) error
@@ -41,5 +41,6 @@ type Writer interface {
 	WriteMessage(Message) error
 	WriteField(Field) error
 	WriteList(List) error
+	WriteSet(Set) error
 	WriteMap(Map) error
 }

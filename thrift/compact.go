@@ -2,26 +2,28 @@ package thrift
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 )
 
 type CompactProtocol struct{}
 
-func (p *CompactProtocol) NewReader(r *bufio.Reader) Reader {
+func (p *CompactProtocol) NewReader(r io.Reader) Reader {
 	return p.NewCompactReader(r)
 }
 
-func (p *CompactProtocol) NewWriter(w *bufio.Writer) Writer {
+func (p *CompactProtocol) NewWriter(w io.Writer) Writer {
 	return p.NewCompactWriter(w)
 }
 
-func (p *CompactProtocol) NewCompactReader(r *bufio.Reader) *CompactReader {
+func (p *CompactProtocol) NewCompactReader(r io.Reader) *CompactReader {
 	return &CompactReader{binary: BinaryReader{r: r}}
 }
 
-func (p *CompactProtocol) NewCompactWriter(w *bufio.Writer) *CompactWriter {
+func (p *CompactProtocol) NewCompactWriter(w io.Writer) *CompactWriter {
 	return &CompactWriter{binary: BinaryWriter{w: w}}
 }
 
@@ -30,8 +32,8 @@ type CompactReader struct {
 	lastField Field
 }
 
-func (r *CompactReader) Read(b []byte) (int, error) {
-	return r.binary.Read(b)
+func (r *CompactReader) Reader() io.Reader {
+	return r.binary.Reader()
 }
 
 func (r *CompactReader) ReadBool() (bool, error) {
@@ -101,7 +103,7 @@ func (r *CompactReader) ReadLength() (int, error) {
 func (r *CompactReader) ReadMessage() (Message, error) {
 	m := Message{}
 
-	b0, err := r.binary.readByte()
+	b0, err := r.ReadByte()
 	if err != nil {
 		return m, dontExpectEOF(err)
 	}
@@ -109,7 +111,7 @@ func (r *CompactReader) ReadMessage() (Message, error) {
 		return m, fmt.Errorf("invalid protocol id found when reading thrift message: %#x", b0)
 	}
 
-	b1, err := r.binary.readByte()
+	b1, err := r.ReadByte()
 	if err != nil {
 		return m, dontExpectEOF(err)
 	}
@@ -127,7 +129,7 @@ func (r *CompactReader) ReadField() (Field, error) {
 	f := Field{}
 	defer func() { r.lastField = f }()
 
-	b, err := r.binary.readByte()
+	b, err := r.ReadByte()
 	if err != nil {
 		return f, dontExpectEOF(err)
 	}
@@ -150,7 +152,7 @@ func (r *CompactReader) ReadField() (Field, error) {
 }
 
 func (r *CompactReader) ReadList() (List, error) {
-	b, err := r.binary.readByte()
+	b, err := r.ReadByte()
 	if err != nil {
 		return List{}, dontExpectEOF(err)
 	}
@@ -164,6 +166,11 @@ func (r *CompactReader) ReadList() (List, error) {
 	return List{Size: n, Type: Type(b & 0xF)}, nil
 }
 
+func (r *CompactReader) ReadSet() (Set, error) {
+	l, err := r.ReadList()
+	return Set(l), err
+}
+
 func (r *CompactReader) ReadMap() (Map, error) {
 	n, err := r.ReadInt32()
 	if err != nil {
@@ -172,15 +179,34 @@ func (r *CompactReader) ReadMap() (Map, error) {
 	if n == 0 { // empty map
 		return Map{}, nil
 	}
-	b, err := r.binary.readByte()
+	b, err := r.ReadByte()
 	if err != nil {
 		return Map{}, dontExpectEOF(err)
 	}
 	return Map{Size: n, Key: Type(b >> 4), Value: Type(b & 0xF)}, nil
 }
 
+func (r *CompactReader) ReadByte() (byte, error) {
+	return r.binary.ReadByte()
+}
+
 func (r *CompactReader) readVarint(typ string, min, max int64) (int64, error) {
-	v, err := binary.ReadVarint(r.binary.r)
+	var br io.ByteReader
+
+	switch x := r.binary.r.(type) {
+	case *bytes.Buffer:
+		br = x
+	case *bytes.Reader:
+		br = x
+	case *bufio.Reader:
+		br = x
+	case io.ByteReader:
+		br = x
+	default:
+		br = &r.binary
+	}
+
+	v, err := binary.ReadVarint(br)
 	if err == nil {
 		if v < min || v > max {
 			err = fmt.Errorf("%s varint out of range: %d not in [%d;%d]", typ, v, min, max)
@@ -195,8 +221,8 @@ type CompactWriter struct {
 	lastField Field
 }
 
-func (w *CompactWriter) Write(b []byte) (int, error) {
-	return w.binary.Write(b)
+func (w *CompactWriter) Writer() io.Writer {
+	return w.binary.Writer()
 }
 
 func (w *CompactWriter) WriteBool(v bool) error {
@@ -287,6 +313,10 @@ func (w *CompactWriter) WriteList(l List) error {
 		return err
 	}
 	return w.WriteInt32(l.Size)
+}
+
+func (w *CompactWriter) WriteSet(s Set) error {
+	return w.WriteList(List(s))
 }
 
 func (w *CompactWriter) WriteMap(m Map) error {

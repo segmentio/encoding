@@ -1,9 +1,7 @@
 package thrift_test
 
 import (
-	"bufio"
 	"bytes"
-	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -141,21 +139,40 @@ var protocolReadWriteTests = [...]struct {
 	},
 }
 
-func TestProtocols(t *testing.T) {
-	testProtocolReadWriteValues(t, "binary", &thrift.BinaryProtocol{})
-	testProtocolReadWriteValues(t, "binary(non-strict)", &thrift.BinaryProtocol{NonStrict: true})
-	testProtocolReadWriteValues(t, "compact", &thrift.CompactProtocol{})
+var protocols = [...]struct {
+	name  string
+	proto thrift.Protocol
+}{
+	{
+		name:  "binary(default)",
+		proto: &thrift.BinaryProtocol{},
+	},
+
+	{
+		name: "binary(non-strict)",
+		proto: &thrift.BinaryProtocol{
+			NonStrict: true,
+		},
+	},
+
+	{
+		name:  "compact",
+		proto: &thrift.CompactProtocol{},
+	},
 }
 
-func testProtocolReadWriteValues(t *testing.T, name string, proto thrift.Protocol) {
-	for _, test := range protocolReadWriteTests {
-		t.Run(name+"/"+test.scenario, func(t *testing.T) {
-			bb := new(bytes.Buffer)
-			rb := bufio.NewReader(bb)
-			wb := bufio.NewWriter(bb)
+func TestProtocols(t *testing.T) {
+	for _, test := range protocols {
+		t.Run(test.name, func(t *testing.T) { testProtocolReadWriteValues(t, test.proto) })
+	}
+}
 
-			r := proto.NewReader(rb)
-			w := proto.NewWriter(wb)
+func testProtocolReadWriteValues(t *testing.T, p thrift.Protocol) {
+	for _, test := range protocolReadWriteTests {
+		t.Run(test.scenario, func(t *testing.T) {
+			b := new(bytes.Buffer)
+			r := p.NewReader(b)
+			w := p.NewWriter(b)
 
 			for _, value := range test.values {
 				ret := reflect.ValueOf(test.write).Call([]reflect.Value{
@@ -166,8 +183,6 @@ func testProtocolReadWriteValues(t *testing.T, name string, proto thrift.Protoco
 					t.Fatal("encoding:", err)
 				}
 			}
-
-			wb.Flush()
 
 			for _, value := range test.values {
 				ret := reflect.ValueOf(test.read).Call([]reflect.Value{
@@ -181,9 +196,8 @@ func testProtocolReadWriteValues(t *testing.T, name string, proto thrift.Protoco
 				}
 			}
 
-			_, err := rb.Peek(1)
-			if err != io.EOF {
-				t.Errorf("unexpected error after reading all values: %v", err)
+			if b.Len() != 0 {
+				t.Errorf("unexpected trailing bytes: %d", b.Len())
 			}
 		})
 	}

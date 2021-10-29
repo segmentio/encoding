@@ -13,80 +13,71 @@ type BinaryProtocol struct {
 	NonStrict bool
 }
 
-func (p *BinaryProtocol) NewReader(r *bufio.Reader) Reader {
+func (p *BinaryProtocol) NewReader(r io.Reader) Reader {
 	return p.NewBinaryReader(r)
 }
 
-func (p *BinaryProtocol) NewWriter(w *bufio.Writer) Writer {
+func (p *BinaryProtocol) NewWriter(w io.Writer) Writer {
 	return p.NewBinaryWriter(w)
 }
 
-func (p *BinaryProtocol) NewBinaryReader(r *bufio.Reader) *BinaryReader {
+func (p *BinaryProtocol) NewBinaryReader(r io.Reader) *BinaryReader {
 	return &BinaryReader{r: r}
 }
 
-func (p *BinaryProtocol) NewBinaryWriter(w *bufio.Writer) *BinaryWriter {
+func (p *BinaryProtocol) NewBinaryWriter(w io.Writer) *BinaryWriter {
 	return &BinaryWriter{p: p, w: w}
 }
 
 type BinaryReader struct {
-	r *bufio.Reader
-	b bytes.Buffer
-	l io.LimitedReader
+	r io.Reader
+	b []byte
 }
 
-func (r *BinaryReader) Read(b []byte) (int, error) {
-	return r.r.Read(b)
+func (r *BinaryReader) Reader() io.Reader {
+	return r.r
 }
 
 func (r *BinaryReader) ReadBool() (bool, error) {
-	v, err := r.readByte()
+	v, err := r.ReadByte()
 	return v != 0, err
 }
 
 func (r *BinaryReader) ReadInt8() (int8, error) {
-	b, err := r.readByte()
+	b, err := r.ReadByte()
 	return int8(b), err
 }
 
 func (r *BinaryReader) ReadInt16() (int16, error) {
-	b, err := r.r.Peek(2)
+	b, err := r.read(2)
 	if len(b) < 2 {
 		return 0, dontExpectEOF(err)
 	}
-	v := int16(binary.BigEndian.Uint16(b))
-	r.r.Discard(2)
-	return v, nil
+	return int16(binary.BigEndian.Uint16(b)), nil
 }
 
 func (r *BinaryReader) ReadInt32() (int32, error) {
-	b, err := r.r.Peek(4)
+	b, err := r.read(4)
 	if len(b) < 4 {
 		return 0, dontExpectEOF(err)
 	}
-	v := int32(binary.BigEndian.Uint32(b))
-	r.r.Discard(4)
-	return v, nil
+	return int32(binary.BigEndian.Uint32(b)), nil
 }
 
 func (r *BinaryReader) ReadInt64() (int64, error) {
-	b, err := r.r.Peek(8)
+	b, err := r.read(8)
 	if len(b) < 8 {
 		return 0, dontExpectEOF(err)
 	}
-	v := int64(binary.BigEndian.Uint64(b))
-	r.r.Discard(8)
-	return v, nil
+	return int64(binary.BigEndian.Uint64(b)), nil
 }
 
 func (r *BinaryReader) ReadFloat64() (float64, error) {
-	b, err := r.r.Peek(8)
+	b, err := r.read(8)
 	if len(b) < 8 {
 		return 0, dontExpectEOF(err)
 	}
-	v := math.Float64frombits(binary.BigEndian.Uint64(b))
-	r.r.Discard(8)
-	return v, nil
+	return math.Float64frombits(binary.BigEndian.Uint64(b)), nil
 }
 
 func (r *BinaryReader) ReadBytes() ([]byte, error) {
@@ -108,7 +99,7 @@ func (r *BinaryReader) ReadString() (string, error) {
 }
 
 func (r *BinaryReader) ReadLength() (int, error) {
-	b, err := r.r.Peek(4)
+	b, err := r.read(4)
 	if len(b) < 4 {
 		return 0, dontExpectEOF(err)
 	}
@@ -116,30 +107,33 @@ func (r *BinaryReader) ReadLength() (int, error) {
 	if n > math.MaxInt32 {
 		return 0, fmt.Errorf("length out of range: %d", n)
 	}
-	r.r.Discard(4)
 	return int(n), nil
 }
 
 func (r *BinaryReader) ReadMessage() (Message, error) {
 	m := Message{}
 
-	b, err := r.r.Peek(4)
+	b, err := r.read(4)
 	if len(b) < 4 {
 		return m, dontExpectEOF(err)
 	}
 
 	if (b[0] >> 7) == 0 { // non-strict
-		if m.Name, err = r.ReadString(); err != nil {
+		n := int(binary.BigEndian.Uint32(b))
+		s, err := r.read(n)
+		if err != nil {
 			return m, err
 		}
+		m.Name = string(s)
+
 		t, err := r.ReadInt8()
 		if err != nil {
 			return m, err
 		}
+
 		m.Type = MessageType(t & 0x7)
 	} else {
 		m.Type = MessageType(b[3] & 0x7)
-		r.r.Discard(4)
 
 		if m.Name, err = r.ReadString(); err != nil {
 			return m, err
@@ -174,12 +168,17 @@ func (r *BinaryReader) ReadList() (List, error) {
 	return List{Size: n, Type: Type(t)}, nil
 }
 
+func (r *BinaryReader) ReadSet() (Set, error) {
+	l, err := r.ReadList()
+	return Set(l), err
+}
+
 func (r *BinaryReader) ReadMap() (Map, error) {
-	k, err := r.readByte()
+	k, err := r.ReadByte()
 	if err != nil {
 		return Map{}, dontExpectEOF(err)
 	}
-	v, err := r.readByte()
+	v, err := r.ReadByte()
 	if err != nil {
 		return Map{}, dontExpectEOF(err)
 	}
@@ -190,33 +189,59 @@ func (r *BinaryReader) ReadMap() (Map, error) {
 	return Map{Size: n, Key: Type(k), Value: Type(v)}, nil
 }
 
-func (r *BinaryReader) readByte() (byte, error) {
-	return r.r.ReadByte()
+func (r *BinaryReader) ReadByte() (byte, error) {
+	switch x := r.r.(type) {
+	case *bytes.Buffer:
+		return x.ReadByte()
+	case *bytes.Reader:
+		return x.ReadByte()
+	case *bufio.Reader:
+		return x.ReadByte()
+	case io.ByteReader:
+		return x.ReadByte()
+	default:
+		b, err := r.read(1)
+		if err != nil {
+			return 0, err
+		}
+		return b[0], nil
+	}
 }
 
 func (r *BinaryReader) read(n int) ([]byte, error) {
-	r.b.Reset()
+	r.b = r.b[:0]
 
-	if b, _ := r.r.Peek(n); len(b) == n {
-		r.b.Write(b)
-		r.r.Discard(n)
-		return r.b.Bytes(), nil
+	switch x := r.r.(type) {
+	case *bufio.Reader:
+		if b, _ := x.Peek(n); len(b) == n {
+			r.b = append(r.b, b...)
+			x.Discard(n)
+			return r.b, nil
+		}
 	}
 
-	r.l.R = r.r
-	r.l.N = int64(n)
-	_, err := r.b.ReadFrom(&r.l)
-	return r.b.Bytes(), err
+	if cap(r.b) < n {
+		c := n
+		if c < 64 {
+			c = 64
+		}
+		r.b = make([]byte, c)
+	} else {
+		r.b = r.b[:n]
+	}
+
+	_, err := io.ReadFull(r.r, r.b)
+	return r.b, dontExpectEOF(err)
 }
 
 type BinaryWriter struct {
 	p *BinaryProtocol
-	w *bufio.Writer
 	b [8]byte
+	w io.Writer
 }
 
-func (w *BinaryWriter) Write(b []byte) (int, error) {
-	return w.w.Write(b)
+func (w *BinaryWriter) Writer() io.Writer {
+	return w.w
 }
 
 func (w *BinaryWriter) WriteBool(v bool) error {
@@ -224,11 +249,11 @@ func (w *BinaryWriter) WriteBool(v bool) error {
 	if v {
 		b = 1
 	}
-	return w.w.WriteByte(b)
+	return w.writeByte(b)
 }
 
 func (w *BinaryWriter) WriteInt8(v int8) error {
-	return w.w.WriteByte(byte(v))
+	return w.writeByte(byte(v))
 }
 
 func (w *BinaryWriter) WriteInt16(v int16) error {
@@ -314,6 +339,10 @@ func (w *BinaryWriter) WriteList(l List) error {
 	return w.WriteInt32(l.Size)
 }
 
+func (w *BinaryWriter) WriteSet(s Set) error {
+	return w.WriteList(List(s))
+}
+
 func (w *BinaryWriter) WriteMap(m Map) error {
 	if err := w.writeByte(byte(m.Key)); err != nil {
 		return err
@@ -330,12 +359,26 @@ func (w *BinaryWriter) write(b []byte) error {
 }
 
 func (w *BinaryWriter) writeString(s string) error {
-	_, err := w.w.WriteString(s)
+	_, err := io.WriteString(w.w, s)
 	return err
 }
 
 func (w *BinaryWriter) writeByte(b byte) error {
-	return w.w.WriteByte(b)
+	// The special cases are intended to reduce the runtime overheadof testing
+	// for the io.ByteWriter interface for common types. Type assertions on a
+	// concrete type is just a pointer comparison, instead of requiring a
+	// complex lookup in the type metadata.
+	switch x := w.w.(type) {
+	case *bytes.Buffer:
+		return x.WriteByte(b)
+	case *bufio.Writer:
+		return x.WriteByte(b)
+	case io.ByteWriter:
+		return x.WriteByte(b)
+	default:
+		w.b[0] = b
+		return w.write(w.b[:1])
+	}
 }
 
 func dontExpectEOF(err error) error {
