@@ -34,7 +34,7 @@ func forEachStructField(t reflect.Type, index []int, do func(structField)) {
 	for i, n := 0, t.NumField(); i < n; i++ {
 		f := t.Field(i)
 
-		if !f.IsExported() {
+		if f.PkgPath != "" { // unexported
 			continue
 		}
 
