@@ -215,27 +215,15 @@ func (r *BinaryReader) ReadByte() (byte, error) {
 }
 
 func (r *BinaryReader) read(n int) ([]byte, error) {
-	r.b = r.b[:0]
-
-	switch x := r.r.(type) {
-	case *bufio.Reader:
-		if b, _ := x.Peek(n); len(b) == n {
-			r.b = append(r.b, b...)
-			x.Discard(n)
-			return r.b, nil
-		}
-	}
-
 	if cap(r.b) < n {
 		c := n
 		if c < 64 {
 			c = 64
 		}
-		r.b = make([]byte, c)
+		r.b = make([]byte, c)[:n]
 	} else {
 		r.b = r.b[:n]
 	}
-
 	_, err := io.ReadFull(r.r, r.b)
 	return r.b, dontExpectEOF(err)
 }

@@ -41,7 +41,7 @@ func (d *Decoder) Decode(v interface{}) error {
 	t := reflect.TypeOf(v)
 	p := reflect.ValueOf(v)
 
-	if p.Kind() != reflect.Ptr {
+	if t.Kind() != reflect.Ptr {
 		panic("thrift.(*Decoder).Decode: expected pointer type but got " + t.String())
 	}
 

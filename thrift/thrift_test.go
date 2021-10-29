@@ -203,6 +203,15 @@ var marshalTestValues = [...]struct {
 			RecursiveStruct{Value: "hello", Next: &RecursiveStruct{Value: "world"}},
 		},
 	},
+
+	{
+		scenario: "StructWithEnum",
+		values: []interface{}{
+			StructWithEnum{},
+			StructWithEnum{Enum: 1},
+			StructWithEnum{Enum: 2},
+		},
+	},
 }
 
 type Point2D struct {
@@ -213,6 +222,10 @@ type Point2D struct {
 type RecursiveStruct struct {
 	Value string           `thrift:"1"`
 	Next  *RecursiveStruct `thrift:"2"`
+}
+
+type StructWithEnum struct {
+	Enum int8 `thrift:"1,enum"`
 }
 
 func TestMarshalUnmarshal(t *testing.T) {
