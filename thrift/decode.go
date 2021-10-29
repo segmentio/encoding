@@ -401,12 +401,12 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	seen[t] = decode
 
 	fields := make([]structDecoderField, 0, t.NumField())
-	forEachStructField(t, nil, func(t reflect.Type, id int16, index []int) {
+	forEachStructField(t, nil, func(f structField) {
 		fields = append(fields, structDecoderField{
-			index:  index,
-			id:     id,
-			typ:    TypeOf(t),
-			decode: decodeFuncOf(t, seen),
+			index:  f.index,
+			id:     f.id,
+			typ:    TypeOf(f.typ),
+			decode: decodeFuncStructFieldOf(f, seen),
 		})
 	})
 
@@ -434,6 +434,18 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	}
 
 	return decode
+}
+
+func decodeFuncStructFieldOf(f structField, seen decodeFuncCache) decodeFunc {
+	if f.enum {
+		switch f.typ.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return decodeInt32
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			return decodeUint32
+		}
+	}
+	return decodeFuncOf(f.typ, seen)
 }
 
 func decodeFuncPtrOf(t reflect.Type, seen decodeFuncCache) decodeFunc {

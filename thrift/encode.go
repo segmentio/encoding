@@ -307,12 +307,12 @@ func encodeFuncStructOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	encode := enc.encode
 	seen[t] = encode
 
-	forEachStructField(t, nil, func(t reflect.Type, id int16, index []int) {
+	forEachStructField(t, nil, func(f structField) {
 		enc.fields = append(enc.fields, structEncoderField{
-			index:  index,
-			id:     id,
-			typ:    TypeOf(t),
-			encode: encodeFuncOf(t, seen),
+			index:  f.index,
+			id:     f.id,
+			typ:    TypeOf(f.typ),
+			encode: encodeFuncStructFieldOf(f, seen),
 		})
 	})
 
@@ -327,6 +327,18 @@ func encodeFuncStructOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	}
 
 	return encode
+}
+
+func encodeFuncStructFieldOf(f structField, seen encodeFuncCache) encodeFunc {
+	if f.enum {
+		switch f.typ.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return encodeInt32
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			return encodeUint32
+		}
+	}
+	return encodeFuncOf(f.typ, seen)
 }
 
 func encodeFuncPtrOf(t reflect.Type, seen encodeFuncCache) encodeFunc {

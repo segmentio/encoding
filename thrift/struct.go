@@ -4,9 +4,17 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
-func forEachStructField(t reflect.Type, index []int, do func(reflect.Type, int16, []int)) {
+type structField struct {
+	typ   reflect.Type
+	index []int
+	id    int16
+	enum  bool
+}
+
+func forEachStructField(t reflect.Type, index []int, do func(structField)) {
 	for i, n := 0, t.NumField(); i < n; i++ {
 		f := t.Field(i)
 
@@ -22,14 +30,31 @@ func forEachStructField(t reflect.Type, index []int, do func(reflect.Type, int16
 			continue
 		}
 
-		if tag := f.Tag.Get("thrift"); tag == "" {
+		tag := f.Tag.Get("thrift")
+		if tag == "" {
 			continue
-		} else if id, err := strconv.ParseInt(tag, 10, 16); err != nil {
-			panic(fmt.Errorf("invalid thrift field id found in struct tag: %w", err))
+		}
+		tags := strings.Split(tag, ",")
+		enum := false
+
+		for _, opt := range tags[1:] {
+			switch opt {
+			case "enum":
+				enum = true
+			}
+		}
+
+		if id, err := strconv.ParseInt(tags[0], 10, 16); err != nil {
+			panic(fmt.Errorf("invalid thrift field id found in struct tag `%s`: %w", tag, err))
 		} else if id <= 0 {
-			panic(fmt.Errorf("invalid thrift field id found in struct tag: %d <= 0", id))
+			panic(fmt.Errorf("invalid thrift field id found in struct tag `%s`: %d <= 0", tag, id))
 		} else {
-			do(f.Type, int16(id), fieldIndex)
+			do(structField{
+				typ:   f.Type,
+				index: fieldIndex,
+				id:    int16(id),
+				enum:  enum,
+			})
 		}
 	}
 }
