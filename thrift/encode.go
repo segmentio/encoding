@@ -9,6 +9,10 @@ import (
 	"sync/atomic"
 )
 
+// Marshal serializes v into a thrift representation according to the the
+// protocol p.
+//
+// The function panics if v cannot be converted to a thrift representation.
 func Marshal(p Protocol, v interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := NewEncoder(p.NewWriter(buf))

@@ -9,6 +9,11 @@ import (
 	"sync/atomic"
 )
 
+// Unmarshal deserializes the thrift data from b to v using to the protocol p.
+//
+// The function errors if the data in b does not match the type of v.
+//
+// The function panics if v cannot be converted to a thrift representation.
 func Unmarshal(p Protocol, b []byte, v interface{}) error {
 	br := bytes.NewReader(b)
 	pr := p.NewReader(br)

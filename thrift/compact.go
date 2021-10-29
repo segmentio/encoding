@@ -9,6 +9,9 @@ import (
 	"math"
 )
 
+// CompactProtocol is a Protocol implementation for the compact thrift protocol.
+//
+// https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#integer-encoding
 type CompactProtocol struct{}
 
 func (p *CompactProtocol) NewReader(r io.Reader) Reader {
@@ -27,6 +30,9 @@ func (p *CompactProtocol) NewCompactWriter(w io.Writer) *CompactWriter {
 	return &CompactWriter{binary: BinaryWriter{w: w}}
 }
 
+// CompactReader is a Reader implementation for the compact thrift protocol.
+//
+// https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#integer-encoding
 type CompactReader struct {
 	binary    BinaryReader
 	lastField Field
@@ -215,6 +221,9 @@ func (r *CompactReader) readVarint(typ string, min, max int64) (int64, error) {
 	return v, err
 }
 
+// CompactWriter is a Writer implementation for the compact thrift protocol.
+//
+// https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#integer-encoding
 type CompactWriter struct {
 	binary    BinaryWriter
 	varint    [binary.MaxVarintLen64]byte

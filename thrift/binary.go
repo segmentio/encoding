@@ -9,6 +9,9 @@ import (
 	"math"
 )
 
+// BinaryProtocol is a Protocol implementation for the binary thrift protocol.
+//
+// https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md
 type BinaryProtocol struct {
 	NonStrict bool
 }
@@ -29,6 +32,9 @@ func (p *BinaryProtocol) NewBinaryWriter(w io.Writer) *BinaryWriter {
 	return &BinaryWriter{p: p, w: w}
 }
 
+// BinaryReader is a Reader implementation for the binary thrift protocol.
+//
+// https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md
 type BinaryReader struct {
 	r io.Reader
 	b []byte
@@ -234,6 +240,9 @@ func (r *BinaryReader) read(n int) ([]byte, error) {
 	return r.b, dontExpectEOF(err)
 }
 
+// BinaryWriter is a Writer implementation for the binary thrift protocol.
+//
+// https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md
 type BinaryWriter struct {
 	p *BinaryProtocol
 	b [8]byte

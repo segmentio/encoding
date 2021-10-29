@@ -4,11 +4,19 @@ import (
 	"io"
 )
 
+// The Protocol interface abstracts the creation of low-level thrift readers and
+// writers implementing the various protocols that the encoding supports.
+//
+// Protocol instances must be safe to use concurrently from multiple gourintes.
+// However, the readers and writer that they instantiates are intended to be
+// used by a single goroutine.
 type Protocol interface {
 	NewReader(r io.Reader) Reader
 	NewWriter(w io.Writer) Writer
 }
 
+// Reader represents a low-level reader of values encoded according to one of
+// the thrift protocols.
 type Reader interface {
 	Reader() io.Reader
 	ReadBool() (bool, error)
@@ -27,6 +35,8 @@ type Reader interface {
 	ReadMap() (Map, error)
 }
 
+// Writer represents a low-level writer of values encoded according to one of
+// the thrift protocols.
 type Writer interface {
 	Writer() io.Writer
 	WriteBool(bool) error
