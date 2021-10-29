@@ -93,6 +93,10 @@ func (t Type) String() string {
 	}
 }
 
+func (t Type) GoString() string {
+	return "thrift." + t.String()
+}
+
 type List struct {
 	Size int32
 	Type Type
