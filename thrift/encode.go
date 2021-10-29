@@ -278,7 +278,7 @@ encodeFields:
 			}
 		}
 
-		if !f.flags.have(required) && isZero(x) {
+		if !f.flags.have(required) && x.IsZero() {
 			continue encodeFields
 		}
 
@@ -383,19 +383,5 @@ func encodeFuncPtrOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 			v = zero
 		}
 		return enc(w, v, f)
-	}
-}
-
-func isZero(v reflect.Value) bool {
-	if !v.IsValid() {
-		return true
-	}
-	switch v.Kind() {
-	case reflect.Ptr:
-		return v.IsNil()
-	case reflect.Slice, reflect.Map:
-		return v.Len() == 0
-	default:
-		return v.IsZero()
 	}
 }
