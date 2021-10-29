@@ -15,14 +15,26 @@ const (
 	union    flags = 1 << 1
 	required flags = 1 << 2
 	optional flags = 1 << 3
+	strict   flags = 1 << 4
+
+	structFlags flags = enum | union | required | optional
+	decodeFlags flags = strict
 )
 
 func (f flags) have(x flags) bool {
 	return (f & x) == x
 }
 
+func (f flags) only(x flags) flags {
+	return f & x
+}
+
 func (f flags) with(x flags) flags {
 	return f | x
+}
+
+func (f flags) without(x flags) flags {
+	return f & ^x
 }
 
 type structField struct {

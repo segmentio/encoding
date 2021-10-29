@@ -32,6 +32,7 @@ func Unmarshal(p Protocol, b []byte, v interface{}) error {
 
 type Decoder struct {
 	r Reader
+	f flags
 }
 
 func NewDecoder(r Reader) *Decoder {
@@ -64,11 +65,19 @@ func (d *Decoder) Decode(v interface{}) error {
 		decoderCache.Store(newCache)
 	}
 
-	return decode(d.r, p, noflags)
+	return decode(d.r, p, d.f)
 }
 
 func (d *Decoder) Reset(r Reader) {
 	d.r = r
+}
+
+func (d *Decoder) SetStrict(enabled bool) {
+	if enabled {
+		d.f = d.f.with(strict)
+	} else {
+		d.f = d.f.without(strict)
+	}
 }
 
 var decoderCache atomic.Value // map[typeID]decodeFunc
@@ -237,7 +246,7 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	typ := TypeOf(elem)
 	dec := decodeFuncOf(elem, seen)
 
-	return func(r Reader, v reflect.Value, _ flags) error {
+	return func(r Reader, v reflect.Value, flags flags) error {
 		l, err := r.ReadList()
 		if err != nil {
 			return err
@@ -245,13 +254,17 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		// TODO: implement type conversions?
 		if typ != l.Type {
-			return &TypeMismatch{item: "list item", Expect: typ, Found: l.Type}
+			if flags.have(strict) {
+				return &TypeMismatch{item: "list item", Expect: typ, Found: l.Type}
+			}
+			return nil
 		}
 
 		v.Set(reflect.MakeSlice(t, int(l.Size), int(l.Size)))
+		flags = flags.only(decodeFlags)
 
 		for i := 0; i < int(l.Size); i++ {
-			if err := dec(r, v.Index(i), noflags); err != nil {
+			if err := dec(r, v.Index(i), flags); err != nil {
 				return with(err, &decodeErrorList{list: l, index: i})
 			}
 		}
@@ -274,7 +287,7 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	decodeKey := decodeFuncOf(key, seen)
 	decodeElem := decodeFuncOf(elem, seen)
 
-	return func(r Reader, v reflect.Value, _ flags) error {
+	return func(r Reader, v reflect.Value, flags flags) error {
 		m, err := r.ReadMap()
 		if err != nil {
 			return err
@@ -288,20 +301,28 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		// TODO: implement type conversions?
 		if keyType != m.Key {
-			return &TypeMismatch{item: "map key", Expect: keyType, Found: m.Key}
+			if flags.have(strict) {
+				return &TypeMismatch{item: "map key", Expect: keyType, Found: m.Key}
+			}
+			return nil
 		}
+
 		if elemType != m.Value {
-			return &TypeMismatch{item: "map value", Expect: elemType, Found: m.Value}
+			if flags.have(strict) {
+				return &TypeMismatch{item: "map value", Expect: elemType, Found: m.Value}
+			}
+			return nil
 		}
 
 		tmpKey := reflect.New(key).Elem()
 		tmpElem := reflect.New(elem).Elem()
+		flags = flags.only(decodeFlags)
 
 		for i := 0; i < int(m.Size); i++ {
-			if err := decodeKey(r, tmpKey, noflags); err != nil {
+			if err := decodeKey(r, tmpKey, flags); err != nil {
 				return with(err, &decodeErrorMap{_map: m, index: i})
 			}
-			if err := decodeElem(r, tmpElem, noflags); err != nil {
+			if err := decodeElem(r, tmpElem, flags); err != nil {
 				return with(err, &decodeErrorMap{_map: m, index: i})
 			}
 			v.SetMapIndex(tmpKey, tmpElem)
@@ -320,7 +341,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	typ := TypeOf(key)
 	dec := decodeFuncOf(key, seen)
 
-	return func(r Reader, v reflect.Value, _ flags) error {
+	return func(r Reader, v reflect.Value, flags flags) error {
 		s, err := r.ReadSet()
 		if err != nil {
 			return err
@@ -334,13 +355,17 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		// TODO: implement type conversions?
 		if typ != s.Type {
-			return &TypeMismatch{item: "list item", Expect: typ, Found: s.Type}
+			if flags.have(strict) {
+				return &TypeMismatch{item: "list item", Expect: typ, Found: s.Type}
+			}
+			return nil
 		}
 
 		tmp := reflect.New(key).Elem()
+		flags = flags.only(decodeFlags)
 
 		for i := 0; i < int(s.Size); i++ {
-			if err := dec(r, tmp, noflags); err != nil {
+			if err := dec(r, tmp, flags); err != nil {
 				return with(err, &decodeErrorSet{set: s, index: i})
 			}
 			v.SetMapIndex(tmp, elemZero)
@@ -360,6 +385,7 @@ type structDecoder struct {
 
 func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 	v.Set(dec.zero)
+	flags = flags.only(decodeFlags)
 
 	lastField := reflect.Value{}
 	union := len(dec.union) > 0
@@ -378,7 +404,10 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 
 		// TODO: implement type conversions?
 		if f.Type != field.typ && !(f.Type == TRUE && field.typ == BOOL) {
-			return &TypeMismatch{item: "field value", Expect: field.typ, Found: f.Type}
+			if flags.have(strict) {
+				return &TypeMismatch{item: "field value", Expect: field.typ, Found: f.Type}
+			}
+			return nil
 		}
 
 		x := v
@@ -399,7 +428,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 
 		lastField = x
 		seen[i/64] |= 1 << (i % 64)
-		return field.decode(r, x, field.flags)
+		return field.decode(r, x, field.flags.with(flags))
 	})
 	if err != nil {
 		return err
