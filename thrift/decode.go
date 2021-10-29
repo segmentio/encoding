@@ -240,19 +240,19 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	return func(r Reader, v reflect.Value, _ flags) error {
 		l, err := r.ReadList()
 		if err != nil {
-			return fmt.Errorf("decoding thrift list header: %w", err)
+			return err
 		}
 
 		// TODO: implement type conversions?
 		if typ != l.Type {
-			return fmt.Errorf("element type mismatch in decoded thrift list of length %d: want %s but got %s", l.Size, typ, l.Type)
+			return &TypeMismatch{item: "list item", Expect: typ, Found: l.Type}
 		}
 
 		v.Set(reflect.MakeSlice(t, int(l.Size), int(l.Size)))
 
 		for i := 0; i < int(l.Size); i++ {
 			if err := dec(r, v.Index(i), noflags); err != nil {
-				return fmt.Errorf("decoding thrift list element of type %s at index %d: %w", l.Type, i, err)
+				return with(err, &decodeErrorList{list: l, index: i})
 			}
 		}
 
@@ -277,7 +277,7 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	return func(r Reader, v reflect.Value, _ flags) error {
 		m, err := r.ReadMap()
 		if err != nil {
-			return fmt.Errorf("decoding thrift map header: %w", err)
+			return err
 		}
 
 		v.Set(reflect.MakeMapWithSize(mapType, int(m.Size)))
@@ -288,10 +288,10 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		// TODO: implement type conversions?
 		if keyType != m.Key {
-			return fmt.Errorf("key type mismatch in decoded thrift map of length %d: want %s but got %s", m.Size, keyType, m.Key)
+			return &TypeMismatch{item: "map key", Expect: keyType, Found: m.Key}
 		}
 		if elemType != m.Value {
-			return fmt.Errorf("value type mismatch in decoded thrift map of length %d: want %s but got %s", m.Size, elemType, m.Value)
+			return &TypeMismatch{item: "map value", Expect: elemType, Found: m.Value}
 		}
 
 		tmpKey := reflect.New(key).Elem()
@@ -299,10 +299,10 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		for i := 0; i < int(m.Size); i++ {
 			if err := decodeKey(r, tmpKey, noflags); err != nil {
-				return fmt.Errorf("decoding thrift map key of type %s at index %d: %w", m.Key, i, err)
+				return with(err, &decodeErrorMap{_map: m, index: i})
 			}
 			if err := decodeElem(r, tmpElem, noflags); err != nil {
-				return fmt.Errorf("decoding thrift map value of type %s at index %d: %w", m.Value, i, err)
+				return with(err, &decodeErrorMap{_map: m, index: i})
 			}
 			v.SetMapIndex(tmpKey, tmpElem)
 			tmpKey.Set(keyZero)
@@ -323,7 +323,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	return func(r Reader, v reflect.Value, _ flags) error {
 		s, err := r.ReadSet()
 		if err != nil {
-			return fmt.Errorf("decoding thrift set header: %w", err)
+			return err
 		}
 
 		v.Set(reflect.MakeMapWithSize(t, int(s.Size)))
@@ -334,14 +334,14 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		// TODO: implement type conversions?
 		if typ != s.Type {
-			return fmt.Errorf("element type mismatch in decoded thrift set of length %d: want %s but got %s", s.Size, typ, s.Type)
+			return &TypeMismatch{item: "list item", Expect: typ, Found: s.Type}
 		}
 
 		tmp := reflect.New(key).Elem()
 
 		for i := 0; i < int(s.Size); i++ {
 			if err := dec(r, tmp, noflags); err != nil {
-				return fmt.Errorf("decoding thrift set element of type %s at index %d: %w", s.Type, i, err)
+				return with(err, &decodeErrorSet{set: s, index: i})
 			}
 			v.SetMapIndex(tmp, elemZero)
 			tmp.Set(keyZero)
@@ -378,7 +378,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 
 		// TODO: implement type conversions?
 		if f.Type != field.typ && !(f.Type == TRUE && field.typ == BOOL) {
-			return fmt.Errorf("value type mismatch in decoded thrift struct field %d: want %s but got %s", f.ID, field.typ, f.Type)
+			return &TypeMismatch{item: "field value", Expect: field.typ, Found: f.Type}
 		}
 
 		x := v
@@ -409,7 +409,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 		f := &dec.fields[i]
 
 		if f.flags.have(required) && ((seen[i/64]>>(i%64))&1) == 0 {
-			return fmt.Errorf("missing required field id %d in thrift struct", f.id)
+			return &MissingField{Field: Field{ID: f.id, Type: f.typ}}
 		}
 	}
 
@@ -467,8 +467,9 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 	for _, f := range fields {
 		i := f.id - minID
-		if dec.fields[i].decode != nil {
-			panic(fmt.Errorf("thrift struct field id %d is present multiple times", f.id))
+		p := dec.fields[i]
+		if p.decode != nil {
+			panic(fmt.Errorf("thrift struct field id %d is present multiple times in %s with types %s and %s", f.id, t, p.typ, f.typ))
 		}
 		dec.fields[i] = f
 	}
@@ -502,23 +503,20 @@ func decodeFuncPtrOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 func readBinary(r Reader, f func(io.Reader) error) error {
 	n, err := r.ReadLength()
 	if err != nil {
-		return fmt.Errorf("decoding thrift binary value length: %w", err)
+		return err
 	}
-	if err := f(io.LimitReader(r.Reader(), int64(n))); err != nil {
-		return fmt.Errorf("decoding thrift binary value of length %d: %w", n, err)
-	}
-	return nil
+	return f(io.LimitReader(r.Reader(), int64(n)))
 }
 
 func readList(r Reader, f func(Reader, Type) error) error {
 	l, err := r.ReadList()
 	if err != nil {
-		return fmt.Errorf("decoding thrift list header: %w", err)
+		return err
 	}
 
 	for i := 0; i < int(l.Size); i++ {
 		if err := f(r, l.Type); err != nil {
-			return fmt.Errorf("decoding thrift list element of type %s at index %d: %w", l.Type, i, err)
+			return with(err, &decodeErrorList{list: l, index: i})
 		}
 	}
 
@@ -528,12 +526,12 @@ func readList(r Reader, f func(Reader, Type) error) error {
 func readSet(r Reader, f func(Reader, Type) error) error {
 	s, err := r.ReadSet()
 	if err != nil {
-		return fmt.Errorf("decoding thrift set header: %w", err)
+		return err
 	}
 
 	for i := 0; i < int(s.Size); i++ {
 		if err := f(r, s.Type); err != nil {
-			return fmt.Errorf("decoding thrift set element of type %s at index %d: %w", s.Type, i, err)
+			return with(err, &decodeErrorSet{set: s, index: i})
 		}
 	}
 
@@ -548,7 +546,7 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 
 	for i := 0; i < int(m.Size); i++ {
 		if err := f(r, m.Key, m.Value); err != nil {
-			return fmt.Errorf("decoding thrift map entry at index %d: %w", i, err)
+			return with(err, &decodeErrorMap{_map: m, index: i})
 		}
 	}
 
@@ -557,17 +555,17 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 
 func readStruct(r Reader, f func(Reader, Field) error) error {
 	for {
-		e, err := r.ReadField()
+		x, err := r.ReadField()
 		if err != nil {
 			return err
 		}
 
-		if e.ID == 0 && e.Type == 0 {
+		if x.ID == 0 && x.Type == 0 {
 			return nil
 		}
 
-		if err := f(r, e); err != nil {
-			return fmt.Errorf("decoding thrift struct field id %d of type %s: %w", e.ID, e.Type, err)
+		if err := f(r, x); err != nil {
+			return with(err, &decodeErrorField{field: x})
 		}
 	}
 }
@@ -603,13 +601,6 @@ func skip(r Reader, t Type) error {
 	return err
 }
 
-func skipField(r Reader, f Field) error {
-	if err := skip(r, f.Type); err != nil {
-		return fmt.Errorf("skipping thrift field id %d of type %s: %w", f.ID, f.Type, err)
-	}
-	return nil
-}
-
 func skipBinary(r Reader) error {
 	n, err := r.ReadLength()
 	if err != nil {
@@ -635,10 +626,10 @@ func skipSet(r Reader) error {
 func skipMap(r Reader) error {
 	return readMap(r, func(r Reader, k, v Type) error {
 		if err := skip(r, k); err != nil {
-			return fmt.Errorf("skipping thrift map key of type %s: %w", v, err)
+			return err
 		}
 		if err := skip(r, v); err != nil {
-			return fmt.Errorf("skipping thrift map value of type %s: %w", v, err)
+			return err
 		}
 		return nil
 	})
@@ -646,4 +637,8 @@ func skipMap(r Reader) error {
 
 func skipStruct(r Reader) error {
 	return readStruct(r, skipField)
+}
+
+func skipField(r Reader, f Field) error {
+	return skip(r, f.Type)
 }

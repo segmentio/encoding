@@ -169,12 +169,12 @@ func encodeFuncSliceOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 			Type: typ,
 		})
 		if err != nil {
-			return fmt.Errorf("encoding thrift list header: %w", err)
+			return err
 		}
 
 		for i := 0; i < n; i++ {
 			if err := enc(w, v.Index(i), noflags); err != nil {
-				return fmt.Errorf("encoding thrift list element of type %s at index %d: %w", typ, i, err)
+				return err
 			}
 		}
 
@@ -205,7 +205,7 @@ func encodeFuncMapOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 			Value: elemType,
 		})
 		if err != nil {
-			return fmt.Errorf("encoding thrift map header: %w", err)
+			return err
 		}
 		if n == 0 { // empty map
 			return nil
@@ -213,10 +213,10 @@ func encodeFuncMapOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 
 		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
 			if err := encodeKey(w, iter.Key(), noflags); err != nil {
-				return fmt.Errorf("encoding thrift map key of type %s at index %d: %w", keyType, i, err)
+				return err
 			}
 			if err := encodeElem(w, iter.Value(), noflags); err != nil {
-				return fmt.Errorf("encoding thrift map value of type %s at index %d: %w", elemType, i, err)
+				return err
 			}
 		}
 
@@ -240,7 +240,7 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 			Type: typ,
 		})
 		if err != nil {
-			return fmt.Errorf("encoding thrift set header: %w", err)
+			return err
 		}
 		if n == 0 { // empty map
 			return nil
@@ -248,7 +248,7 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 
 		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
 			if err := enc(w, iter.Key(), noflags); err != nil {
-				return fmt.Errorf("encoding thrift set element of type %s at index %d: %w", typ, i, err)
+				return err
 			}
 		}
 
@@ -291,18 +291,18 @@ encodeFields:
 		}
 
 		if err := w.WriteField(field); err != nil {
-			return fmt.Errorf("encoding thrift %s field id %d of type %s: %w", enc, f.id, f.typ, err)
+			return err
 		}
 
 		if err := f.encode(w, x, f.flags); err != nil {
-			return fmt.Errorf("encoding thrift %s field value: %w", enc, err)
+			return err
 		}
 
 		numFields++
 	}
 
 	if err := w.WriteField(Field{}); err != nil {
-		return fmt.Errorf("encoding thrift %s stop field: %w", enc, err)
+		return err
 	}
 
 	if numFields > 1 && enc.union {
