@@ -45,7 +45,7 @@ func (e *Encoder) Encode(v interface{}) error {
 		encoderCache.Store(newCache)
 	}
 
-	return encode(e.w, reflect.ValueOf(v))
+	return encode(e.w, reflect.ValueOf(v), noflags)
 }
 
 func (e *Encoder) Reset(w Writer) {
@@ -54,7 +54,7 @@ func (e *Encoder) Reset(w Writer) {
 
 var encoderCache atomic.Value // map[typeID]encodeFunc
 
-type encodeFunc func(Writer, reflect.Value) error
+type encodeFunc func(Writer, reflect.Value, flags) error
 
 type encodeFuncCache map[reflect.Type]encodeFunc
 
@@ -105,51 +105,51 @@ func encodeFuncOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	return f
 }
 
-func encodeBool(w Writer, v reflect.Value) error {
+func encodeBool(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteBool(v.Bool())
 }
 
-func encodeInt8(w Writer, v reflect.Value) error {
+func encodeInt8(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt8(int8(v.Int()))
 }
 
-func encodeInt16(w Writer, v reflect.Value) error {
+func encodeInt16(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt16(int16(v.Int()))
 }
 
-func encodeInt32(w Writer, v reflect.Value) error {
+func encodeInt32(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt32(int32(v.Int()))
 }
 
-func encodeInt64(w Writer, v reflect.Value) error {
+func encodeInt64(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt64(v.Int())
 }
 
-func encodeUint8(w Writer, v reflect.Value) error {
+func encodeUint8(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt8(int8(v.Uint()))
 }
 
-func encodeUint16(w Writer, v reflect.Value) error {
+func encodeUint16(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt16(int16(v.Uint()))
 }
 
-func encodeUint32(w Writer, v reflect.Value) error {
+func encodeUint32(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt32(int32(v.Uint()))
 }
 
-func encodeUint64(w Writer, v reflect.Value) error {
+func encodeUint64(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt64(int64(v.Uint()))
 }
 
-func encodeFloat64(w Writer, v reflect.Value) error {
+func encodeFloat64(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteFloat64(v.Float())
 }
 
-func encodeString(w Writer, v reflect.Value) error {
+func encodeString(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteString(v.String())
 }
 
-func encodeBytes(w Writer, v reflect.Value) error {
+func encodeBytes(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteBytes(v.Bytes())
 }
 
@@ -158,7 +158,7 @@ func encodeFuncSliceOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	typ := TypeOf(elem)
 	enc := encodeFuncOf(elem, seen)
 
-	return func(w Writer, v reflect.Value) error {
+	return func(w Writer, v reflect.Value, _ flags) error {
 		n := v.Len()
 		if n > math.MaxInt32 {
 			return fmt.Errorf("slice length is too large to be represented in thrift: %d > max(int32)", n)
@@ -173,7 +173,7 @@ func encodeFuncSliceOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		}
 
 		for i := 0; i < n; i++ {
-			if err := enc(w, v.Index(i)); err != nil {
+			if err := enc(w, v.Index(i), noflags); err != nil {
 				return fmt.Errorf("encoding thrift list element of type %s at index %d: %w", typ, i, err)
 			}
 		}
@@ -193,7 +193,7 @@ func encodeFuncMapOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	encodeKey := encodeFuncOf(key, seen)
 	encodeElem := encodeFuncOf(elem, seen)
 
-	return func(w Writer, v reflect.Value) error {
+	return func(w Writer, v reflect.Value, _ flags) error {
 		n := v.Len()
 		if n > math.MaxInt32 {
 			return fmt.Errorf("map length is too large to be represented in thrift: %d > max(int32)", n)
@@ -212,10 +212,10 @@ func encodeFuncMapOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		}
 
 		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
-			if err := encodeKey(w, iter.Key()); err != nil {
+			if err := encodeKey(w, iter.Key(), noflags); err != nil {
 				return fmt.Errorf("encoding thrift map key of type %s at index %d: %w", keyType, i, err)
 			}
-			if err := encodeElem(w, iter.Value()); err != nil {
+			if err := encodeElem(w, iter.Value(), noflags); err != nil {
 				return fmt.Errorf("encoding thrift map value of type %s at index %d: %w", elemType, i, err)
 			}
 		}
@@ -229,7 +229,7 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	typ := TypeOf(key)
 	enc := encodeFuncOf(key, seen)
 
-	return func(w Writer, v reflect.Value) error {
+	return func(w Writer, v reflect.Value, _ flags) error {
 		n := v.Len()
 		if n > math.MaxInt32 {
 			return fmt.Errorf("map length is too large to be represented in thrift: %d > max(int32)", n)
@@ -247,7 +247,7 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		}
 
 		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
-			if err := enc(w, iter.Key()); err != nil {
+			if err := enc(w, iter.Key(), noflags); err != nil {
 				return fmt.Errorf("encoding thrift set element of type %s at index %d: %w", typ, i, err)
 			}
 		}
@@ -260,7 +260,9 @@ type structEncoder struct {
 	fields []structEncoderField
 }
 
-func (enc *structEncoder) encode(w Writer, v reflect.Value) error {
+func (enc *structEncoder) encode(w Writer, v reflect.Value, flags flags) error {
+	numFields := 0
+
 encodeFields:
 	for _, f := range enc.fields {
 		x := v
@@ -278,24 +280,48 @@ encodeFields:
 		if isZero(x) {
 			continue encodeFields
 		}
-		if err := w.WriteField(Field{ID: f.id, Type: f.typ}); err != nil {
-			return fmt.Errorf("encoding thrift struct field id %d of type %s: %w", f.id, f.typ, err)
+
+		field := Field{
+			ID:   f.id,
+			Type: f.typ,
 		}
-		if err := f.encode(w, x); err != nil {
-			return fmt.Errorf("encoding thrift struct field value: %w", err)
+		if f.typ == BOOL && x.Bool() == true {
+			field.Type = TRUE
 		}
+
+		if err := w.WriteField(field); err != nil {
+			return fmt.Errorf("encoding thrift %s field id %d of type %s: %w", structTypeName(flags), f.id, f.typ, err)
+		}
+
+		if err := f.encode(w, x, f.flags); err != nil {
+			return fmt.Errorf("encoding thrift %s field value: %w", structTypeName(flags), err)
+		}
+
+		numFields++
 	}
 
 	if err := w.WriteField(Field{}); err != nil {
-		return fmt.Errorf("encoding thrift struct stop field: %w", err)
+		return fmt.Errorf("encoding thrift %s stop field: %w", structTypeName(flags), err)
+	}
+
+	if numFields > 1 && flags.have(union) {
+		return fmt.Errorf("thrift union had more than one field with a non-zero value (%d)", numFields)
 	}
 
 	return nil
 }
 
+func structTypeName(flags flags) string {
+	if flags.have(union) {
+		return "union"
+	}
+	return "struct"
+}
+
 type structEncoderField struct {
 	index  []int
 	id     int16
+	flags  flags
 	typ    Type
 	encode encodeFunc
 }
@@ -311,6 +337,7 @@ func encodeFuncStructOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		enc.fields = append(enc.fields, structEncoderField{
 			index:  f.index,
 			id:     f.id,
+			flags:  f.flags,
 			typ:    TypeOf(f.typ),
 			encode: encodeFuncStructFieldOf(f, seen),
 		})
@@ -330,7 +357,7 @@ func encodeFuncStructOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 }
 
 func encodeFuncStructFieldOf(f structField, seen encodeFuncCache) encodeFunc {
-	if f.enum {
+	if f.flags.have(enum) {
 		switch f.typ.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return encodeInt32
@@ -346,11 +373,11 @@ func encodeFuncPtrOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	enc := encodeFuncOf(typ, seen)
 	zero := reflect.Zero(typ)
 
-	return func(w Writer, v reflect.Value) error {
+	return func(w Writer, v reflect.Value, f flags) error {
 		if v.IsNil() {
 			v = zero
 		}
-		return enc(w, v)
+		return enc(w, v, f)
 	}
 }
 

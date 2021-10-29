@@ -7,11 +7,27 @@ import (
 	"strings"
 )
 
+type flags int16
+
+const (
+	noflags flags = 0
+	enum    flags = 1 << 0
+	union   flags = 1 << 1
+)
+
+func (f flags) have(x flags) bool {
+	return (f & x) == x
+}
+
+func (f flags) with(x flags) flags {
+	return f | x
+}
+
 type structField struct {
 	typ   reflect.Type
 	index []int
 	id    int16
-	enum  bool
+	flags flags
 }
 
 func forEachStructField(t reflect.Type, index []int, do func(structField)) {
@@ -35,12 +51,29 @@ func forEachStructField(t reflect.Type, index []int, do func(structField)) {
 			continue
 		}
 		tags := strings.Split(tag, ",")
-		enum := false
+		flags := flags(0)
 
 		for _, opt := range tags[1:] {
 			switch opt {
 			case "enum":
-				enum = true
+				flags = flags.with(enum)
+			case "union":
+				flags = flags.with(union)
+			}
+		}
+
+		if flags.have(enum) {
+			switch f.Type.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			default:
+				panic(fmt.Errorf("thrift enum tag found on a field which is not an integer type `%s`", tag))
+			}
+		}
+
+		if flags.have(union) {
+			if f.Type.Kind() != reflect.Struct {
+				panic(fmt.Errorf("thrift union tag found on a field which does not have a struct type `%s`", tag))
 			}
 		}
 
@@ -53,7 +86,7 @@ func forEachStructField(t reflect.Type, index []int, do func(structField)) {
 				typ:   f.Type,
 				index: fieldIndex,
 				id:    int16(id),
-				enum:  enum,
+				flags: flags,
 			})
 		}
 	}

@@ -212,6 +212,16 @@ var marshalTestValues = [...]struct {
 			StructWithEnum{Enum: 2},
 		},
 	},
+
+	{
+		scenario: "StructWithUnion",
+		values: []interface{}{
+			StructWithUnion{},
+			StructWithUnion{Union: Union{A: true}},
+			StructWithUnion{Union: Union{B: 42}},
+			StructWithUnion{Union: Union{C: "hello world!"}},
+		},
+	},
 }
 
 type Point2D struct {
@@ -226,6 +236,16 @@ type RecursiveStruct struct {
 
 type StructWithEnum struct {
 	Enum int8 `thrift:"1,enum"`
+}
+
+type StructWithUnion struct {
+	Union Union `thrift:"1,union"`
+}
+
+type Union struct {
+	A bool   `thrift:"1"`
+	B int    `thrift:"2"`
+	C string `thrift:"3"`
 }
 
 func TestMarshalUnmarshal(t *testing.T) {

@@ -64,7 +64,7 @@ func (d *Decoder) Decode(v interface{}) error {
 		decoderCache.Store(newCache)
 	}
 
-	return decode(d.r, p)
+	return decode(d.r, p, noflags)
 }
 
 func (d *Decoder) Reset(r Reader) {
@@ -73,7 +73,7 @@ func (d *Decoder) Reset(r Reader) {
 
 var decoderCache atomic.Value // map[typeID]decodeFunc
 
-type decodeFunc func(Reader, reflect.Value) error
+type decodeFunc func(Reader, reflect.Value, flags) error
 
 type decodeFuncCache map[reflect.Type]decodeFunc
 
@@ -124,7 +124,7 @@ func decodeFuncOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	return f
 }
 
-func decodeBool(r Reader, v reflect.Value) error {
+func decodeBool(r Reader, v reflect.Value, _ flags) error {
 	b, err := r.ReadBool()
 	if err != nil {
 		return err
@@ -133,7 +133,7 @@ func decodeBool(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeInt8(r Reader, v reflect.Value) error {
+func decodeInt8(r Reader, v reflect.Value, _ flags) error {
 	i, err := r.ReadInt8()
 	if err != nil {
 		return err
@@ -142,7 +142,7 @@ func decodeInt8(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeInt16(r Reader, v reflect.Value) error {
+func decodeInt16(r Reader, v reflect.Value, _ flags) error {
 	i, err := r.ReadInt16()
 	if err != nil {
 		return err
@@ -151,7 +151,7 @@ func decodeInt16(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeInt32(r Reader, v reflect.Value) error {
+func decodeInt32(r Reader, v reflect.Value, _ flags) error {
 	i, err := r.ReadInt32()
 	if err != nil {
 		return err
@@ -160,7 +160,7 @@ func decodeInt32(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeInt64(r Reader, v reflect.Value) error {
+func decodeInt64(r Reader, v reflect.Value, _ flags) error {
 	i, err := r.ReadInt64()
 	if err != nil {
 		return err
@@ -169,7 +169,7 @@ func decodeInt64(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeUint8(r Reader, v reflect.Value) error {
+func decodeUint8(r Reader, v reflect.Value, _ flags) error {
 	u, err := r.ReadInt8()
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func decodeUint8(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeUint16(r Reader, v reflect.Value) error {
+func decodeUint16(r Reader, v reflect.Value, _ flags) error {
 	u, err := r.ReadInt16()
 	if err != nil {
 		return err
@@ -187,7 +187,7 @@ func decodeUint16(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeUint32(r Reader, v reflect.Value) error {
+func decodeUint32(r Reader, v reflect.Value, _ flags) error {
 	u, err := r.ReadInt32()
 	if err != nil {
 		return err
@@ -196,7 +196,7 @@ func decodeUint32(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeUint64(r Reader, v reflect.Value) error {
+func decodeUint64(r Reader, v reflect.Value, _ flags) error {
 	u, err := r.ReadInt64()
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func decodeUint64(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeFloat64(r Reader, v reflect.Value) error {
+func decodeFloat64(r Reader, v reflect.Value, _ flags) error {
 	f, err := r.ReadFloat64()
 	if err != nil {
 		return err
@@ -214,7 +214,7 @@ func decodeFloat64(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeString(r Reader, v reflect.Value) error {
+func decodeString(r Reader, v reflect.Value, _ flags) error {
 	s, err := r.ReadString()
 	if err != nil {
 		return err
@@ -223,7 +223,7 @@ func decodeString(r Reader, v reflect.Value) error {
 	return nil
 }
 
-func decodeBytes(r Reader, v reflect.Value) error {
+func decodeBytes(r Reader, v reflect.Value, _ flags) error {
 	b, err := r.ReadBytes()
 	if err != nil {
 		return err
@@ -237,7 +237,7 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	typ := TypeOf(elem)
 	dec := decodeFuncOf(elem, seen)
 
-	return func(r Reader, v reflect.Value) error {
+	return func(r Reader, v reflect.Value, _ flags) error {
 		l, err := r.ReadList()
 		if err != nil {
 			return fmt.Errorf("decoding thrift list header: %w", err)
@@ -251,7 +251,7 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		v.Set(reflect.MakeSlice(t, int(l.Size), int(l.Size)))
 
 		for i := 0; i < int(l.Size); i++ {
-			if err := dec(r, v.Index(i)); err != nil {
+			if err := dec(r, v.Index(i), noflags); err != nil {
 				return fmt.Errorf("decoding thrift list element of type %s at index %d: %w", l.Type, i, err)
 			}
 		}
@@ -274,7 +274,7 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	decodeKey := decodeFuncOf(key, seen)
 	decodeElem := decodeFuncOf(elem, seen)
 
-	return func(r Reader, v reflect.Value) error {
+	return func(r Reader, v reflect.Value, _ flags) error {
 		m, err := r.ReadMap()
 		if err != nil {
 			return fmt.Errorf("decoding thrift map header: %w", err)
@@ -298,10 +298,10 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		tmpElem := reflect.New(elem).Elem()
 
 		for i := 0; i < int(m.Size); i++ {
-			if err := decodeKey(r, tmpKey); err != nil {
+			if err := decodeKey(r, tmpKey, noflags); err != nil {
 				return fmt.Errorf("decoding thrift map key of type %s at index %d: %w", m.Key, i, err)
 			}
-			if err := decodeElem(r, tmpElem); err != nil {
+			if err := decodeElem(r, tmpElem, noflags); err != nil {
 				return fmt.Errorf("decoding thrift map value of type %s at index %d: %w", m.Value, i, err)
 			}
 			v.SetMapIndex(tmpKey, tmpElem)
@@ -320,7 +320,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	typ := TypeOf(key)
 	dec := decodeFuncOf(key, seen)
 
-	return func(r Reader, v reflect.Value) error {
+	return func(r Reader, v reflect.Value, _ flags) error {
 		s, err := r.ReadSet()
 		if err != nil {
 			return fmt.Errorf("decoding thrift set header: %w", err)
@@ -340,7 +340,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		tmp := reflect.New(key).Elem()
 
 		for i := 0; i < int(s.Size); i++ {
-			if err := dec(r, tmp); err != nil {
+			if err := dec(r, tmp, noflags); err != nil {
 				return fmt.Errorf("decoding thrift set element of type %s at index %d: %w", s.Type, i, err)
 			}
 			v.SetMapIndex(tmp, elemZero)
@@ -357,8 +357,10 @@ type structDecoder struct {
 	zero   reflect.Value
 }
 
-func (dec *structDecoder) decode(r Reader, v reflect.Value) error {
+func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 	v.Set(dec.zero)
+	union := flags.have(union)
+
 	return readStruct(r, func(r Reader, f Field) error {
 		i := int(f.ID) - int(dec.minID)
 		if i < 0 || i >= len(dec.fields) || dec.fields[i].decode == nil {
@@ -367,7 +369,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value) error {
 		field := &dec.fields[i]
 
 		// TODO: implement type conversions?
-		if f.Type != field.typ {
+		if f.Type != field.typ && !(f.Type == TRUE && field.typ == BOOL) {
 			return fmt.Errorf("value type mismatch in decoded thrift struct field %d: want %s but got %s", f.ID, field.typ, f.Type)
 		}
 
@@ -383,13 +385,18 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value) error {
 			}
 		}
 
-		return field.decode(r, x)
+		if union {
+			v.Set(dec.zero)
+		}
+
+		return field.decode(r, x, field.flags)
 	})
 }
 
 type structDecoderField struct {
 	index  []int
 	id     int16
+	flags  flags
 	typ    Type
 	decode decodeFunc
 }
@@ -406,6 +413,7 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		fields = append(fields, structDecoderField{
 			index:  f.index,
 			id:     f.id,
+			flags:  f.flags,
 			typ:    TypeOf(f.typ),
 			decode: decodeFuncStructFieldOf(f, seen),
 		})
@@ -438,7 +446,7 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 }
 
 func decodeFuncStructFieldOf(f structField, seen decodeFuncCache) decodeFunc {
-	if f.enum {
+	if f.flags.have(enum) {
 		switch f.typ.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return decodeInt32
@@ -452,11 +460,11 @@ func decodeFuncStructFieldOf(f structField, seen decodeFuncCache) decodeFunc {
 func decodeFuncPtrOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 	elem := t.Elem()
 	decode := decodeFuncOf(t.Elem(), seen)
-	return func(r Reader, v reflect.Value) error {
+	return func(r Reader, v reflect.Value, f flags) error {
 		if v.IsNil() {
 			v.Set(reflect.New(elem))
 		}
-		return decode(r, v.Elem())
+		return decode(r, v.Elem(), f)
 	}
 }
 

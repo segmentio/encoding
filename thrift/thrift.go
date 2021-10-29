@@ -64,7 +64,9 @@ const (
 
 func (t Type) String() string {
 	switch t {
-	case TRUE, FALSE:
+	case TRUE:
+		return "TRUE"
+	case BOOL:
 		return "BOOL"
 	case I8:
 		return "I8"
