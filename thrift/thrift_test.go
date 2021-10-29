@@ -214,12 +214,12 @@ var marshalTestValues = [...]struct {
 	},
 
 	{
-		scenario: "StructWithUnion",
+		scenario: "Union",
 		values: []interface{}{
-			StructWithUnion{},
-			StructWithUnion{Union: Union{A: true}},
-			StructWithUnion{Union: Union{B: 42}},
-			StructWithUnion{Union: Union{C: "hello world!"}},
+			Union{},
+			Union{A: true, F: newBool(true)},
+			Union{B: 42, F: newInt(42)},
+			Union{C: "hello world!", F: newString("hello world!")},
 		},
 	},
 }
@@ -238,15 +238,16 @@ type StructWithEnum struct {
 	Enum int8 `thrift:"1,enum"`
 }
 
-type StructWithUnion struct {
-	Union Union `thrift:"1,union"`
+type Union struct {
+	A bool        `thrift:"1"`
+	B int         `thrift:"2"`
+	C string      `thrift:"3"`
+	F interface{} `thrift:",union"`
 }
 
-type Union struct {
-	A bool   `thrift:"1"`
-	B int    `thrift:"2"`
-	C string `thrift:"3"`
-}
+func newBool(b bool) *bool       { return &b }
+func newInt(i int) *int          { return &i }
+func newString(s string) *string { return &s }
 
 func TestMarshalUnmarshal(t *testing.T) {
 	for _, p := range protocols {

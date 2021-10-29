@@ -14,6 +14,7 @@ const (
 	enum     flags = 1 << 0
 	union    flags = 1 << 1
 	required flags = 1 << 2
+	optional flags = 1 << 3
 )
 
 func (f flags) have(x flags) bool {
@@ -62,35 +63,53 @@ func forEachStructField(t reflect.Type, index []int, do func(structField)) {
 				flags = flags.with(union)
 			case "required":
 				flags = flags.with(required)
+			case "optional":
+				flags = flags.with(optional)
+			default:
+				panic(fmt.Errorf("thrift struct field contains an unknown tag option %q in `thrift:\"%s\"`", opt, tag))
 			}
 		}
 
-		if flags.have(enum) {
-			switch f.Type.Kind() {
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			default:
-				panic(fmt.Errorf("thrift enum tag found on a field which is not an integer type `%s`", tag))
-			}
+		if flags.have(optional | required) {
+			panic(fmt.Errorf("thrift struct field cannot be both optional and required in `thrift:\"%s\"`", tag))
 		}
 
 		if flags.have(union) {
-			if f.Type.Kind() != reflect.Struct {
-				panic(fmt.Errorf("thrift union tag found on a field which does not have a struct type `%s`", tag))
+			if f.Type.Kind() != reflect.Interface {
+				panic(fmt.Errorf("thrift union tag found on a field which is not an interface type `thrift:\"%s\"`", tag))
 			}
-		}
 
-		if id, err := strconv.ParseInt(tags[0], 10, 16); err != nil {
-			panic(fmt.Errorf("invalid thrift field id found in struct tag `%s`: %w", tag, err))
-		} else if id <= 0 {
-			panic(fmt.Errorf("invalid thrift field id found in struct tag `%s`: %d <= 0", tag, id))
-		} else {
+			if tags[0] != "" {
+				panic(fmt.Errorf("invalid thrift field id on union field `thrift:\"%s\"`", tag))
+			}
+
 			do(structField{
 				typ:   f.Type,
 				index: fieldIndex,
-				id:    int16(id),
 				flags: flags,
 			})
+		} else {
+			if flags.have(enum) {
+				switch f.Type.Kind() {
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+				default:
+					panic(fmt.Errorf("thrift enum tag found on a field which is not an integer type `thrift:\"%s\"`", tag))
+				}
+			}
+
+			if id, err := strconv.ParseInt(tags[0], 10, 16); err != nil {
+				panic(fmt.Errorf("invalid thrift field id found in struct tag `thrift:\"%s\"`: %w", tag, err))
+			} else if id <= 0 {
+				panic(fmt.Errorf("invalid thrift field id found in struct tag `thrift:\"%s\"`: %d <= 0", tag, id))
+			} else {
+				do(structField{
+					typ:   f.Type,
+					index: fieldIndex,
+					id:    int16(id),
+					flags: flags,
+				})
+			}
 		}
 	}
 }

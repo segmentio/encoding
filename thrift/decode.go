@@ -353,6 +353,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 type structDecoder struct {
 	fields []structDecoderField
+	union  []int
 	minID  int16
 	zero   reflect.Value
 }
@@ -360,7 +361,8 @@ type structDecoder struct {
 func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 	v.Set(dec.zero)
 
-	union := flags.have(union)
+	lastField := reflect.Value{}
+	union := len(dec.union) > 0
 	bits := [1]uint64{}
 	seen := bits[:]
 	if len(dec.fields) > 64 {
@@ -395,6 +397,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 			v.Set(dec.zero)
 		}
 
+		lastField = x
 		seen[i/64] |= 1 << (i % 64)
 		return field.decode(r, x, field.flags)
 	})
@@ -408,6 +411,10 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 		if f.flags.have(required) && ((seen[i/64]>>(i%64))&1) == 0 {
 			return fmt.Errorf("missing required field id %d in thrift struct", f.id)
 		}
+	}
+
+	if union && lastField.IsValid() {
+		v.FieldByIndex(dec.union).Set(lastField.Addr())
 	}
 
 	return nil
@@ -430,13 +437,17 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 	fields := make([]structDecoderField, 0, t.NumField())
 	forEachStructField(t, nil, func(f structField) {
-		fields = append(fields, structDecoderField{
-			index:  f.index,
-			id:     f.id,
-			flags:  f.flags,
-			typ:    TypeOf(f.typ),
-			decode: decodeFuncStructFieldOf(f, seen),
-		})
+		if f.flags.have(union) {
+			dec.union = f.index
+		} else {
+			fields = append(fields, structDecoderField{
+				index:  f.index,
+				id:     f.id,
+				flags:  f.flags,
+				typ:    TypeOf(f.typ),
+				decode: decodeFuncStructFieldOf(f, seen),
+			})
+		}
 	})
 
 	minID := int16(0)

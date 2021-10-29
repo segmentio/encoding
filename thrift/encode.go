@@ -258,6 +258,7 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 
 type structEncoder struct {
 	fields []structEncoderField
+	union  bool
 }
 
 func (enc *structEncoder) encode(w Writer, v reflect.Value, flags flags) error {
@@ -290,29 +291,29 @@ encodeFields:
 		}
 
 		if err := w.WriteField(field); err != nil {
-			return fmt.Errorf("encoding thrift %s field id %d of type %s: %w", structTypeName(flags), f.id, f.typ, err)
+			return fmt.Errorf("encoding thrift %s field id %d of type %s: %w", enc, f.id, f.typ, err)
 		}
 
 		if err := f.encode(w, x, f.flags); err != nil {
-			return fmt.Errorf("encoding thrift %s field value: %w", structTypeName(flags), err)
+			return fmt.Errorf("encoding thrift %s field value: %w", enc, err)
 		}
 
 		numFields++
 	}
 
 	if err := w.WriteField(Field{}); err != nil {
-		return fmt.Errorf("encoding thrift %s stop field: %w", structTypeName(flags), err)
+		return fmt.Errorf("encoding thrift %s stop field: %w", enc, err)
 	}
 
-	if numFields > 1 && flags.have(union) {
+	if numFields > 1 && enc.union {
 		return fmt.Errorf("thrift union had more than one field with a non-zero value (%d)", numFields)
 	}
 
 	return nil
 }
 
-func structTypeName(flags flags) string {
-	if flags.have(union) {
+func (enc *structEncoder) String() string {
+	if enc.union {
 		return "union"
 	}
 	return "struct"
@@ -334,13 +335,17 @@ func encodeFuncStructOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	seen[t] = encode
 
 	forEachStructField(t, nil, func(f structField) {
-		enc.fields = append(enc.fields, structEncoderField{
-			index:  f.index,
-			id:     f.id,
-			flags:  f.flags,
-			typ:    TypeOf(f.typ),
-			encode: encodeFuncStructFieldOf(f, seen),
-		})
+		if f.flags.have(union) {
+			enc.union = true
+		} else {
+			enc.fields = append(enc.fields, structEncoderField{
+				index:  f.index,
+				id:     f.id,
+				flags:  f.flags,
+				typ:    TypeOf(f.typ),
+				encode: encodeFuncStructFieldOf(f, seen),
+			})
+		}
 	})
 
 	sort.SliceStable(enc.fields, func(i, j int) bool {
