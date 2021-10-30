@@ -15,34 +15,23 @@ import (
 type CompactProtocol struct{}
 
 func (p *CompactProtocol) NewReader(r io.Reader) Reader {
-	return p.NewCompactReader(r)
+	return &compactReader{binary: binaryReader{r: r}}
 }
 
 func (p *CompactProtocol) NewWriter(w io.Writer) Writer {
-	return p.NewCompactWriter(w)
+	return &compactWriter{binary: binaryWriter{w: w}}
 }
 
-func (p *CompactProtocol) NewCompactReader(r io.Reader) *CompactReader {
-	return &CompactReader{binary: BinaryReader{r: r}}
-}
-
-func (p *CompactProtocol) NewCompactWriter(w io.Writer) *CompactWriter {
-	return &CompactWriter{binary: BinaryWriter{w: w}}
-}
-
-// CompactReader is a Reader implementation for the compact thrift protocol.
-//
-// https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#integer-encoding
-type CompactReader struct {
-	binary    BinaryReader
+type compactReader struct {
+	binary    binaryReader
 	lastField Field
 }
 
-func (r *CompactReader) Reader() io.Reader {
+func (r *compactReader) Reader() io.Reader {
 	return r.binary.Reader()
 }
 
-func (r *CompactReader) ReadBool() (bool, error) {
+func (r *compactReader) ReadBool() (bool, error) {
 	switch r.lastField.Type {
 	case TRUE:
 		r.lastField = Field{}
@@ -55,29 +44,29 @@ func (r *CompactReader) ReadBool() (bool, error) {
 	}
 }
 
-func (r *CompactReader) ReadInt8() (int8, error) {
+func (r *compactReader) ReadInt8() (int8, error) {
 	return r.binary.ReadInt8()
 }
 
-func (r *CompactReader) ReadInt16() (int16, error) {
+func (r *compactReader) ReadInt16() (int16, error) {
 	v, err := r.readVarint("int16", math.MinInt16, math.MaxInt16)
 	return int16(v), err
 }
 
-func (r *CompactReader) ReadInt32() (int32, error) {
+func (r *compactReader) ReadInt32() (int32, error) {
 	v, err := r.readVarint("int32", math.MinInt32, math.MaxInt32)
 	return int32(v), err
 }
 
-func (r *CompactReader) ReadInt64() (int64, error) {
+func (r *compactReader) ReadInt64() (int64, error) {
 	return r.readVarint("int64", math.MinInt64, math.MaxInt64)
 }
 
-func (r *CompactReader) ReadFloat64() (float64, error) {
+func (r *compactReader) ReadFloat64() (float64, error) {
 	return r.binary.ReadFloat64()
 }
 
-func (r *CompactReader) ReadBytes() ([]byte, error) {
+func (r *compactReader) ReadBytes() ([]byte, error) {
 	n, err := r.ReadLength()
 	if err != nil {
 		return nil, err
@@ -86,7 +75,7 @@ func (r *CompactReader) ReadBytes() ([]byte, error) {
 	return copyBytes(b), err
 }
 
-func (r *CompactReader) ReadString() (string, error) {
+func (r *compactReader) ReadString() (string, error) {
 	n, err := r.ReadLength()
 	if err != nil {
 		return "", err
@@ -95,8 +84,8 @@ func (r *CompactReader) ReadString() (string, error) {
 	return string(b), err
 }
 
-func (r *CompactReader) ReadLength() (int, error) {
-	n, err := r.readVarint("length", 0, math.MaxInt32)
+func (r *compactReader) ReadLength() (int, error) {
+	n, err := r.readUvarint("length", math.MaxInt32)
 	if err != nil {
 		return 0, err
 	}
@@ -106,7 +95,7 @@ func (r *CompactReader) ReadLength() (int, error) {
 	return int(n), nil
 }
 
-func (r *CompactReader) ReadMessage() (Message, error) {
+func (r *compactReader) ReadMessage() (Message, error) {
 	m := Message{}
 
 	b0, err := r.ReadByte()
@@ -122,16 +111,18 @@ func (r *CompactReader) ReadMessage() (Message, error) {
 		return m, dontExpectEOF(err)
 	}
 
-	m.Type = MessageType(b1) & 0x7
-	m.SeqID, err = r.ReadInt32()
+	seqID, err := r.readUvarint("seq id", math.MaxInt32)
 	if err != nil {
 		return m, err
 	}
+
+	m.Type = MessageType(b1) & 0x7
+	m.SeqID = int32(seqID)
 	m.Name, err = r.ReadString()
 	return m, err
 }
 
-func (r *CompactReader) ReadField() (Field, error) {
+func (r *compactReader) ReadField() (Field, error) {
 	f := Field{}
 	defer func() { r.lastField = f }()
 
@@ -157,7 +148,7 @@ func (r *CompactReader) ReadField() (Field, error) {
 	return f, nil
 }
 
-func (r *CompactReader) ReadList() (List, error) {
+func (r *compactReader) ReadList() (List, error) {
 	b, err := r.ReadByte()
 	if err != nil {
 		return List{}, dontExpectEOF(err)
@@ -165,20 +156,20 @@ func (r *CompactReader) ReadList() (List, error) {
 	if (b >> 4) != 0xF {
 		return List{Size: int32(b >> 4), Type: Type(b & 0xF)}, nil
 	}
-	n, err := r.ReadInt32()
+	n, err := r.readUvarint("list size", math.MaxInt32)
 	if err != nil {
 		return List{}, err
 	}
-	return List{Size: n, Type: Type(b & 0xF)}, nil
+	return List{Size: int32(n), Type: Type(b & 0xF)}, nil
 }
 
-func (r *CompactReader) ReadSet() (Set, error) {
+func (r *compactReader) ReadSet() (Set, error) {
 	l, err := r.ReadList()
 	return Set(l), err
 }
 
-func (r *CompactReader) ReadMap() (Map, error) {
-	n, err := r.ReadInt32()
+func (r *compactReader) ReadMap() (Map, error) {
+	n, err := r.readUvarint("map size", math.MaxInt32)
 	if err != nil {
 		return Map{}, err
 	}
@@ -189,14 +180,39 @@ func (r *CompactReader) ReadMap() (Map, error) {
 	if err != nil {
 		return Map{}, dontExpectEOF(err)
 	}
-	return Map{Size: n, Key: Type(b >> 4), Value: Type(b & 0xF)}, nil
+	return Map{Size: int32(n), Key: Type(b >> 4), Value: Type(b & 0xF)}, nil
 }
 
-func (r *CompactReader) ReadByte() (byte, error) {
+func (r *compactReader) ReadByte() (byte, error) {
 	return r.binary.ReadByte()
 }
 
-func (r *CompactReader) readVarint(typ string, min, max int64) (int64, error) {
+func (r *compactReader) readUvarint(typ string, max uint64) (uint64, error) {
+	var br io.ByteReader
+
+	switch x := r.binary.r.(type) {
+	case *bytes.Buffer:
+		br = x
+	case *bytes.Reader:
+		br = x
+	case *bufio.Reader:
+		br = x
+	case io.ByteReader:
+		br = x
+	default:
+		br = &r.binary
+	}
+
+	u, err := binary.ReadUvarint(br)
+	if err == nil {
+		if u > max {
+			err = fmt.Errorf("%s varint out of range: %d > %d", typ, u, max)
+		}
+	}
+	return u, err
+}
+
+func (r *compactReader) readVarint(typ string, min, max int64) (int64, error) {
 	var br io.ByteReader
 
 	switch x := r.binary.r.(type) {
@@ -221,20 +237,17 @@ func (r *CompactReader) readVarint(typ string, min, max int64) (int64, error) {
 	return v, err
 }
 
-// CompactWriter is a Writer implementation for the compact thrift protocol.
-//
-// https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#integer-encoding
-type CompactWriter struct {
-	binary    BinaryWriter
+type compactWriter struct {
+	binary    binaryWriter
 	varint    [binary.MaxVarintLen64]byte
 	lastField Field
 }
 
-func (w *CompactWriter) Writer() io.Writer {
+func (w *compactWriter) Writer() io.Writer {
 	return w.binary.Writer()
 }
 
-func (w *CompactWriter) WriteBool(v bool) error {
+func (w *compactWriter) WriteBool(v bool) error {
 	switch w.lastField.Type {
 	case TRUE, FALSE:
 		return nil // the value is already encoded in the type
@@ -243,64 +256,64 @@ func (w *CompactWriter) WriteBool(v bool) error {
 	}
 }
 
-func (w *CompactWriter) WriteInt8(v int8) error {
+func (w *compactWriter) WriteInt8(v int8) error {
 	return w.binary.WriteInt8(v)
 }
 
-func (w *CompactWriter) WriteInt16(v int16) error {
+func (w *compactWriter) WriteInt16(v int16) error {
 	return w.writeVarint(int64(v))
 }
 
-func (w *CompactWriter) WriteInt32(v int32) error {
+func (w *compactWriter) WriteInt32(v int32) error {
 	return w.writeVarint(int64(v))
 }
 
-func (w *CompactWriter) WriteInt64(v int64) error {
+func (w *compactWriter) WriteInt64(v int64) error {
 	return w.writeVarint(v)
 }
 
-func (w *CompactWriter) WriteFloat64(v float64) error {
+func (w *compactWriter) WriteFloat64(v float64) error {
 	return w.binary.WriteFloat64(v)
 }
 
-func (w *CompactWriter) WriteBytes(v []byte) error {
+func (w *compactWriter) WriteBytes(v []byte) error {
 	if err := w.WriteLength(len(v)); err != nil {
 		return err
 	}
 	return w.binary.write(v)
 }
 
-func (w *CompactWriter) WriteString(v string) error {
+func (w *compactWriter) WriteString(v string) error {
 	if err := w.WriteLength(len(v)); err != nil {
 		return err
 	}
 	return w.binary.writeString(v)
 }
 
-func (w *CompactWriter) WriteLength(n int) error {
+func (w *compactWriter) WriteLength(n int) error {
 	if n < 0 {
 		return fmt.Errorf("negative length cannot be encoded in thrift: %d", n)
 	}
 	if n > math.MaxInt32 {
 		return fmt.Errorf("length is too large to be encoded in thrift: %d", n)
 	}
-	return w.writeVarint(int64(n))
+	return w.writeUvarint(uint64(n))
 }
 
-func (w *CompactWriter) WriteMessage(m Message) error {
+func (w *compactWriter) WriteMessage(m Message) error {
 	if err := w.binary.writeByte(0x82); err != nil {
 		return err
 	}
 	if err := w.binary.writeByte(byte(m.Type)); err != nil {
 		return err
 	}
-	if err := w.WriteInt32(m.SeqID); err != nil {
+	if err := w.writeUvarint(uint64(m.SeqID)); err != nil {
 		return err
 	}
 	return w.WriteString(m.Name)
 }
 
-func (w *CompactWriter) WriteField(f Field) error {
+func (w *compactWriter) WriteField(f Field) error {
 	defer func() { w.lastField = f }()
 	if f.ID == 0 && f.Type == 0 { // stop field
 		return w.binary.writeByte(0)
@@ -308,40 +321,39 @@ func (w *CompactWriter) WriteField(f Field) error {
 	if f.ID > w.lastField.ID && (f.ID-w.lastField.ID) <= 15 { // delta encoding
 		return w.binary.writeByte(byte((f.ID-w.lastField.ID)<<4) | byte(f.Type))
 	}
-	if err := w.WriteInt8(int8(f.Type)); err != nil {
+	if err := w.binary.writeByte(byte(f.Type)); err != nil {
 		return err
 	}
 	return w.WriteInt16(f.ID)
 }
 
-func (w *CompactWriter) WriteList(l List) error {
-	if l.Size <= 15 {
+func (w *compactWriter) WriteList(l List) error {
+	if l.Size <= 14 {
 		return w.binary.writeByte(byte(l.Size<<4) | byte(l.Type))
 	}
 	if err := w.binary.writeByte(0xF0 | byte(l.Type)); err != nil {
 		return err
 	}
-	return w.WriteInt32(l.Size)
+	return w.writeUvarint(uint64(l.Size))
 }
 
-func (w *CompactWriter) WriteSet(s Set) error {
+func (w *compactWriter) WriteSet(s Set) error {
 	return w.WriteList(List(s))
 }
 
-func (w *CompactWriter) WriteMap(m Map) error {
-	if err := w.WriteInt32(m.Size); err != nil || m.Size == 0 {
+func (w *compactWriter) WriteMap(m Map) error {
+	if err := w.writeUvarint(uint64(m.Size)); err != nil || m.Size == 0 {
 		return err
 	}
 	return w.binary.writeByte((byte(m.Key) << 4) | byte(m.Value))
 }
 
-func (w *CompactWriter) writeVarint(v int64) error {
-	n := binary.PutVarint(w.varint[:], v)
+func (w *compactWriter) writeUvarint(v uint64) error {
+	n := binary.PutUvarint(w.varint[:], v)
 	return w.binary.write(w.varint[:n])
 }
 
-var (
-	_ Protocol = (*CompactProtocol)(nil)
-	_ Reader   = (*CompactReader)(nil)
-	_ Writer   = (*CompactWriter)(nil)
-)
+func (w *compactWriter) writeVarint(v int64) error {
+	n := binary.PutVarint(w.varint[:], v)
+	return w.binary.write(w.varint[:n])
+}

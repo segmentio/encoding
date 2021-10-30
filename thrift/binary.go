@@ -17,44 +17,33 @@ type BinaryProtocol struct {
 }
 
 func (p *BinaryProtocol) NewReader(r io.Reader) Reader {
-	return p.NewBinaryReader(r)
+	return &binaryReader{r: r}
 }
 
 func (p *BinaryProtocol) NewWriter(w io.Writer) Writer {
-	return p.NewBinaryWriter(w)
+	return &binaryWriter{p: p, w: w}
 }
 
-func (p *BinaryProtocol) NewBinaryReader(r io.Reader) *BinaryReader {
-	return &BinaryReader{r: r}
-}
-
-func (p *BinaryProtocol) NewBinaryWriter(w io.Writer) *BinaryWriter {
-	return &BinaryWriter{p: p, w: w}
-}
-
-// BinaryReader is a Reader implementation for the binary thrift protocol.
-//
-// https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md
-type BinaryReader struct {
+type binaryReader struct {
 	r io.Reader
 	b []byte
 }
 
-func (r *BinaryReader) Reader() io.Reader {
+func (r *binaryReader) Reader() io.Reader {
 	return r.r
 }
 
-func (r *BinaryReader) ReadBool() (bool, error) {
+func (r *binaryReader) ReadBool() (bool, error) {
 	v, err := r.ReadByte()
 	return v != 0, err
 }
 
-func (r *BinaryReader) ReadInt8() (int8, error) {
+func (r *binaryReader) ReadInt8() (int8, error) {
 	b, err := r.ReadByte()
 	return int8(b), err
 }
 
-func (r *BinaryReader) ReadInt16() (int16, error) {
+func (r *binaryReader) ReadInt16() (int16, error) {
 	b, err := r.read(2)
 	if len(b) < 2 {
 		return 0, dontExpectEOF(err)
@@ -62,7 +51,7 @@ func (r *BinaryReader) ReadInt16() (int16, error) {
 	return int16(binary.BigEndian.Uint16(b)), nil
 }
 
-func (r *BinaryReader) ReadInt32() (int32, error) {
+func (r *binaryReader) ReadInt32() (int32, error) {
 	b, err := r.read(4)
 	if len(b) < 4 {
 		return 0, dontExpectEOF(err)
@@ -70,7 +59,7 @@ func (r *BinaryReader) ReadInt32() (int32, error) {
 	return int32(binary.BigEndian.Uint32(b)), nil
 }
 
-func (r *BinaryReader) ReadInt64() (int64, error) {
+func (r *binaryReader) ReadInt64() (int64, error) {
 	b, err := r.read(8)
 	if len(b) < 8 {
 		return 0, dontExpectEOF(err)
@@ -78,7 +67,7 @@ func (r *BinaryReader) ReadInt64() (int64, error) {
 	return int64(binary.BigEndian.Uint64(b)), nil
 }
 
-func (r *BinaryReader) ReadFloat64() (float64, error) {
+func (r *binaryReader) ReadFloat64() (float64, error) {
 	b, err := r.read(8)
 	if len(b) < 8 {
 		return 0, dontExpectEOF(err)
@@ -86,7 +75,7 @@ func (r *BinaryReader) ReadFloat64() (float64, error) {
 	return math.Float64frombits(binary.BigEndian.Uint64(b)), nil
 }
 
-func (r *BinaryReader) ReadBytes() ([]byte, error) {
+func (r *binaryReader) ReadBytes() ([]byte, error) {
 	n, err := r.ReadLength()
 	if err != nil {
 		return nil, err
@@ -95,7 +84,7 @@ func (r *BinaryReader) ReadBytes() ([]byte, error) {
 	return copyBytes(b), err
 }
 
-func (r *BinaryReader) ReadString() (string, error) {
+func (r *binaryReader) ReadString() (string, error) {
 	n, err := r.ReadLength()
 	if err != nil {
 		return "", err
@@ -104,7 +93,7 @@ func (r *BinaryReader) ReadString() (string, error) {
 	return string(b), err
 }
 
-func (r *BinaryReader) ReadLength() (int, error) {
+func (r *binaryReader) ReadLength() (int, error) {
 	b, err := r.read(4)
 	if len(b) < 4 {
 		return 0, dontExpectEOF(err)
@@ -116,7 +105,7 @@ func (r *BinaryReader) ReadLength() (int, error) {
 	return int(n), nil
 }
 
-func (r *BinaryReader) ReadMessage() (Message, error) {
+func (r *binaryReader) ReadMessage() (Message, error) {
 	m := Message{}
 
 	b, err := r.read(4)
@@ -150,7 +139,7 @@ func (r *BinaryReader) ReadMessage() (Message, error) {
 	return m, err
 }
 
-func (r *BinaryReader) ReadField() (Field, error) {
+func (r *binaryReader) ReadField() (Field, error) {
 	t, err := r.ReadInt8()
 	if err != nil {
 		return Field{}, err
@@ -162,7 +151,7 @@ func (r *BinaryReader) ReadField() (Field, error) {
 	return Field{ID: i, Type: Type(t)}, nil
 }
 
-func (r *BinaryReader) ReadList() (List, error) {
+func (r *binaryReader) ReadList() (List, error) {
 	t, err := r.ReadInt8()
 	if err != nil {
 		return List{}, err
@@ -174,12 +163,12 @@ func (r *BinaryReader) ReadList() (List, error) {
 	return List{Size: n, Type: Type(t)}, nil
 }
 
-func (r *BinaryReader) ReadSet() (Set, error) {
+func (r *binaryReader) ReadSet() (Set, error) {
 	l, err := r.ReadList()
 	return Set(l), err
 }
 
-func (r *BinaryReader) ReadMap() (Map, error) {
+func (r *binaryReader) ReadMap() (Map, error) {
 	k, err := r.ReadByte()
 	if err != nil {
 		return Map{}, dontExpectEOF(err)
@@ -195,7 +184,7 @@ func (r *BinaryReader) ReadMap() (Map, error) {
 	return Map{Size: n, Key: Type(k), Value: Type(v)}, nil
 }
 
-func (r *BinaryReader) ReadByte() (byte, error) {
+func (r *binaryReader) ReadByte() (byte, error) {
 	switch x := r.r.(type) {
 	case *bytes.Buffer:
 		return x.ReadByte()
@@ -214,7 +203,7 @@ func (r *BinaryReader) ReadByte() (byte, error) {
 	}
 }
 
-func (r *BinaryReader) read(n int) ([]byte, error) {
+func (r *binaryReader) read(n int) ([]byte, error) {
 	if cap(r.b) < n {
 		c := n
 		if c < 64 {
@@ -228,20 +217,17 @@ func (r *BinaryReader) read(n int) ([]byte, error) {
 	return r.b, dontExpectEOF(err)
 }
 
-// BinaryWriter is a Writer implementation for the binary thrift protocol.
-//
-// https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md
-type BinaryWriter struct {
+type binaryWriter struct {
 	p *BinaryProtocol
 	b [8]byte
 	w io.Writer
 }
 
-func (w *BinaryWriter) Writer() io.Writer {
+func (w *binaryWriter) Writer() io.Writer {
 	return w.w
 }
 
-func (w *BinaryWriter) WriteBool(v bool) error {
+func (w *binaryWriter) WriteBool(v bool) error {
 	var b byte
 	if v {
 		b = 1
@@ -249,45 +235,45 @@ func (w *BinaryWriter) WriteBool(v bool) error {
 	return w.writeByte(b)
 }
 
-func (w *BinaryWriter) WriteInt8(v int8) error {
+func (w *binaryWriter) WriteInt8(v int8) error {
 	return w.writeByte(byte(v))
 }
 
-func (w *BinaryWriter) WriteInt16(v int16) error {
+func (w *binaryWriter) WriteInt16(v int16) error {
 	binary.BigEndian.PutUint16(w.b[:2], uint16(v))
 	return w.write(w.b[:2])
 }
 
-func (w *BinaryWriter) WriteInt32(v int32) error {
+func (w *binaryWriter) WriteInt32(v int32) error {
 	binary.BigEndian.PutUint32(w.b[:4], uint32(v))
 	return w.write(w.b[:4])
 }
 
-func (w *BinaryWriter) WriteInt64(v int64) error {
+func (w *binaryWriter) WriteInt64(v int64) error {
 	binary.BigEndian.PutUint64(w.b[:8], uint64(v))
 	return w.write(w.b[:8])
 }
 
-func (w *BinaryWriter) WriteFloat64(v float64) error {
+func (w *binaryWriter) WriteFloat64(v float64) error {
 	binary.BigEndian.PutUint64(w.b[:8], math.Float64bits(v))
 	return w.write(w.b[:8])
 }
 
-func (w *BinaryWriter) WriteBytes(v []byte) error {
+func (w *binaryWriter) WriteBytes(v []byte) error {
 	if err := w.WriteLength(len(v)); err != nil {
 		return err
 	}
 	return w.write(v)
 }
 
-func (w *BinaryWriter) WriteString(v string) error {
+func (w *binaryWriter) WriteString(v string) error {
 	if err := w.WriteLength(len(v)); err != nil {
 		return err
 	}
 	return w.writeString(v)
 }
 
-func (w *BinaryWriter) WriteLength(n int) error {
+func (w *binaryWriter) WriteLength(n int) error {
 	if n < 0 {
 		return fmt.Errorf("negative length cannot be encoded in thrift: %d", n)
 	}
@@ -297,7 +283,7 @@ func (w *BinaryWriter) WriteLength(n int) error {
 	return w.WriteInt32(int32(n))
 }
 
-func (w *BinaryWriter) WriteMessage(m Message) error {
+func (w *binaryWriter) WriteMessage(m Message) error {
 	if w.p.NonStrict {
 		if err := w.WriteString(m.Name); err != nil {
 			return err
@@ -322,25 +308,25 @@ func (w *BinaryWriter) WriteMessage(m Message) error {
 	return w.WriteInt32(m.SeqID)
 }
 
-func (w *BinaryWriter) WriteField(f Field) error {
+func (w *binaryWriter) WriteField(f Field) error {
 	if err := w.writeByte(byte(f.Type)); err != nil {
 		return err
 	}
 	return w.WriteInt16(f.ID)
 }
 
-func (w *BinaryWriter) WriteList(l List) error {
+func (w *binaryWriter) WriteList(l List) error {
 	if err := w.writeByte(byte(l.Type)); err != nil {
 		return err
 	}
 	return w.WriteInt32(l.Size)
 }
 
-func (w *BinaryWriter) WriteSet(s Set) error {
+func (w *binaryWriter) WriteSet(s Set) error {
 	return w.WriteList(List(s))
 }
 
-func (w *BinaryWriter) WriteMap(m Map) error {
+func (w *binaryWriter) WriteMap(m Map) error {
 	if err := w.writeByte(byte(m.Key)); err != nil {
 		return err
 	}
@@ -350,17 +336,17 @@ func (w *BinaryWriter) WriteMap(m Map) error {
 	return w.WriteInt32(m.Size)
 }
 
-func (w *BinaryWriter) write(b []byte) error {
+func (w *binaryWriter) write(b []byte) error {
 	_, err := w.w.Write(b)
 	return err
 }
 
-func (w *BinaryWriter) writeString(s string) error {
+func (w *binaryWriter) writeString(s string) error {
 	_, err := io.WriteString(w.w, s)
 	return err
 }
 
-func (w *BinaryWriter) writeByte(b byte) error {
+func (w *binaryWriter) writeByte(b byte) error {
 	// The special cases are intended to reduce the runtime overheadof testing
 	// for the io.ByteWriter interface for common types. Type assertions on a
 	// concrete type is just a pointer comparison, instead of requiring a
@@ -394,9 +380,3 @@ func copyBytes(b []byte) []byte {
 	copy(c, b)
 	return c
 }
-
-var (
-	_ Protocol = (*BinaryProtocol)(nil)
-	_ Reader   = (*BinaryReader)(nil)
-	_ Writer   = (*BinaryWriter)(nil)
-)
