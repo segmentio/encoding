@@ -71,28 +71,19 @@ func (r *compactReader) ReadBytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := r.binary.read(n)
-	return copyBytes(b), err
+	b := make([]byte, n)
+	_, err = io.ReadFull(r.Reader(), b)
+	return b, err
 }
 
 func (r *compactReader) ReadString() (string, error) {
-	n, err := r.ReadLength()
-	if err != nil {
-		return "", err
-	}
-	b, err := r.binary.read(n)
-	return string(b), err
+	b, err := r.ReadBytes()
+	return unsafeBytesToString(b), err
 }
 
 func (r *compactReader) ReadLength() (int, error) {
 	n, err := r.readUvarint("length", math.MaxInt32)
-	if err != nil {
-		return 0, err
-	}
-	if n < 0 || n > math.MaxInt32 {
-		return 0, fmt.Errorf("length out of range: %d", n)
-	}
-	return int(n), nil
+	return int(n), err
 }
 
 func (r *compactReader) ReadMessage() (Message, error) {
@@ -190,7 +181,7 @@ func (r *compactReader) ReadByte() (byte, error) {
 func (r *compactReader) readUvarint(typ string, max uint64) (uint64, error) {
 	var br io.ByteReader
 
-	switch x := r.binary.r.(type) {
+	switch x := r.Reader().(type) {
 	case *bytes.Buffer:
 		br = x
 	case *bytes.Reader:
@@ -215,7 +206,7 @@ func (r *compactReader) readUvarint(typ string, max uint64) (uint64, error) {
 func (r *compactReader) readVarint(typ string, min, max int64) (int64, error) {
 	var br io.ByteReader
 
-	switch x := r.binary.r.(type) {
+	switch x := r.Reader().(type) {
 	case *bytes.Buffer:
 		br = x
 	case *bytes.Reader:

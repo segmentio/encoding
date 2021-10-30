@@ -26,7 +26,7 @@ func (p *BinaryProtocol) NewWriter(w io.Writer) Writer {
 
 type binaryReader struct {
 	r io.Reader
-	b []byte
+	b [8]byte
 }
 
 func (r *binaryReader) Reader() io.Reader {
@@ -80,17 +80,14 @@ func (r *binaryReader) ReadBytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := r.read(n)
-	return copyBytes(b), err
+	b := make([]byte, n)
+	_, err = io.ReadFull(r.r, b)
+	return b, err
 }
 
 func (r *binaryReader) ReadString() (string, error) {
-	n, err := r.ReadLength()
-	if err != nil {
-		return "", err
-	}
-	b, err := r.read(n)
-	return string(b), err
+	b, err := r.ReadBytes()
+	return unsafeBytesToString(b), err
 }
 
 func (r *binaryReader) ReadLength() (int, error) {
@@ -115,11 +112,12 @@ func (r *binaryReader) ReadMessage() (Message, error) {
 
 	if (b[0] >> 7) == 0 { // non-strict
 		n := int(binary.BigEndian.Uint32(b))
-		s, err := r.read(n)
+		s := make([]byte, n)
+		_, err := io.ReadFull(r.r, s)
 		if err != nil {
 			return m, err
 		}
-		m.Name = string(s)
+		m.Name = unsafeBytesToString(s)
 
 		t, err := r.ReadInt8()
 		if err != nil {
@@ -204,17 +202,8 @@ func (r *binaryReader) ReadByte() (byte, error) {
 }
 
 func (r *binaryReader) read(n int) ([]byte, error) {
-	if cap(r.b) < n {
-		c := n
-		if c < 64 {
-			c = 64
-		}
-		r.b = make([]byte, c)[:n]
-	} else {
-		r.b = r.b[:n]
-	}
-	_, err := io.ReadFull(r.r, r.b)
-	return r.b, dontExpectEOF(err)
+	_, err := io.ReadFull(r.r, r.b[:n])
+	return r.b[:n], dontExpectEOF(err)
 }
 
 type binaryWriter struct {
@@ -373,10 +362,4 @@ func dontExpectEOF(err error) error {
 	default:
 		return err
 	}
-}
-
-func copyBytes(b []byte) []byte {
-	c := make([]byte, len(b))
-	copy(c, b)
-	return c
 }
