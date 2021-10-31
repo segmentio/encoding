@@ -32,6 +32,10 @@ func (d *debugReader) log(method string, res interface{}, err error) {
 	}
 }
 
+func (d *debugReader) Protocol() Protocol {
+	return d.r.Protocol()
+}
+
 func (d *debugReader) Reader() io.Reader {
 	return d.r.Reader()
 }
@@ -131,6 +135,10 @@ func (d *debugWriter) log(method string, arg interface{}, err error) {
 	} else {
 		d.l.Printf("(%T).%s(%#v)", d.w, method, arg)
 	}
+}
+
+func (d *debugWriter) Protocol() Protocol {
+	return d.w.Protocol()
 }
 
 func (d *debugWriter) Writer() io.Writer {

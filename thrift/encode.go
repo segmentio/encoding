@@ -22,10 +22,11 @@ func Marshal(p Protocol, v interface{}) ([]byte, error) {
 
 type Encoder struct {
 	w Writer
+	f flags
 }
 
 func NewEncoder(w Writer) *Encoder {
-	return &Encoder{w: w}
+	return &Encoder{w: w, f: encoderFlags(w)}
 }
 
 func (e *Encoder) Encode(v interface{}) error {
@@ -45,11 +46,16 @@ func (e *Encoder) Encode(v interface{}) error {
 		encoderCache.Store(newCache)
 	}
 
-	return encode(e.w, reflect.ValueOf(v), noflags)
+	return encode(e.w, reflect.ValueOf(v), e.f)
 }
 
 func (e *Encoder) Reset(w Writer) {
 	e.w = w
+	e.f = e.f.without(protocolFlags).with(encoderFlags(w))
+}
+
+func encoderFlags(w Writer) flags {
+	return flags(w.Protocol().Features() << featuresBitOffset)
 }
 
 var encoderCache atomic.Value // map[typeID]encodeFunc
@@ -158,7 +164,7 @@ func encodeFuncSliceOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	typ := TypeOf(elem)
 	enc := encodeFuncOf(elem, seen)
 
-	return func(w Writer, v reflect.Value, _ flags) error {
+	return func(w Writer, v reflect.Value, flags flags) error {
 		n := v.Len()
 		if n > math.MaxInt32 {
 			return fmt.Errorf("slice length is too large to be represented in thrift: %d > max(int32)", n)
@@ -173,7 +179,7 @@ func encodeFuncSliceOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		}
 
 		for i := 0; i < n; i++ {
-			if err := enc(w, v.Index(i), noflags); err != nil {
+			if err := enc(w, v.Index(i), flags); err != nil {
 				return err
 			}
 		}
@@ -193,7 +199,7 @@ func encodeFuncMapOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	encodeKey := encodeFuncOf(key, seen)
 	encodeElem := encodeFuncOf(elem, seen)
 
-	return func(w Writer, v reflect.Value, _ flags) error {
+	return func(w Writer, v reflect.Value, flags flags) error {
 		n := v.Len()
 		if n > math.MaxInt32 {
 			return fmt.Errorf("map length is too large to be represented in thrift: %d > max(int32)", n)
@@ -212,10 +218,10 @@ func encodeFuncMapOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		}
 
 		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
-			if err := encodeKey(w, iter.Key(), noflags); err != nil {
+			if err := encodeKey(w, iter.Key(), flags); err != nil {
 				return err
 			}
-			if err := encodeElem(w, iter.Value(), noflags); err != nil {
+			if err := encodeElem(w, iter.Value(), flags); err != nil {
 				return err
 			}
 		}
@@ -229,7 +235,7 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	typ := TypeOf(key)
 	enc := encodeFuncOf(key, seen)
 
-	return func(w Writer, v reflect.Value, _ flags) error {
+	return func(w Writer, v reflect.Value, flags flags) error {
 		n := v.Len()
 		if n > math.MaxInt32 {
 			return fmt.Errorf("map length is too large to be represented in thrift: %d > max(int32)", n)
@@ -247,7 +253,7 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		}
 
 		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
-			if err := enc(w, iter.Key(), noflags); err != nil {
+			if err := enc(w, iter.Key(), flags); err != nil {
 				return err
 			}
 		}
@@ -262,7 +268,10 @@ type structEncoder struct {
 }
 
 func (enc *structEncoder) encode(w Writer, v reflect.Value, flags flags) error {
-	numFields := 0
+	useDeltaEncoding := flags.have(useDeltaEncoding)
+	coalesceBoolFields := flags.have(coalesceBoolFields)
+	numFields := int16(0)
+	lastFieldID := int16(0)
 
 encodeFields:
 	for _, f := range enc.fields {
@@ -286,7 +295,16 @@ encodeFields:
 			ID:   f.id,
 			Type: f.typ,
 		}
-		if f.typ == BOOL && x.Bool() == true {
+
+		if useDeltaEncoding {
+			if delta := field.ID - lastFieldID; delta <= 15 {
+				field.ID = delta
+				field.Delta = true
+			}
+		}
+
+		skipValue := coalesceBoolFields && field.Type == BOOL
+		if skipValue && x.Bool() == true {
 			field.Type = TRUE
 		}
 
@@ -294,14 +312,17 @@ encodeFields:
 			return err
 		}
 
-		if err := f.encode(w, x, f.flags); err != nil {
-			return err
+		if !skipValue {
+			if err := f.encode(w, x, flags); err != nil {
+				return err
+			}
 		}
 
 		numFields++
+		lastFieldID = f.id
 	}
 
-	if err := w.WriteField(Field{}); err != nil {
+	if err := w.WriteField(Field{Type: STOP}); err != nil {
 		return err
 	}
 

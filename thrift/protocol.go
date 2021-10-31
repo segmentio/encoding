@@ -4,6 +4,20 @@ import (
 	"io"
 )
 
+// Features is a bitset describing the thrift encoding features supported by
+// protocol implementations.
+type Features uint
+
+const (
+	// DeltaEncoding is advertised by protocols that allow encoders to apply
+	// delta encoding on struct fields.
+	UseDeltaEncoding Features = 1 << iota
+
+	// CoalesceBoolFields is advertised by protocols that allow encoders to
+	// coalesce boolean values into field types.
+	CoalesceBoolFields
+)
+
 // The Protocol interface abstracts the creation of low-level thrift readers and
 // writers implementing the various protocols that the encoding supports.
 //
@@ -13,11 +27,13 @@ import (
 type Protocol interface {
 	NewReader(r io.Reader) Reader
 	NewWriter(w io.Writer) Writer
+	Features() Features
 }
 
 // Reader represents a low-level reader of values encoded according to one of
 // the thrift protocols.
 type Reader interface {
+	Protocol() Protocol
 	Reader() io.Reader
 	ReadBool() (bool, error)
 	ReadInt8() (int8, error)
@@ -38,6 +54,7 @@ type Reader interface {
 // Writer represents a low-level writer of values encoded according to one of
 // the thrift protocols.
 type Writer interface {
+	Protocol() Protocol
 	Writer() io.Writer
 	WriteBool(bool) error
 	WriteInt8(int8) error

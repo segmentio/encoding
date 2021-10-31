@@ -17,16 +17,25 @@ type BinaryProtocol struct {
 }
 
 func (p *BinaryProtocol) NewReader(r io.Reader) Reader {
-	return &binaryReader{r: r}
+	return &binaryReader{p: p, r: r}
 }
 
 func (p *BinaryProtocol) NewWriter(w io.Writer) Writer {
 	return &binaryWriter{p: p, w: w}
 }
 
+func (p *BinaryProtocol) Features() Features {
+	return 0
+}
+
 type binaryReader struct {
+	p *BinaryProtocol
 	r io.Reader
 	b [8]byte
+}
+
+func (r *binaryReader) Protocol() Protocol {
+	return r.p
 }
 
 func (r *binaryReader) Reader() io.Reader {
@@ -210,6 +219,10 @@ type binaryWriter struct {
 	p *BinaryProtocol
 	b [8]byte
 	w io.Writer
+}
+
+func (w *binaryWriter) Protocol() Protocol {
+	return w.p
 }
 
 func (w *binaryWriter) Writer() io.Writer {

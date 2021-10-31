@@ -10,15 +10,20 @@ import (
 type flags int16
 
 const (
-	noflags  flags = 0
 	enum     flags = 1 << 0
 	union    flags = 1 << 1
 	required flags = 1 << 2
 	optional flags = 1 << 3
 	strict   flags = 1 << 4
 
-	structFlags flags = enum | union | required | optional
-	decodeFlags flags = strict
+	featuresBitOffset  = 8
+	useDeltaEncoding   = flags(UseDeltaEncoding) << featuresBitOffset
+	coalesceBoolFields = flags(CoalesceBoolFields) << featuresBitOffset
+
+	structFlags   flags = enum | union | required | optional
+	encodeFlags   flags = strict | protocolFlags
+	decodeFlags   flags = strict | protocolFlags
+	protocolFlags flags = useDeltaEncoding | coalesceBoolFields
 )
 
 func (f flags) have(x flags) bool {

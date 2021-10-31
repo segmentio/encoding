@@ -36,7 +36,7 @@ type Decoder struct {
 }
 
 func NewDecoder(r Reader) *Decoder {
-	return &Decoder{r: r}
+	return &Decoder{r: r, f: decoderFlags(r)}
 }
 
 func (d *Decoder) Decode(v interface{}) error {
@@ -70,6 +70,7 @@ func (d *Decoder) Decode(v interface{}) error {
 
 func (d *Decoder) Reset(r Reader) {
 	d.r = r
+	d.f = d.f.without(protocolFlags).with(decoderFlags(r))
 }
 
 func (d *Decoder) SetStrict(enabled bool) {
@@ -78,6 +79,10 @@ func (d *Decoder) SetStrict(enabled bool) {
 	} else {
 		d.f = d.f.without(strict)
 	}
+}
+
+func decoderFlags(r Reader) flags {
+	return flags(r.Protocol().Features() << featuresBitOffset)
 }
 
 var decoderCache atomic.Value // map[typeID]decodeFunc
@@ -386,6 +391,7 @@ type structDecoder struct {
 func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 	v.Set(dec.zero)
 	flags = flags.only(decodeFlags)
+	coalesceBoolFields := flags.have(coalesceBoolFields)
 
 	lastField := reflect.Value{}
 	union := len(dec.union) > 0
@@ -428,7 +434,13 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 
 		lastField = x
 		seen[i/64] |= 1 << (i % 64)
-		return field.decode(r, x, field.flags.with(flags))
+
+		if coalesceBoolFields && (f.Type == TRUE || f.Type == FALSE) {
+			x.SetBool(f.Type == TRUE)
+			return nil
+		}
+
+		return field.decode(r, x, flags.with(field.flags))
 	})
 	if err != nil {
 		return err
@@ -583,19 +595,28 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 }
 
 func readStruct(r Reader, f func(Reader, Field) error) error {
+	lastFieldID := int16(0)
+
 	for {
 		x, err := r.ReadField()
 		if err != nil {
 			return err
 		}
 
-		if x.ID == 0 && x.Type == 0 {
+		if x.Type == STOP {
 			return nil
+		}
+
+		if x.Delta {
+			x.ID += lastFieldID
+			x.Delta = false
 		}
 
 		if err := f(r, x); err != nil {
 			return with(err, &decodeErrorField{field: x})
 		}
+
+		lastFieldID = x.ID
 	}
 }
 

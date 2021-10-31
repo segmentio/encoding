@@ -36,8 +36,9 @@ func (m MessageType) String() string {
 }
 
 type Field struct {
-	ID   int16
-	Type Type
+	ID    int16
+	Type  Type
+	Delta bool // whether the field id is a delta
 }
 
 func (f Field) String() string {
@@ -47,7 +48,8 @@ func (f Field) String() string {
 type Type int8
 
 const (
-	TRUE Type = iota + 1
+	STOP Type = iota
+	TRUE
 	FALSE
 	I8
 	I16
@@ -64,6 +66,8 @@ const (
 
 func (t Type) String() string {
 	switch t {
+	case STOP:
+		return "STOP"
 	case TRUE:
 		return "TRUE"
 	case BOOL:

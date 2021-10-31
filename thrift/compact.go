@@ -15,16 +15,24 @@ import (
 type CompactProtocol struct{}
 
 func (p *CompactProtocol) NewReader(r io.Reader) Reader {
-	return &compactReader{binary: binaryReader{r: r}}
+	return &compactReader{protocol: p, binary: binaryReader{r: r}}
 }
 
 func (p *CompactProtocol) NewWriter(w io.Writer) Writer {
-	return &compactWriter{binary: binaryWriter{w: w}}
+	return &compactWriter{protocol: p, binary: binaryWriter{w: w}}
+}
+
+func (p *CompactProtocol) Features() Features {
+	return UseDeltaEncoding | CoalesceBoolFields
 }
 
 type compactReader struct {
-	binary    binaryReader
-	lastField Field
+	protocol *CompactProtocol
+	binary   binaryReader
+}
+
+func (r *compactReader) Protocol() Protocol {
+	return r.protocol
 }
 
 func (r *compactReader) Reader() io.Reader {
@@ -32,16 +40,7 @@ func (r *compactReader) Reader() io.Reader {
 }
 
 func (r *compactReader) ReadBool() (bool, error) {
-	switch r.lastField.Type {
-	case TRUE:
-		r.lastField = Field{}
-		return true, nil
-	case FALSE:
-		r.lastField = Field{}
-		return false, nil
-	default:
-		return r.binary.ReadBool()
-	}
+	return r.binary.ReadBool()
 }
 
 func (r *compactReader) ReadInt8() (int8, error) {
@@ -115,19 +114,18 @@ func (r *compactReader) ReadMessage() (Message, error) {
 
 func (r *compactReader) ReadField() (Field, error) {
 	f := Field{}
-	defer func() { r.lastField = f }()
 
 	b, err := r.ReadByte()
 	if err != nil {
 		return f, dontExpectEOF(err)
 	}
 
-	if b == 0 { // stop field
+	if Type(b) == STOP {
 		return f, nil
 	}
 
 	if (b >> 4) != 0 {
-		f = Field{ID: int16(b>>4) + r.lastField.ID, Type: Type(b & 0xF)}
+		f = Field{ID: int16(b >> 4), Type: Type(b & 0xF), Delta: true}
 	} else {
 		i, err := r.ReadInt16()
 		if err != nil {
@@ -229,9 +227,13 @@ func (r *compactReader) readVarint(typ string, min, max int64) (int64, error) {
 }
 
 type compactWriter struct {
-	binary    binaryWriter
-	varint    [binary.MaxVarintLen64]byte
-	lastField Field
+	protocol *CompactProtocol
+	binary   binaryWriter
+	varint   [binary.MaxVarintLen64]byte
+}
+
+func (w *compactWriter) Protocol() Protocol {
+	return w.protocol
 }
 
 func (w *compactWriter) Writer() io.Writer {
@@ -239,12 +241,7 @@ func (w *compactWriter) Writer() io.Writer {
 }
 
 func (w *compactWriter) WriteBool(v bool) error {
-	switch w.lastField.Type {
-	case TRUE, FALSE:
-		return nil // the value is already encoded in the type
-	default:
-		return w.binary.WriteBool(v)
-	}
+	return w.binary.WriteBool(v)
 }
 
 func (w *compactWriter) WriteInt8(v int8) error {
@@ -305,12 +302,11 @@ func (w *compactWriter) WriteMessage(m Message) error {
 }
 
 func (w *compactWriter) WriteField(f Field) error {
-	defer func() { w.lastField = f }()
-	if f.ID == 0 && f.Type == 0 { // stop field
+	if f.Type == STOP {
 		return w.binary.writeByte(0)
 	}
-	if f.ID > w.lastField.ID && (f.ID-w.lastField.ID) <= 15 { // delta encoding
-		return w.binary.writeByte(byte((f.ID-w.lastField.ID)<<4) | byte(f.Type))
+	if f.ID <= 15 {
+		return w.binary.writeByte(byte(f.ID<<4) | byte(f.Type))
 	}
 	if err := w.binary.writeByte(byte(f.Type)); err != nil {
 		return err
