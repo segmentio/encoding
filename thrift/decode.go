@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/bits"
 	"reflect"
 	"sync/atomic"
 )
@@ -382,10 +383,11 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 }
 
 type structDecoder struct {
-	fields []structDecoderField
-	union  []int
-	minID  int16
-	zero   reflect.Value
+	fields   []structDecoderField
+	union    []int
+	minID    int16
+	zero     reflect.Value
+	required []uint64
 }
 
 func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
@@ -395,10 +397,9 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 
 	lastField := reflect.Value{}
 	union := len(dec.union) > 0
-	bits := [1]uint64{}
-	seen := bits[:]
-	if len(dec.fields) > 64 {
-		seen = make([]uint64, (len(dec.fields)/64)+1)
+	seen := make([]uint64, 1)
+	if len(dec.required) > len(seen) {
+		seen = make([]uint64, len(dec.required))
 	}
 
 	err := readStruct(r, func(r Reader, f Field) error {
@@ -407,6 +408,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 			return skipField(r, f)
 		}
 		field := &dec.fields[i]
+		seen[i/64] |= 1 << (i % 64)
 
 		// TODO: implement type conversions?
 		if f.Type != field.typ && !(f.Type == TRUE && field.typ == BOOL) {
@@ -433,7 +435,6 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 		}
 
 		lastField = x
-		seen[i/64] |= 1 << (i % 64)
 
 		if coalesceBoolFields && (f.Type == TRUE || f.Type == FALSE) {
 			x.SetBool(f.Type == TRUE)
@@ -446,11 +447,11 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 		return err
 	}
 
-	for i := range dec.fields {
-		f := &dec.fields[i]
-
-		if f.flags.have(required) && ((seen[i/64]>>(i%64))&1) == 0 {
-			return &MissingField{Field: Field{ID: f.id, Type: f.typ}}
+	for i, required := range dec.required {
+		if mask := (required & seen[i]); mask != required {
+			index := bits.TrailingZeros64(mask)
+			field := &dec.fields[i/64+index]
+			return &MissingField{Field: Field{ID: field.id, Type: field.typ}}
 		}
 	}
 
@@ -505,6 +506,7 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 	dec.fields = make([]structDecoderField, (maxID-minID)+1)
 	dec.minID = minID
+	dec.required = make([]uint64, len(fields)/64+1)
 
 	for _, f := range fields {
 		i := f.id - minID
@@ -513,6 +515,9 @@ func decodeFuncStructOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 			panic(fmt.Errorf("thrift struct field id %d is present multiple times in %s with types %s and %s", f.id, t, p.typ, f.typ))
 		}
 		dec.fields[i] = f
+		if f.flags.have(required) {
+			dec.required[i/64] |= 1 << (i % 64)
+		}
 	}
 
 	return decode
