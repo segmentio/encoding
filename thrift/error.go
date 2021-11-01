@@ -1,7 +1,9 @@
 package thrift
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -51,6 +53,9 @@ func (e *decodeError) Error() string {
 func (e *decodeError) Unwrap() error { return e.base }
 
 func with(base, elem error) error {
+	if errors.Is(base, io.EOF) {
+		return base
+	}
 	e, _ := base.(*decodeError)
 	if e == nil {
 		e = &decodeError{base: base}
@@ -92,4 +97,15 @@ type decodeErrorMap struct {
 
 func (d *decodeErrorMap) Error() string {
 	return fmt.Sprintf("%d/%d:%s", d.index, d._map.Size, d._map)
+}
+
+func dontExpectEOF(err error) error {
+	switch err {
+	case nil:
+		return nil
+	case io.EOF:
+		return io.ErrUnexpectedEOF
+	default:
+		return err
+	}
 }

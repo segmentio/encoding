@@ -55,7 +55,7 @@ func (r *binaryReader) ReadInt8() (int8, error) {
 func (r *binaryReader) ReadInt16() (int16, error) {
 	b, err := r.read(2)
 	if len(b) < 2 {
-		return 0, dontExpectEOF(err)
+		return 0, err
 	}
 	return int16(binary.BigEndian.Uint16(b)), nil
 }
@@ -63,7 +63,7 @@ func (r *binaryReader) ReadInt16() (int16, error) {
 func (r *binaryReader) ReadInt32() (int32, error) {
 	b, err := r.read(4)
 	if len(b) < 4 {
-		return 0, dontExpectEOF(err)
+		return 0, err
 	}
 	return int32(binary.BigEndian.Uint32(b)), nil
 }
@@ -71,7 +71,7 @@ func (r *binaryReader) ReadInt32() (int32, error) {
 func (r *binaryReader) ReadInt64() (int64, error) {
 	b, err := r.read(8)
 	if len(b) < 8 {
-		return 0, dontExpectEOF(err)
+		return 0, err
 	}
 	return int64(binary.BigEndian.Uint64(b)), nil
 }
@@ -79,7 +79,7 @@ func (r *binaryReader) ReadInt64() (int64, error) {
 func (r *binaryReader) ReadFloat64() (float64, error) {
 	b, err := r.read(8)
 	if len(b) < 8 {
-		return 0, dontExpectEOF(err)
+		return 0, err
 	}
 	return math.Float64frombits(binary.BigEndian.Uint64(b)), nil
 }
@@ -102,7 +102,7 @@ func (r *binaryReader) ReadString() (string, error) {
 func (r *binaryReader) ReadLength() (int, error) {
 	b, err := r.read(4)
 	if len(b) < 4 {
-		return 0, dontExpectEOF(err)
+		return 0, err
 	}
 	n := binary.BigEndian.Uint32(b)
 	if n > math.MaxInt32 {
@@ -116,7 +116,7 @@ func (r *binaryReader) ReadMessage() (Message, error) {
 
 	b, err := r.read(4)
 	if len(b) < 4 {
-		return m, dontExpectEOF(err)
+		return m, err
 	}
 
 	if (b[0] >> 7) == 0 { // non-strict
@@ -124,13 +124,13 @@ func (r *binaryReader) ReadMessage() (Message, error) {
 		s := make([]byte, n)
 		_, err := io.ReadFull(r.r, s)
 		if err != nil {
-			return m, err
+			return m, dontExpectEOF(err)
 		}
 		m.Name = unsafeBytesToString(s)
 
 		t, err := r.ReadInt8()
 		if err != nil {
-			return m, err
+			return m, dontExpectEOF(err)
 		}
 
 		m.Type = MessageType(t & 0x7)
@@ -138,7 +138,7 @@ func (r *binaryReader) ReadMessage() (Message, error) {
 		m.Type = MessageType(b[3] & 0x7)
 
 		if m.Name, err = r.ReadString(); err != nil {
-			return m, err
+			return m, dontExpectEOF(err)
 		}
 	}
 
@@ -165,7 +165,7 @@ func (r *binaryReader) ReadList() (List, error) {
 	}
 	n, err := r.ReadInt32()
 	if err != nil {
-		return List{}, err
+		return List{}, dontExpectEOF(err)
 	}
 	return List{Size: n, Type: Type(t)}, nil
 }
@@ -178,7 +178,7 @@ func (r *binaryReader) ReadSet() (Set, error) {
 func (r *binaryReader) ReadMap() (Map, error) {
 	k, err := r.ReadByte()
 	if err != nil {
-		return Map{}, dontExpectEOF(err)
+		return Map{}, err
 	}
 	v, err := r.ReadByte()
 	if err != nil {
@@ -186,7 +186,7 @@ func (r *binaryReader) ReadMap() (Map, error) {
 	}
 	n, err := r.ReadInt32()
 	if err != nil {
-		return Map{}, err
+		return Map{}, dontExpectEOF(err)
 	}
 	return Map{Size: n, Key: Type(k), Value: Type(v)}, nil
 }
@@ -212,7 +212,7 @@ func (r *binaryReader) ReadByte() (byte, error) {
 
 func (r *binaryReader) read(n int) ([]byte, error) {
 	_, err := io.ReadFull(r.r, r.b[:n])
-	return r.b[:n], dontExpectEOF(err)
+	return r.b[:n], err
 }
 
 type binaryWriter struct {
@@ -363,16 +363,5 @@ func (w *binaryWriter) writeByte(b byte) error {
 	default:
 		w.b[0] = b
 		return w.write(w.b[:1])
-	}
-}
-
-func dontExpectEOF(err error) error {
-	switch err {
-	case nil:
-		return nil
-	case io.EOF:
-		return io.ErrUnexpectedEOF
-	default:
-		return err
 	}
 }

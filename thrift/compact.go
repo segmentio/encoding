@@ -90,7 +90,7 @@ func (r *compactReader) ReadMessage() (Message, error) {
 
 	b0, err := r.ReadByte()
 	if err != nil {
-		return m, dontExpectEOF(err)
+		return m, err
 	}
 	if b0 != 0x82 {
 		return m, fmt.Errorf("invalid protocol id found when reading thrift message: %#x", b0)
@@ -103,13 +103,13 @@ func (r *compactReader) ReadMessage() (Message, error) {
 
 	seqID, err := r.readUvarint("seq id", math.MaxInt32)
 	if err != nil {
-		return m, err
+		return m, dontExpectEOF(err)
 	}
 
 	m.Type = MessageType(b1) & 0x7
 	m.SeqID = int32(seqID)
 	m.Name, err = r.ReadString()
-	return m, err
+	return m, dontExpectEOF(err)
 }
 
 func (r *compactReader) ReadField() (Field, error) {
@@ -117,7 +117,7 @@ func (r *compactReader) ReadField() (Field, error) {
 
 	b, err := r.ReadByte()
 	if err != nil {
-		return f, dontExpectEOF(err)
+		return f, err
 	}
 
 	if Type(b) == STOP {
@@ -129,7 +129,7 @@ func (r *compactReader) ReadField() (Field, error) {
 	} else {
 		i, err := r.ReadInt16()
 		if err != nil {
-			return f, err
+			return f, dontExpectEOF(err)
 		}
 		f = Field{ID: i, Type: Type(b)}
 	}
@@ -140,14 +140,14 @@ func (r *compactReader) ReadField() (Field, error) {
 func (r *compactReader) ReadList() (List, error) {
 	b, err := r.ReadByte()
 	if err != nil {
-		return List{}, dontExpectEOF(err)
+		return List{}, err
 	}
 	if (b >> 4) != 0xF {
 		return List{Size: int32(b >> 4), Type: Type(b & 0xF)}, nil
 	}
 	n, err := r.readUvarint("list size", math.MaxInt32)
 	if err != nil {
-		return List{}, err
+		return List{}, dontExpectEOF(err)
 	}
 	return List{Size: int32(n), Type: Type(b & 0xF)}, nil
 }

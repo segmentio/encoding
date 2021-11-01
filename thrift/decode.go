@@ -270,7 +270,7 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		for i := 0; i < int(l.Size); i++ {
 			if err := dec(r, v.Index(i), flags); err != nil {
-				return with(err, &decodeErrorList{list: l, index: i})
+				return with(dontExpectEOF(err), &decodeErrorList{list: l, index: i})
 			}
 		}
 
@@ -325,10 +325,10 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		for i := 0; i < int(m.Size); i++ {
 			if err := decodeKey(r, tmpKey, flags); err != nil {
-				return with(err, &decodeErrorMap{_map: m, index: i})
+				return with(dontExpectEOF(err), &decodeErrorMap{_map: m, index: i})
 			}
 			if err := decodeElem(r, tmpElem, flags); err != nil {
-				return with(err, &decodeErrorMap{_map: m, index: i})
+				return with(dontExpectEOF(err), &decodeErrorMap{_map: m, index: i})
 			}
 			v.SetMapIndex(tmpKey, tmpElem)
 			tmpKey.Set(keyZero)
@@ -371,7 +371,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		for i := 0; i < int(s.Size); i++ {
 			if err := dec(r, tmp, flags); err != nil {
-				return with(err, &decodeErrorSet{set: s, index: i})
+				return with(dontExpectEOF(err), &decodeErrorSet{set: s, index: i})
 			}
 			v.SetMapIndex(tmp, elemZero)
 			tmp.Set(keyZero)
@@ -546,7 +546,7 @@ func readBinary(r Reader, f func(io.Reader) error) error {
 	if err != nil {
 		return err
 	}
-	return f(io.LimitReader(r.Reader(), int64(n)))
+	return dontExpectEOF(f(io.LimitReader(r.Reader(), int64(n))))
 }
 
 func readList(r Reader, f func(Reader, Type) error) error {
@@ -557,7 +557,7 @@ func readList(r Reader, f func(Reader, Type) error) error {
 
 	for i := 0; i < int(l.Size); i++ {
 		if err := f(r, l.Type); err != nil {
-			return with(err, &decodeErrorList{list: l, index: i})
+			return with(dontExpectEOF(err), &decodeErrorList{list: l, index: i})
 		}
 	}
 
@@ -572,7 +572,7 @@ func readSet(r Reader, f func(Reader, Type) error) error {
 
 	for i := 0; i < int(s.Size); i++ {
 		if err := f(r, s.Type); err != nil {
-			return with(err, &decodeErrorSet{set: s, index: i})
+			return with(dontExpectEOF(err), &decodeErrorSet{set: s, index: i})
 		}
 	}
 
@@ -587,7 +587,7 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 
 	for i := 0; i < int(m.Size); i++ {
 		if err := f(r, m.Key, m.Value); err != nil {
-			return with(err, &decodeErrorMap{_map: m, index: i})
+			return with(dontExpectEOF(err), &decodeErrorMap{_map: m, index: i})
 		}
 	}
 
@@ -596,10 +596,14 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 
 func readStruct(r Reader, f func(Reader, Field) error) error {
 	lastFieldID := int16(0)
+	numFields := 0
 
 	for {
 		x, err := r.ReadField()
 		if err != nil {
+			if numFields > 0 {
+				err = dontExpectEOF(err)
+			}
 			return err
 		}
 
@@ -613,10 +617,11 @@ func readStruct(r Reader, f func(Reader, Field) error) error {
 		}
 
 		if err := f(r, x); err != nil {
-			return with(err, &decodeErrorField{field: x})
+			return with(dontExpectEOF(err), &decodeErrorField{field: x})
 		}
 
 		lastFieldID = x.ID
+		numFields++
 	}
 }
 
@@ -656,13 +661,16 @@ func skipBinary(r Reader) error {
 	if err != nil {
 		return err
 	}
+	if n == 0 {
+		return nil
+	}
 	switch x := r.Reader().(type) {
 	case *bufio.Reader:
 		_, err = x.Discard(int(n))
 	default:
 		_, err = io.CopyN(ioutil.Discard, x, int64(n))
 	}
-	return err
+	return dontExpectEOF(err)
 }
 
 func skipList(r Reader) error {
@@ -676,10 +684,10 @@ func skipSet(r Reader) error {
 func skipMap(r Reader) error {
 	return readMap(r, func(r Reader, k, v Type) error {
 		if err := skip(r, k); err != nil {
-			return err
+			return dontExpectEOF(err)
 		}
 		if err := skip(r, v); err != nil {
-			return err
+			return dontExpectEOF(err)
 		}
 		return nil
 	})
