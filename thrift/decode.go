@@ -450,7 +450,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 	for i, required := range dec.required {
 		if mask := required & seen[i]; mask != required {
 			index := bits.TrailingZeros64(mask)
-			field := &dec.fields[i/64+index]
+			field := &dec.fields[i+index]
 			return &MissingField{Field: Field{ID: field.id, Type: field.typ}}
 		}
 	}
