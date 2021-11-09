@@ -271,7 +271,7 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		for i := 0; i < int(l.Size); i++ {
 			if err := dec(r, v.Index(i), flags); err != nil {
-				return with(dontExpectEOF(err), &decodeErrorList{list: l, index: i})
+				return with(dontExpectEOF(err), &decodeErrorList{cause: l, index: i})
 			}
 		}
 
@@ -326,10 +326,10 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		for i := 0; i < int(m.Size); i++ {
 			if err := decodeKey(r, tmpKey, flags); err != nil {
-				return with(dontExpectEOF(err), &decodeErrorMap{_map: m, index: i})
+				return with(dontExpectEOF(err), &decodeErrorMap{cause: m, index: i})
 			}
 			if err := decodeElem(r, tmpElem, flags); err != nil {
-				return with(dontExpectEOF(err), &decodeErrorMap{_map: m, index: i})
+				return with(dontExpectEOF(err), &decodeErrorMap{cause: m, index: i})
 			}
 			v.SetMapIndex(tmpKey, tmpElem)
 			tmpKey.Set(keyZero)
@@ -372,7 +372,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		for i := 0; i < int(s.Size); i++ {
 			if err := dec(r, tmp, flags); err != nil {
-				return with(dontExpectEOF(err), &decodeErrorSet{set: s, index: i})
+				return with(dontExpectEOF(err), &decodeErrorSet{cause: s, index: i})
 			}
 			v.SetMapIndex(tmp, elemZero)
 			tmp.Set(keyZero)
@@ -562,7 +562,7 @@ func readList(r Reader, f func(Reader, Type) error) error {
 
 	for i := 0; i < int(l.Size); i++ {
 		if err := f(r, l.Type); err != nil {
-			return with(dontExpectEOF(err), &decodeErrorList{list: l, index: i})
+			return with(dontExpectEOF(err), &decodeErrorList{cause: l, index: i})
 		}
 	}
 
@@ -577,7 +577,7 @@ func readSet(r Reader, f func(Reader, Type) error) error {
 
 	for i := 0; i < int(s.Size); i++ {
 		if err := f(r, s.Type); err != nil {
-			return with(dontExpectEOF(err), &decodeErrorSet{set: s, index: i})
+			return with(dontExpectEOF(err), &decodeErrorSet{cause: s, index: i})
 		}
 	}
 
@@ -592,7 +592,7 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 
 	for i := 0; i < int(m.Size); i++ {
 		if err := f(r, m.Key, m.Value); err != nil {
-			return with(dontExpectEOF(err), &decodeErrorMap{_map: m, index: i})
+			return with(dontExpectEOF(err), &decodeErrorMap{cause: m, index: i})
 		}
 	}
 
@@ -622,7 +622,7 @@ func readStruct(r Reader, f func(Reader, Field) error) error {
 		}
 
 		if err := f(r, x); err != nil {
-			return with(dontExpectEOF(err), &decodeErrorField{field: x})
+			return with(dontExpectEOF(err), &decodeErrorField{cause: x})
 		}
 
 		lastFieldID = x.ID

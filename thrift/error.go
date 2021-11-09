@@ -65,38 +65,38 @@ func with(base, elem error) error {
 }
 
 type decodeErrorField struct {
-	field Field
+	cause Field
 }
 
 func (d *decodeErrorField) Error() string {
-	return d.field.String()
+	return d.cause.String()
 }
 
 type decodeErrorList struct {
-	list  List
+	cause List
 	index int
 }
 
 func (d *decodeErrorList) Error() string {
-	return fmt.Sprintf("%d/%d:%s", d.index, d.list.Size, d.list)
+	return fmt.Sprintf("%d/%d:%s", d.index, d.cause.Size, d.cause)
 }
 
 type decodeErrorSet struct {
-	set   Set
+	cause Set
 	index int
 }
 
 func (d *decodeErrorSet) Error() string {
-	return fmt.Sprintf("%d/%d:%s", d.index, d.set.Size, d.set)
+	return fmt.Sprintf("%d/%d:%s", d.index, d.cause.Size, d.cause)
 }
 
 type decodeErrorMap struct {
-	_map  Map
+	cause Map
 	index int
 }
 
 func (d *decodeErrorMap) Error() string {
-	return fmt.Sprintf("%d/%d:%s", d.index, d._map.Size, d._map)
+	return fmt.Sprintf("%d/%d:%s", d.index, d.cause.Size, d.cause)
 }
 
 func dontExpectEOF(err error) error {
