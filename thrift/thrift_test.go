@@ -73,58 +73,6 @@ var marshalTestValues = [...]struct {
 	},
 
 	{
-		scenario: "uint",
-		values: []interface{}{
-			uint(0),
-			uint(1),
-		},
-	},
-
-	{
-		scenario: "uint8",
-		values: []interface{}{
-			uint8(0),
-			uint8(1),
-			uint8(math.MaxUint8),
-		},
-	},
-
-	{
-		scenario: "uint16",
-		values: []interface{}{
-			uint16(0),
-			uint16(1),
-			uint16(math.MaxUint16),
-		},
-	},
-
-	{
-		scenario: "uint32",
-		values: []interface{}{
-			uint32(0),
-			uint32(1),
-			uint32(math.MaxUint32),
-		},
-	},
-
-	{
-		scenario: "uint64",
-		values: []interface{}{
-			uint64(0),
-			uint64(1),
-			uint64(math.MaxUint64),
-		},
-	},
-
-	{
-		scenario: "uintptr",
-		values: []interface{}{
-			uintptr(0),
-			uintptr(1),
-		},
-	},
-
-	{
 		scenario: "string",
 		values: []interface{}{
 			"",

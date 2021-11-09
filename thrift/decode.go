@@ -108,14 +108,6 @@ func decodeFuncOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		f = decodeInt32
 	case reflect.Int64, reflect.Int:
 		f = decodeInt64
-	case reflect.Uint8:
-		f = decodeUint8
-	case reflect.Uint16:
-		f = decodeUint16
-	case reflect.Uint32:
-		f = decodeUint32
-	case reflect.Uint64, reflect.Uint, reflect.Uintptr:
-		f = decodeUint64
 	case reflect.Float32, reflect.Float64:
 		f = decodeFloat64
 	case reflect.String:
@@ -181,42 +173,6 @@ func decodeInt64(r Reader, v reflect.Value, _ flags) error {
 		return err
 	}
 	v.SetInt(int64(i))
-	return nil
-}
-
-func decodeUint8(r Reader, v reflect.Value, _ flags) error {
-	u, err := r.ReadInt8()
-	if err != nil {
-		return err
-	}
-	v.SetUint(uint64(u))
-	return nil
-}
-
-func decodeUint16(r Reader, v reflect.Value, _ flags) error {
-	u, err := r.ReadInt16()
-	if err != nil {
-		return err
-	}
-	v.SetUint(uint64(u))
-	return nil
-}
-
-func decodeUint32(r Reader, v reflect.Value, _ flags) error {
-	u, err := r.ReadInt32()
-	if err != nil {
-		return err
-	}
-	v.SetUint(uint64(u))
-	return nil
-}
-
-func decodeUint64(r Reader, v reflect.Value, _ flags) error {
-	u, err := r.ReadInt64()
-	if err != nil {
-		return err
-	}
-	v.SetUint(uint64(u))
 	return nil
 }
 
@@ -528,8 +484,6 @@ func decodeFuncStructFieldOf(f structField, seen decodeFuncCache) decodeFunc {
 		switch f.typ.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return decodeInt32
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			return decodeUint32
 		}
 	}
 	return decodeFuncOf(f.typ, seen)

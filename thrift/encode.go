@@ -80,14 +80,6 @@ func encodeFuncOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 		f = encodeInt32
 	case reflect.Int64, reflect.Int:
 		f = encodeInt64
-	case reflect.Uint8:
-		f = encodeUint8
-	case reflect.Uint16:
-		f = encodeUint16
-	case reflect.Uint32:
-		f = encodeUint32
-	case reflect.Uint64, reflect.Uint, reflect.Uintptr:
-		f = encodeUint64
 	case reflect.Float32, reflect.Float64:
 		f = encodeFloat64
 	case reflect.String:
@@ -129,22 +121,6 @@ func encodeInt32(w Writer, v reflect.Value, _ flags) error {
 
 func encodeInt64(w Writer, v reflect.Value, _ flags) error {
 	return w.WriteInt64(v.Int())
-}
-
-func encodeUint8(w Writer, v reflect.Value, _ flags) error {
-	return w.WriteInt8(int8(v.Uint()))
-}
-
-func encodeUint16(w Writer, v reflect.Value, _ flags) error {
-	return w.WriteInt16(int16(v.Uint()))
-}
-
-func encodeUint32(w Writer, v reflect.Value, _ flags) error {
-	return w.WriteInt32(int32(v.Uint()))
-}
-
-func encodeUint64(w Writer, v reflect.Value, _ flags) error {
-	return w.WriteInt64(int64(v.Uint()))
 }
 
 func encodeFloat64(w Writer, v reflect.Value, _ flags) error {
@@ -387,8 +363,6 @@ func encodeFuncStructFieldOf(f structField, seen encodeFuncCache) encodeFunc {
 		switch f.typ.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return encodeInt32
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			return encodeUint32
 		}
 	}
 	return encodeFuncOf(f.typ, seen)
