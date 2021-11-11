@@ -39,6 +39,6 @@ func CopySlice(elemType unsafe.Pointer, dst, src Slice) int {
 //go:linkname newarray runtime.newarray
 func newarray(t unsafe.Pointer, n int) unsafe.Pointer
 
-//go:linkname typedslicecopy runtime.typedslicecopy
+//go:linkname typedslicecopy reflect.typedslicecopy
 //go:noescape
 func typedslicecopy(t unsafe.Pointer, dst, src Slice) int
