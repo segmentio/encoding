@@ -1,8 +1,6 @@
 package proto
 
 import (
-	"fmt"
-	"math"
 	"unsafe"
 )
 
@@ -33,10 +31,6 @@ func encodeInt32(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 
 func decodeInt32(b []byte, p unsafe.Pointer, flags flags) (int, error) {
 	u, n, err := decodeVarint(b)
-	v := flags.int64(u)
-	if v < math.MinInt32 || v > math.MaxInt32 {
-		return n, fmt.Errorf("integer overflow decoding %v into int32", v)
-	}
-	*(*int32)(p) = int32(v)
+	*(*int32)(p) = int32(flags.int64(u))
 	return n, err
 }
