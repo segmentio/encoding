@@ -2,6 +2,7 @@ package json
 
 import (
 	"encoding"
+	"fmt"
 	"math"
 	"reflect"
 	"sort"
@@ -815,6 +816,18 @@ func (e encoder) encodeEmbeddedStructPointer(b []byte, p unsafe.Pointer, t refle
 
 func (e encoder) encodePointer(b []byte, p unsafe.Pointer, t reflect.Type, encode encodeFunc) ([]byte, error) {
 	if p = *(*unsafe.Pointer)(p); p != nil {
+		if e.ptrDepth++; e.ptrDepth >= startDetectingCyclesAfter {
+			if _, seen := e.ptrSeen[p]; seen {
+				// TODO: reconstruct the reflect.Value from p + t so we can set
+				// the erorr's Value field?
+				return b, &UnsupportedValueError{Str: fmt.Sprintf("encountered a cycle via %s", t)}
+			}
+			if e.ptrSeen == nil {
+				e.ptrSeen = make(map[unsafe.Pointer]struct{})
+			}
+			e.ptrSeen[p] = struct{}{}
+			defer delete(e.ptrSeen, p)
+		}
 		return encode(e, b, p)
 	}
 	return e.encodeNull(b, nil)

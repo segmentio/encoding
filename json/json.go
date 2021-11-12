@@ -55,7 +55,7 @@ type UnsupportedValueError = json.UnsupportedValueError
 
 // AppendFlags is a type used to represent configuration options that can be
 // applied when formatting json output.
-type AppendFlags uint
+type AppendFlags uint32
 
 const (
 	// EscapeHTML is a formatting flag used to to escape HTML in json strings.
@@ -74,7 +74,7 @@ const (
 
 // ParseFlags is a type used to represent configuration options that can be
 // applied when parsing json input.
-type ParseFlags uint
+type ParseFlags uint32
 
 func (flags ParseFlags) has(f ParseFlags) bool {
 	return (flags & f) != 0

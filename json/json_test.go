@@ -1606,8 +1606,10 @@ func TestGithubIssue107(t *testing.T) {
 	b.Foo = f
 
 	_, err := Marshal(f) // must not crash
-	if err == nil {
-		t.Error("marshaling a cycling data structure was expected to return an error")
+	switch err.(type) {
+	case *UnsupportedValueError:
+	default:
+		t.Errorf("marshaling a cycling data structure was expected to return an unsupported value error but got %T", err)
 	}
 }
 
