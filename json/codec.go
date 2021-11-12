@@ -16,13 +16,32 @@ import (
 	"github.com/segmentio/asm/keyset"
 )
 
+const (
+	// 1000 is the value used by the standard encoding/json package.
+	//
+	// https://cs.opensource.google/go/go/+/refs/tags/go1.17.3:src/encoding/json/encode.go;drc=refs%2Ftags%2Fgo1.17.3;l=300
+	startDetectingCyclesAfter = 1000
+)
+
 type codec struct {
 	encode encodeFunc
 	decode decodeFunc
 }
 
-type encoder struct{ flags AppendFlags }
-type decoder struct{ flags ParseFlags }
+type encoder struct {
+	flags AppendFlags
+	// ptrDepth tracks the depth of pointer cycles, when it reaches the value
+	// of startDetectingCyclesAfter, the ptrSeen map is allocated and the
+	// encoder starts tracking pointers it has seen as an attempt to detect
+	// whether it has entered a pointer cycle and needs to error before the
+	// goroutine runs out of stack space.
+	ptrDepth uint32
+	ptrSeen  map[unsafe.Pointer]struct{}
+}
+
+type decoder struct {
+	flags ParseFlags
+}
 
 type encodeFunc func(encoder, []byte, unsafe.Pointer) ([]byte, error)
 type decodeFunc func(decoder, []byte, unsafe.Pointer) ([]byte, error)
