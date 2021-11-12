@@ -1591,6 +1591,26 @@ func TestGithubIssue44(t *testing.T) {
 	}
 }
 
+type issue107Foo struct {
+	Bar *issue107Bar
+}
+
+type issue107Bar struct {
+	Foo *issue107Foo
+}
+
+func TestGithubIssue107(t *testing.T) {
+	f := &issue107Foo{}
+	b := &issue107Bar{}
+	f.Bar = b
+	b.Foo = f
+
+	_, err := Marshal(f) // must not crash
+	if err == nil {
+		t.Error("marshaling a cycling data structure was expected to return an error")
+	}
+}
+
 type rawJsonString string
 
 func (r *rawJsonString) UnmarshalJSON(b []byte) error {
