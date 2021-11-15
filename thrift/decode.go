@@ -393,6 +393,12 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 		lastField = x
 
 		if coalesceBoolFields && (f.Type == TRUE || f.Type == FALSE) {
+			for x.Kind() == reflect.Ptr {
+				if x.IsNil() {
+					x.Set(reflect.New(x.Type().Elem()))
+				}
+				x = x.Elem()
+			}
 			x.SetBool(f.Type == TRUE)
 			return nil
 		}

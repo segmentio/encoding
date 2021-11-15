@@ -243,6 +243,21 @@ type structEncoder struct {
 	union  bool
 }
 
+func dereference(v reflect.Value) reflect.Value {
+	for v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return v
+		}
+		v = v.Elem()
+	}
+	return v
+}
+
+func isTrue(v reflect.Value) bool {
+	v = dereference(v)
+	return v.IsValid() && v.Kind() == reflect.Bool && v.Bool()
+}
+
 func (enc *structEncoder) encode(w Writer, v reflect.Value, flags flags) error {
 	useDeltaEncoding := flags.have(useDeltaEncoding)
 	coalesceBoolFields := flags.have(coalesceBoolFields)
@@ -280,7 +295,7 @@ encodeFields:
 		}
 
 		skipValue := coalesceBoolFields && field.Type == BOOL
-		if skipValue && x.Bool() == true {
+		if skipValue && isTrue(x) == true {
 			field.Type = TRUE
 		}
 
@@ -376,6 +391,8 @@ func encodeFuncPtrOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 	return func(w Writer, v reflect.Value, f flags) error {
 		if v.IsNil() {
 			v = zero
+		} else {
+			v = v.Elem()
 		}
 		return enc(w, v, f)
 	}
