@@ -60,9 +60,17 @@ func forEachStructField(t reflect.Type, index []int, do func(structField)) {
 		fieldIndex := append(index, i)
 		fieldIndex = fieldIndex[:len(fieldIndex):len(fieldIndex)]
 
-		if f.Anonymous && f.Type.Kind() == reflect.Struct {
-			forEachStructField(f.Type, fieldIndex, do)
-			continue
+		if f.Anonymous {
+			fieldType := f.Type
+
+			for fieldType.Kind() == reflect.Ptr {
+				fieldType = fieldType.Elem()
+			}
+
+			if fieldType.Kind() == reflect.Struct {
+				forEachStructField(fieldType, fieldIndex, do)
+				continue
+			}
 		}
 
 		tag := f.Tag.Get("thrift")

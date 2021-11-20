@@ -148,7 +148,7 @@ var marshalTestValues = [...]struct {
 			RecursiveStruct{},
 			RecursiveStruct{Value: "hello"},
 			RecursiveStruct{Value: "hello", Next: &RecursiveStruct{}},
-			RecursiveStruct{Value: "hello", Next: &RecursiveStruct{Value: "world"}},
+			RecursiveStruct{Value: "hello", Next: &RecursiveStruct{Value: "world", Test: newBool(true)}},
 		},
 	},
 
@@ -158,6 +158,26 @@ var marshalTestValues = [...]struct {
 			StructWithEnum{},
 			StructWithEnum{Enum: 1},
 			StructWithEnum{Enum: 2},
+		},
+	},
+
+	{
+		scenario: "StructWithPointToPointerToBool",
+		values: []interface{}{
+			StructWithPointerToPointerToBool{
+				Test: newBoolPtr(true),
+			},
+		},
+	},
+
+	{
+		scenario: "StructWithEmbeddedStrutPointerWithPointerToPointer",
+		values: []interface{}{
+			StructWithEmbeddedStrutPointerWithPointerToPointer{
+				StructWithPointerToPointerToBool: &StructWithPointerToPointerToBool{
+					Test: newBoolPtr(true),
+				},
+			},
 		},
 	},
 
@@ -180,10 +200,19 @@ type Point2D struct {
 type RecursiveStruct struct {
 	Value string           `thrift:"1"`
 	Next  *RecursiveStruct `thrift:"2"`
+	Test  *bool            `thrift:"3"`
 }
 
 type StructWithEnum struct {
 	Enum int8 `thrift:"1,enum"`
+}
+
+type StructWithPointerToPointerToBool struct {
+	Test **bool `thrift:"1"`
+}
+
+type StructWithEmbeddedStrutPointerWithPointerToPointer struct {
+	*StructWithPointerToPointerToBool
 }
 
 type Union struct {
@@ -196,6 +225,11 @@ type Union struct {
 func newBool(b bool) *bool       { return &b }
 func newInt(i int) *int          { return &i }
 func newString(s string) *string { return &s }
+
+func newBoolPtr(b bool) **bool {
+	p := newBool(b)
+	return &p
+}
 
 func TestMarshalUnmarshal(t *testing.T) {
 	for _, p := range protocols {
