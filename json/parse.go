@@ -417,25 +417,33 @@ func (d decoder) parseString(b []byte) ([]byte, []byte, Kind, error) {
 
 	var n int
 	if len(b) >= 9 {
-		// This is an optimization for short strings. We read 8 bytes,
+		// This is an optimization for short strings. We read 8/16 bytes,
 		// and XOR each with 0x22 (") so that these bytes (and only
 		// these bytes) are now zero. We use the hasless(u,1) trick
 		// from https://graphics.stanford.edu/~seander/bithacks.html#ZeroInWord
 		// to determine whether any bytes are zero. Finally, we CTZ
 		// to find the index of that byte.
-		u := binary.LittleEndian.Uint64(b[1:])
-		u ^= 0x2222222222222222
-		mask := (u - 0x0101010101010101) & ^u & 0x8080808080808080
-		if mask != 0 {
+		const mask1 = 0x2222222222222222
+		const mask2 = 0x0101010101010101
+		const mask3 = 0x8080808080808080
+		u := binary.LittleEndian.Uint64(b[1:]) ^ mask1
+		if mask := (u - mask2) & ^u & mask3; mask != 0 {
 			n = bits.TrailingZeros64(mask)/8 + 2
 			goto found
 		}
+		if len(b) >= 17 {
+			u = binary.LittleEndian.Uint64(b[9:]) ^ mask1
+			if mask := (u - mask2) & ^u & mask3; mask != 0 {
+				n = bits.TrailingZeros64(mask)/8 + 10
+				goto found
+			}
+		}
 	}
 	n = bytes.IndexByte(b[1:], '"') + 2
-found:
 	if n <= 1 {
 		return nil, b[len(b):], Undefined, syntaxError(b, "missing '\"' at the end of a string value")
 	}
+found:
 	if (d.flags.has(noBackslash) || bytes.IndexByte(b[1:n], '\\') < 0) &&
 		(d.flags.has(validAsciiPrint) || ascii.ValidPrint(b[1:n])) {
 		return b[:n], b[n:], Unescaped, nil
