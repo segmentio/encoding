@@ -131,33 +131,22 @@ func (d decoder) parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 
 		count++
 	} else {
-		const max = math.MaxInt64
-		const lim = max / 10
-
 		if len(b) > 1 && b[0] == '0' && '0' <= b[1] && b[1] <= '9' {
 			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 		}
 
-		for _, c := range b {
-			if !(c >= '0' && c <= '9') {
-				if count == 0 {
-					b, err := d.inputError(b, t)
-					return 0, b, err
-				}
-				break
-			}
-			x := int64(c - '0')
-
-			if value > lim {
+		for ; count < len(b) && b[count] >= '0' && b[count] <= '9'; count++ {
+			x := int64(b[count] - '0')
+			next := value*10 + x
+			if next < value {
 				return 0, b, unmarshalOverflow(b, t)
 			}
+			value = next
+		}
 
-			if value *= 10; value > (max - x) {
-				return 0, b, unmarshalOverflow(b, t)
-			}
-
-			value += x
-			count++
+		if count == 0 {
+			b, err := d.inputError(b, t)
+			return 0, b, err
 		}
 	}
 
@@ -177,9 +166,6 @@ func (d decoder) parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 
 // parseUint is like parseInt but for unsigned integers.
 func (d decoder) parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
-	const max = math.MaxUint64
-	const lim = max / 10
-
 	var value uint64
 	var count int
 
@@ -191,26 +177,18 @@ func (d decoder) parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
 		return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 	}
 
-	for _, c := range b {
-		if !(c >= '0' && c <= '9') {
-			if count == 0 {
-				b, err := d.inputError(b, t)
-				return 0, b, err
-			}
-			break
-		}
-		x := uint64(c - '0')
-
-		if value > lim {
+	for ; count < len(b) && b[count] >= '0' && b[count] <= '9'; count++ {
+		x := uint64(b[count] - '0')
+		next := value*10 + x
+		if next < value {
 			return 0, b, unmarshalOverflow(b, t)
 		}
+		value = next
+	}
 
-		if value *= 10; value > (max - x) {
-			return 0, b, unmarshalOverflow(b, t)
-		}
-
-		value += x
-		count++
+	if count == 0 {
+		b, err := d.inputError(b, t)
+		return 0, b, err
 	}
 
 	if count < len(b) {
