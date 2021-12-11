@@ -237,13 +237,13 @@ func (t *Tokenizer) pop(expect scope) error {
 // on.
 func (t *Tokenizer) Kind() Kind { return t.flags.kind() }
 
-// String returns a byte slice containing the value of the json string that the
+// Bool returns a bool containing the value of the json boolean that the
 // tokenizer is currently pointing at.
 //
 // This method must only be called after checking the kind of the token via a
 // call to Kind.
 //
-// If the tokenizer is not positioned on a string, the behavior is undefined.
+// If the tokenizer is not positioned on a boolean, the behavior is undefined.
 func (t *Tokenizer) Bool() bool { return t.flags.kind() == True }
 
 // Int returns a byte slice containing the value of the json number that the
