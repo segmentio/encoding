@@ -16,6 +16,11 @@ import (
 // The function errors if the data in b does not match the type of v.
 //
 // The function panics if v cannot be converted to a thrift representation.
+//
+// As an optimization, the value passed in v may be reused across multiple calls
+// to Unmarshal, allowing the function to reuse objects referenced by pointer
+// fields of struct values. When reusing objects, the application is responsible
+// for resetting the state of v before calling Unmarshal again.
 func Unmarshal(p Protocol, b []byte, v interface{}) error {
 	br := bytes.NewReader(b)
 	pr := p.NewReader(br)
