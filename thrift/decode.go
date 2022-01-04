@@ -347,7 +347,6 @@ type structDecoder struct {
 }
 
 func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
-	v.Set(dec.zero)
 	flags = flags.only(decodeFlags)
 	coalesceBoolFields := flags.have(coalesceBoolFields)
 
