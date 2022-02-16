@@ -1669,6 +1669,44 @@ func TestSetTrustRawMessage(t *testing.T) {
 	}
 }
 
+func TestSetAppendNewline(t *testing.T) {
+	buf := &bytes.Buffer{}
+	enc := NewEncoder(buf)
+
+	m := "value"
+
+	// Default encoding adds an extra newline
+	if err := enc.Encode(m); err != nil {
+		t.Error(err)
+	}
+	b := buf.Bytes()
+	exp := []byte(`"value"`)
+	exp = append(exp, '\n')
+	if bytes.Compare(exp, b) != 0 {
+		t.Error(
+			"unexpected encoding:",
+			"expected", exp,
+			"got", b,
+		)
+	}
+
+	// With SetAppendNewline(false), there shouldn't be a newline in the output
+	buf.Reset()
+	enc.SetAppendNewline(false)
+	if err := enc.Encode(m); err != nil {
+		t.Error(err)
+	}
+	b = buf.Bytes()
+	exp = []byte(`"value"`)
+	if bytes.Compare(exp, b) != 0 {
+		t.Error(
+			"unexpected encoding:",
+			"expected", exp,
+			"got", b,
+		)
+	}
+}
+
 func TestEscapeString(t *testing.T) {
 	b := Escape(`value`)
 	x := []byte(`"value"`)

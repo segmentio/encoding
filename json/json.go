@@ -70,6 +70,11 @@ const (
 	// checking of raw messages. It should only be used if the values are
 	// known to be valid json (e.g., they were created by json.Unmarshal).
 	TrustRawMessage
+
+	// appendNewline is a formatting flag to enable the addition of a newline
+	// in Encode (this matches the behavior of the standard encoding/json
+	// package).
+	appendNewline
 )
 
 // ParseFlags is a type used to represent configuration options that can be
@@ -480,7 +485,9 @@ type Encoder struct {
 }
 
 // NewEncoder is documented at https://golang.org/pkg/encoding/json/#NewEncoder
-func NewEncoder(w io.Writer) *Encoder { return &Encoder{writer: w, flags: EscapeHTML | SortMapKeys} }
+func NewEncoder(w io.Writer) *Encoder {
+	return &Encoder{writer: w, flags: EscapeHTML | SortMapKeys | appendNewline}
+}
 
 // Encode is documented at https://golang.org/pkg/encoding/json/#Encoder.Encode
 func (enc *Encoder) Encode(v interface{}) error {
@@ -498,7 +505,9 @@ func (enc *Encoder) Encode(v interface{}) error {
 		return err
 	}
 
-	buf.data = append(buf.data, '\n')
+	if (enc.flags & appendNewline) != 0 {
+		buf.data = append(buf.data, '\n')
+	}
 	b := buf.data
 
 	if enc.prefix != "" || enc.indent != "" {
@@ -553,6 +562,16 @@ func (enc *Encoder) SetTrustRawMessage(on bool) {
 		enc.flags |= TrustRawMessage
 	} else {
 		enc.flags &= ^TrustRawMessage
+	}
+}
+
+// SetAppendNewline is an extension to the standard encoding/json package which
+// allows the program to toggle the addition of a newline in Encode on or off.
+func (enc *Encoder) SetAppendNewline(on bool) {
+	if on {
+		enc.flags |= appendNewline
+	} else {
+		enc.flags &= ^appendNewline
 	}
 }
 
