@@ -471,18 +471,18 @@ func (dec *Decoder) InputOffset() int64 {
 
 // Encoder is documented at https://golang.org/pkg/encoding/json/#Encoder
 type Encoder struct {
-	writer          io.Writer
-	prefix          string
-	indent          string
-	buffer          *bytes.Buffer
-	err             error
-	flags           AppendFlags
-	addExtraNewline bool
+	writer        io.Writer
+	prefix        string
+	indent        string
+	buffer        *bytes.Buffer
+	err           error
+	flags         AppendFlags
+	appendNewline bool
 }
 
 // NewEncoder is documented at https://golang.org/pkg/encoding/json/#NewEncoder
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{writer: w, flags: EscapeHTML | SortMapKeys, addExtraNewline: true}
+	return &Encoder{writer: w, flags: EscapeHTML | SortMapKeys, appendNewline: true}
 }
 
 // Encode is documented at https://golang.org/pkg/encoding/json/#Encoder.Encode
@@ -501,7 +501,7 @@ func (enc *Encoder) Encode(v interface{}) error {
 		return err
 	}
 
-	if enc.addExtraNewline {
+	if enc.appendNewline {
 		buf.data = append(buf.data, '\n')
 	}
 	b := buf.data
@@ -561,10 +561,10 @@ func (enc *Encoder) SetTrustRawMessage(on bool) {
 	}
 }
 
-// SetAddExtraNewline is an extension to the standard encoding/json package which
+// SetAppendNewline is an extension to the standard encoding/json package which
 // allows the program to toggle the addition of a newline in Encode on or off.
-func (enc *Encoder) SetAddExtraNewline(on bool) {
-	enc.addExtraNewline = on
+func (enc *Encoder) SetAppendNewline(on bool) {
+	enc.appendNewline = on
 }
 
 var encoderBufferPool = sync.Pool{

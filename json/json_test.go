@@ -1669,7 +1669,7 @@ func TestSetTrustRawMessage(t *testing.T) {
 	}
 }
 
-func TestSetAddExtraNewline(t *testing.T) {
+func TestSetAppendNewline(t *testing.T) {
 	buf := &bytes.Buffer{}
 	enc := NewEncoder(buf)
 
@@ -1690,9 +1690,9 @@ func TestSetAddExtraNewline(t *testing.T) {
 		)
 	}
 
-	// With SetAddExtraNewline(false), there shouldn't be a newline in the output
+	// With SetAppendNewline(false), there shouldn't be a newline in the output
 	buf.Reset()
-	enc.SetAddExtraNewline(false)
+	enc.SetAppendNewline(false)
 	if err := enc.Encode(m); err != nil {
 		t.Error(err)
 	}
