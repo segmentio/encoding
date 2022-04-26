@@ -543,11 +543,6 @@ func readList(r Reader, f func(Reader, Type) error) error {
 		return err
 	}
 
-	switch l.Type {
-	case TRUE, FALSE:
-		l.Type = BOOL
-	}
-
 	for i := 0; i < int(l.Size); i++ {
 		if err := f(r, l.Type); err != nil {
 			return with(dontExpectEOF(err), &decodeErrorList{cause: l, index: i})
