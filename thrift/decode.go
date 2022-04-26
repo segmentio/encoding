@@ -324,9 +324,9 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 
 		// See decodeFuncSliceOf for details about why this type conversion
 		// needs to be done.
-		switch l.Type {
+		switch s.Type {
 		case TRUE:
-			l.Type = BOOL
+			s.Type = BOOL
 		}
 
 		v.Set(reflect.MakeMapWithSize(t, int(s.Size)))
