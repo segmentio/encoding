@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/bits"
 	"reflect"
 	"sync/atomic"
 )
@@ -219,6 +218,15 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 			return err
 		}
 
+		// Sometimes the list type is set to TRUE when the list contains only
+		// TRUE values. Thrift does not seem to optimize the encoding by
+		// omitting the boolean values that are known to all be TRUE, we still
+		// need to decode them.
+		switch l.Type {
+		case TRUE:
+			l.Type = BOOL
+		}
+
 		// TODO: implement type conversions?
 		if typ != l.Type {
 			if flags.have(strict) {
@@ -312,6 +320,13 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		s, err := r.ReadSet()
 		if err != nil {
 			return err
+		}
+
+		// See decodeFuncSliceOf for details about why this type conversion
+		// needs to be done.
+		switch l.Type {
+		case TRUE:
+			l.Type = BOOL
 		}
 
 		v.Set(reflect.MakeMapWithSize(t, int(s.Size)))
@@ -415,8 +430,12 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 
 	for i, required := range dec.required {
 		if mask := required & seen[i]; mask != required {
-			index := bits.TrailingZeros64(mask)
-			field := &dec.fields[i+index]
+			i *= 64
+			for (mask & 1) != 0 {
+				mask >>= 1
+				i++
+			}
+			field := &dec.fields[i]
 			return &MissingField{Field: Field{ID: field.id, Type: field.typ}}
 		}
 	}
@@ -522,6 +541,11 @@ func readList(r Reader, f func(Reader, Type) error) error {
 	l, err := r.ReadList()
 	if err != nil {
 		return err
+	}
+
+	switch l.Type {
+	case TRUE, FALSE:
+		l.Type = BOOL
 	}
 
 	for i := 0; i < int(l.Size); i++ {
