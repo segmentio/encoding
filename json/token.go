@@ -302,6 +302,11 @@ func (t *Tokenizer) String() []byte {
 	return s
 }
 
+// Remaining returns the number of bytes left to parse.
+func (t *Tokenizer) Remaining() int {
+	return len(t.json)
+}
+
 // RawValue represents a raw json value, it is intended to carry null, true,
 // false, number, and string values only.
 type RawValue []byte
