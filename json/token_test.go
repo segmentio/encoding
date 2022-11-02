@@ -1,6 +1,7 @@
 package json
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 )
@@ -40,22 +41,30 @@ func value(v string, depth, index int) token {
 	}
 }
 
-func tokenize(b []byte) (tokens []token) {
-	t := NewTokenizer(b)
+func tokenize(t *testing.T, b []byte) (tokens []token) {
+	tok := NewTokenizer(b)
 
-	for t.Next() {
+	for tok.Next() {
+		start, end := tok.Position-len(tok.Value), tok.Position
+		if end > len(b) {
+			t.Fatalf("token position too far [%d:%d], len(b) is %d", start, end, len(b))
+		}
+		if !bytes.Equal(b[start:end], tok.Value) {
+			t.Fatalf("token position is wrong [%d:%d]", start, end)
+		}
+
 		tokens = append(tokens, token{
-			delim: t.Delim,
-			value: t.Value,
-			err:   t.Err,
-			depth: t.Depth,
-			index: t.Index,
-			isKey: t.IsKey,
+			delim: tok.Delim,
+			value: tok.Value,
+			err:   tok.Err,
+			depth: tok.Depth,
+			index: tok.Index,
+			isKey: tok.IsKey,
 		})
 	}
 
-	if t.Err != nil {
-		panic(t.Err)
+	if tok.Err != nil {
+		t.Fatal(tok.Err)
 	}
 
 	return
@@ -174,7 +183,7 @@ func TestTokenizer(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(string(test.input), func(t *testing.T) {
-			tokens := tokenize(test.input)
+			tokens := tokenize(t, test.input)
 
 			if !reflect.DeepEqual(tokens, test.tokens) {
 				t.Error("tokens mismatch")

@@ -31,7 +31,6 @@ import (
 //			...
 //		}
 //	}
-//
 type Tokenizer struct {
 	// When the tokenizer is positioned on a json delimiter this field is not
 	// zero. In this case the possible values are '{', '}', '[', ']', ':', and
@@ -43,6 +42,17 @@ type Tokenizer struct {
 	// continaing the delimiter value. Otherwise, this field holds values like
 	// null, true, false, numbers, or quoted strings.
 	Value RawValue
+
+	// Position is the Tokenizer's current index into the underlying byte slice.
+	// Since the Tokenizer has already been advanced by calling Next, this
+	// position will be the first index of the next token.  The position of
+	// the current Value can be calculated by subtracting len(token.value).
+	// Accordingly, slicing the underlying bytes like:
+	//
+	//   b[token.Position-len(token.Value):token.Position]
+	//
+	// will yield the current Value.
+	Position int
 
 	// When the tokenizer has encountered invalid content this field is not nil.
 	Err error
@@ -92,6 +102,7 @@ func (t *Tokenizer) Reset(b []byte) {
 	// However, it does not compile down to an invocation of duff-copy.
 	t.Delim = 0
 	t.Value = nil
+	t.Position = 0
 	t.Err = nil
 	t.Depth = 0
 	t.Index = 0
@@ -128,12 +139,15 @@ skipLoop:
 
 	if i > 0 {
 		t.json = t.json[i:]
+		t.Position += i
 	}
 
 	if len(t.json) == 0 {
 		t.Reset(nil)
 		return false
 	}
+
+	lenBefore := len(t.json)
 
 	var kind Kind
 	switch t.json[0] {
@@ -164,6 +178,8 @@ skipLoop:
 		t.Delim = 0
 		t.Value, t.json, t.Err = t.json[:1], t.json[1:], syntaxError(t.json, "expected token but found '%c'", t.json[0])
 	}
+
+	t.Position += lenBefore - len(t.json)
 
 	t.Depth = t.depth()
 	t.Index = t.index()
