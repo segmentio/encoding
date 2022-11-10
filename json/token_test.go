@@ -45,7 +45,8 @@ func tokenize(t *testing.T, b []byte) (tokens []token) {
 	tok := NewTokenizer(b)
 
 	for tok.Next() {
-		start, end := tok.Position-len(tok.Value), tok.Position
+		end := len(b) - tok.Remaining()
+		start := end - len(tok.Value)
 		if end > len(b) {
 			t.Fatalf("token position too far [%d:%d], len(b) is %d", start, end, len(b))
 		}
