@@ -19,7 +19,7 @@ test-json:
 	go test -cover -race ./json
 
 test-json-bugs:
-	go test -cover -race ./json/bugs/...
+	go test -race ./json/bugs/...
 
 test-json-1.17:
 	go test -cover -race -tags go1.17 ./json
