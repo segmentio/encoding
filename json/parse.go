@@ -709,7 +709,6 @@ func (d decoder) parseValue(b []byte) ([]byte, []byte, Kind, error) {
 	case '{':
 		v, b, k, err = d.parseObject(b)
 	case '[':
-		k = Array
 		v, b, k, err = d.parseArray(b)
 	case '"':
 		v, b, k, err = d.parseString(b)

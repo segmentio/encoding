@@ -858,6 +858,7 @@ func (e encoder) encodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 		s = v
 	} else {
 		var err error
+		v = skipSpaces(v) // don't assume that a RawMessage starts with a token.
 		d := decoder{}
 		s, _, _, err = d.parseValue(v)
 		if err != nil {
