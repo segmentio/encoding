@@ -13,8 +13,7 @@ func TestAppendInt(t *testing.T) {
 		ints = append(ints, int64(u-1), int64(u), int64(u+1), -int64(u))
 	}
 
-	var std [20]byte
-	var our [20]byte
+	var std, our [20]byte
 
 	for _, i := range ints {
 		expected := strconv.AppendInt(std[:], i, 10)

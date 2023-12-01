@@ -738,10 +738,12 @@ func (d decoder) decodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 		m = make(map[string]interface{}, 64)
 	}
 
-	var err error
-	var key string
-	var val interface{}
-	var input = b
+	var (
+		input = b
+		key   string
+		val   any
+		err   error
+	)
 
 	b = b[1:]
 	for {
@@ -1276,6 +1278,7 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 		if err == nil {
 			*(*interface{})(p) = val
 		}
+
 		return b, err
 	}
 
@@ -1286,19 +1289,15 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	switch k.Class() {
 	case Object:
-		m := make(map[string]interface{})
-		v, err = d.decodeMapStringInterface(v, unsafe.Pointer(&m))
-		val = m
+		v, err = decodeInto[map[string]any](&val, v, d, decoder.decodeMapStringInterface)
 
 	case Array:
-		a := make([]interface{}, 0, 10)
-		v, err = d.decodeSlice(v, unsafe.Pointer(&a), unsafe.Sizeof(a[0]), sliceInterfaceType, decoder.decodeInterface)
-		val = a
+		size := alignedSize(interfaceType)
+		fn := constructSliceDecodeFunc(size, sliceInterfaceType, decoder.decodeInterface)
+		v, err = decodeInto[[]any](&val, v, d, fn)
 
 	case String:
-		s := ""
-		v, err = d.decodeString(v, unsafe.Pointer(&s))
-		val = s
+		v, err = decodeInto[string](&val, v, d, decoder.decodeString)
 
 	case Null:
 		v, val = nil, nil
@@ -1459,4 +1458,14 @@ func (d decoder) inputError(b []byte, t reflect.Type) ([]byte, error) {
 		return r, err
 	}
 	return skipSpaces(r), unmarshalTypeError(b, t)
+}
+
+func decodeInto[T any](dest *any, b []byte, d decoder, fn decodeFunc) ([]byte, error) {
+	var v T
+	rem, err := fn(d, b, unsafe.Pointer(&v))
+	if err == nil {
+		*dest = v
+	}
+
+	return rem, err
 }
