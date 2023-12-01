@@ -50,19 +50,21 @@ type decodeFunc func(decoder, []byte, unsafe.Pointer) ([]byte, error)
 type emptyFunc func(unsafe.Pointer) bool
 type sortFunc func([]reflect.Value)
 
-var (
-	// Eventually consistent cache mapping go types to dynamically generated
-	// codecs.
-	//
-	// Note: using a uintptr as key instead of reflect.Type shaved ~15ns off of
-	// the ~30ns Marhsal/Unmarshal functions which were dominated by the map
-	// lookup time for simple types like bool, int, etc..
-	cache unsafe.Pointer // map[unsafe.Pointer]codec
-)
+// Eventually consistent cache mapping go types to dynamically generated
+// codecs.
+//
+// Note: using a uintptr as key instead of reflect.Type shaved ~15ns off of
+// the ~30ns Marhsal/Unmarshal functions which were dominated by the map
+// lookup time for simple types like bool, int, etc..
+var cache atomic.Pointer[map[unsafe.Pointer]codec]
 
 func cacheLoad() map[unsafe.Pointer]codec {
-	p := atomic.LoadPointer(&cache)
-	return *(*map[unsafe.Pointer]codec)(unsafe.Pointer(&p))
+	p := cache.Load()
+	if p == nil {
+		return nil
+	}
+
+	return *p
 }
 
 func cacheStore(typ reflect.Type, cod codec, oldCodecs map[unsafe.Pointer]codec) {
@@ -73,7 +75,7 @@ func cacheStore(typ reflect.Type, cod codec, oldCodecs map[unsafe.Pointer]codec)
 		newCodecs[t] = c
 	}
 
-	atomic.StorePointer(&cache, *(*unsafe.Pointer)(unsafe.Pointer(&newCodecs)))
+	cache.Store(&newCodecs)
 }
 
 func typeid(t reflect.Type) unsafe.Pointer {
