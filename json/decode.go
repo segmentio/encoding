@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/big"
 	"reflect"
 	"strconv"
 	"time"
@@ -15,6 +16,10 @@ import (
 	"github.com/segmentio/asm/keyset"
 	"github.com/segmentio/encoding/iso8601"
 )
+
+func (d decoder) anyFlagsSet(flags ParseFlags) bool {
+	return d.flags&flags != 0
+}
 
 func (d decoder) decodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
 	if hasNullPrefix(b) {
@@ -1306,15 +1311,7 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 		v, val = nil, k == True
 
 	case Num:
-		if (d.flags & UseNumber) != 0 {
-			n := Number("")
-			v, err = d.decodeNumber(v, unsafe.Pointer(&n))
-			val = n
-		} else {
-			f := 0.0
-			v, err = d.decodeFloat64(v, unsafe.Pointer(&f))
-			val = f
-		}
+		v, err = d.decodeDynamicNumber(v, unsafe.Pointer(&val))
 
 	default:
 		return b, syntaxError(v, "expected token but found '%c'", v[0])
@@ -1330,6 +1327,68 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	*(*interface{})(p) = val
 	return b, nil
+}
+
+func (d decoder) decodeDynamicNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
+	kind := Float
+	var err error
+
+	// Only pre-parse for numeric kind if a conditional decode
+	// has been requested.
+	if d.anyFlagsSet(UseBigInt | UseInt64 | UseUint64) {
+		_, _, kind, err = d.parseNumber(b)
+		if err != nil {
+			return b, err
+		}
+	}
+
+	var rem []byte
+	anyPtr := (*any)(p)
+
+	// Mutually exclusive integer handling cases.
+	switch {
+	// If requested, attempt decode of positive integers as uint64.
+	case kind == Uint && d.anyFlagsSet(UseUint64):
+		rem, err = decodeInto[uint64](anyPtr, b, d, decoder.decodeUint64)
+		if err == nil {
+			return rem, err
+		}
+
+	// If uint64 decode was not requested but int64 decode was requested,
+	// then attempt decode of positive integers as int64.
+	case kind == Uint && d.anyFlagsSet(UseInt64):
+		fallthrough
+
+	// If int64 decode was requested,
+	// attempt decode of negative integers as int64.
+	case kind == Int && d.anyFlagsSet(UseInt64):
+		rem, err = decodeInto[int64](anyPtr, b, d, decoder.decodeInt64)
+		if err == nil {
+			return rem, err
+		}
+	}
+
+	// Fallback numeric handling cases:
+	// these cannot be combined into the above switch,
+	// since these cases also handle overflow
+	// from the above cases, if decode was already attempted.
+	switch {
+	// If *big.Int decode was requested, handle that case for any integer.
+	case kind == Uint && d.anyFlagsSet(UseBigInt):
+		fallthrough
+	case kind == Int && d.anyFlagsSet(UseBigInt):
+		rem, err = decodeInto[*big.Int](anyPtr, b, d, bigIntDecoder)
+
+	// If json.Number decode was requested, handle that for any number.
+	case d.anyFlagsSet(UseNumber):
+		rem, err = decodeInto[Number](anyPtr, b, d, decoder.decodeNumber)
+
+	// Fall back to float64 decode when no special decoding has been requested.
+	default:
+		rem, err = decodeInto[float64](anyPtr, b, d, decoder.decodeFloat64)
+	}
+
+	return rem, err
 }
 
 func (d decoder) decodeMaybeEmptyInterface(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {

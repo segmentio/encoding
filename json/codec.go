@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"reflect"
 	"sort"
 	"strconv"
@@ -838,6 +839,7 @@ func constructInlineValueEncodeFunc(encode encodeFunc) encodeFunc {
 // compiles down to zero instructions.
 // USE CAREFULLY!
 // This was copied from the runtime; see issues 23382 and 7921.
+//
 //go:nosplit
 func noescape(p unsafe.Pointer) unsafe.Pointer {
 	x := uintptr(p)
@@ -1078,6 +1080,7 @@ var (
 	float32Type = reflect.TypeOf(float32(0))
 	float64Type = reflect.TypeOf(float64(0))
 
+	bigIntType     = reflect.TypeOf(new(big.Int))
 	numberType     = reflect.TypeOf(json.Number(""))
 	stringType     = reflect.TypeOf("")
 	stringsType    = reflect.TypeOf([]string(nil))
@@ -1104,6 +1107,8 @@ var (
 	jsonUnmarshalerType = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
 	textMarshalerType   = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+
+	bigIntDecoder = constructJSONUnmarshalerDecodeFunc(bigIntType, false)
 )
 
 // =============================================================================
