@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
@@ -28,6 +27,6 @@ func main() {
 
 	for _, test := range tests {
 		b, _ := proto.Marshal(&test.value)
-		ioutil.WriteFile("protobuf/"+test.name, b, 0644)
+		os.WriteFile("protobuf/"+test.name, b, 0644)
 	}
 }

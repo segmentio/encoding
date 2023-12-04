@@ -9,8 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -86,6 +86,13 @@ type tree struct {
 	Right *tree
 }
 
+var (
+	// bigPos128 and bigNeg128 are 1<<128 and -1<<128
+	// certainly neither is representable using a uint64/int64.
+	bigPos128 = new(big.Int).Lsh(big.NewInt(1), 128)
+	bigNeg128 = new(big.Int).Neg(bigPos128)
+)
+
 var testValues = [...]interface{}{
 	// constants
 	nil,
@@ -126,6 +133,9 @@ var testValues = [...]interface{}{
 	float64(0.5),
 	float64(math.SmallestNonzeroFloat64),
 	float64(math.MaxFloat64),
+
+	bigPos128,
+	bigNeg128,
 
 	// number
 	Number("0"),
@@ -402,7 +412,7 @@ func TestCodec(t *testing.T) {
 				t.Logf("found:    %#v", x2)
 			}
 
-			if b, err := ioutil.ReadAll(dec.Buffered()); err != nil {
+			if b, err := io.ReadAll(dec.Buffered()); err != nil {
 				t.Error(err)
 			} else if len(b) != 0 {
 				t.Errorf("leftover trailing bytes in the decoder: %q", b)
@@ -480,6 +490,134 @@ func TestCodecDuration(t *testing.T) {
 				t.Error("values mismatch")
 				t.Logf("expected: %#v", x1)
 				t.Logf("found:    %#v", x2)
+			}
+		})
+	}
+}
+
+var numericParseTests = [...]struct {
+	name  string
+	input string
+	flags ParseFlags
+	want  any
+}{
+	{
+		name:  "zero_flags_default",
+		input: `0`,
+		flags: 0,
+		want:  float64(0),
+	},
+	{
+		name:  "zero_flags_int_uint_bigint_number",
+		input: `0`,
+		flags: UseInt64 | UseUint64 | UseBigInt | UseNumber,
+		want:  uint64(0),
+	},
+	{
+		name:  "zero_flags_int_bigint_number",
+		input: `0`,
+		flags: UseInt64 | UseBigInt | UseNumber,
+		want:  int64(0),
+	},
+	{
+		name:  "zero_flags_bigint_number",
+		input: `0`,
+		flags: UseBigInt | UseNumber,
+		want:  big.NewInt(0),
+	},
+	{
+		name:  "zero_flags_number",
+		input: `0`,
+		flags: UseNumber,
+		want:  json.Number(`0`),
+	},
+	{
+		name:  "max_uint64_flags_default",
+		input: fmt.Sprint(uint64(math.MaxUint64)),
+		flags: 0,
+		want:  float64(math.MaxUint64),
+	},
+	{
+		name:  "max_uint64_flags_int_uint_bigint_number",
+		input: fmt.Sprint(uint64(math.MaxUint64)),
+		flags: UseInt64 | UseUint64 | UseBigInt | UseNumber,
+		want:  uint64(math.MaxUint64),
+	},
+	{
+		name:  "min_int64_flags_uint_int_bigint_number",
+		input: fmt.Sprint(int64(math.MinInt64)),
+		flags: UseInt64 | UseBigInt | UseNumber,
+		want:  int64(math.MinInt64),
+	},
+	{
+		name:  "max_uint64_flags_int_bigint_number",
+		input: fmt.Sprint(uint64(math.MaxUint64)),
+		flags: UseInt64 | UseBigInt | UseNumber,
+		want:  new(big.Int).SetUint64(math.MaxUint64),
+	},
+	{
+		name:  "overflow_uint64_flags_uint_int_bigint_number",
+		input: bigPos128.String(),
+		flags: UseUint64 | UseInt64 | UseBigInt | UseNumber,
+		want:  bigPos128,
+	},
+	{
+		name:  "underflow_uint64_flags_uint_int_bigint_number",
+		input: bigNeg128.String(),
+		flags: UseUint64 | UseInt64 | UseBigInt | UseNumber,
+		want:  bigNeg128,
+	},
+	{
+		name:  "overflow_uint64_flags_uint_int_number",
+		input: bigPos128.String(),
+		flags: UseUint64 | UseInt64 | UseNumber,
+		want:  json.Number(bigPos128.String()),
+	},
+	{
+		name:  "underflow_uint64_flags_uint_int_number",
+		input: bigNeg128.String(),
+		flags: UseUint64 | UseInt64 | UseNumber,
+		want:  json.Number(bigNeg128.String()),
+	},
+	{
+		name:  "overflow_uint64_flags_uint_int",
+		input: bigPos128.String(),
+		flags: UseUint64 | UseInt64,
+		want:  float64(1 << 128),
+	},
+	{
+		name:  "underflow_uint64_flags_uint_int",
+		input: bigNeg128.String(),
+		flags: UseUint64 | UseInt64,
+		want:  float64(-1 << 128),
+	},
+}
+
+func TestParse_numeric(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range numericParseTests {
+		test := test
+
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got any
+
+			rem, err := Parse([]byte(test.input), &got, test.flags)
+			if err != nil {
+				format := "Parse(%#q, ..., %#b) = %q [error], want nil"
+				t.Errorf(format, test.input, test.flags, err)
+			}
+
+			if len(rem) != 0 {
+				format := "Parse(%#q, ..., %#b) = %#q, want zero length"
+				t.Errorf(format, test.input, test.flags, rem)
+			}
+
+			if !reflect.DeepEqual(got, test.want) {
+				format := "Parse(%#q, %#b) -> %T(%#[3]v), want %T(%#[4]v)"
+				t.Errorf(format, test.input, test.flags, got, test.want)
 			}
 		})
 	}

@@ -128,6 +128,19 @@ const (
 	// mode.
 	DontMatchCaseInsensitiveStructFields
 
+	// Decode integers into *big.Int.
+	// Takes precedence over UseNumber for integers.
+	UseBigInt
+
+	// Decode in-range integers to int64.
+	// Takes precedence over UseNumber and UseBigInt for in-range integers.
+	UseInt64
+
+	// Decode in-range positive integers to uint64.
+	// Takes precedence over UseNumber, UseBigInt, and UseInt64
+	// for positive, in-range integers.
+	UseUint64
+
 	// ZeroCopy is a parsing flag that combines all the copy optimizations
 	// available in the package.
 	//

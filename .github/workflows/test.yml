@@ -1,30 +1,29 @@
+---
 name: Test
 
-on:
-- pull_request
+"on":
+  - pull_request
 
 jobs:
   test:
     strategy:
       matrix:
         go:
-        - 1.14
-        - 1.15
-        - 1.16
-        - 1.17
+          - "1.20"
+          - "1.21"
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Setup Go ${{ matrix.go }}
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ matrix.go }}
+      - name: Setup Go ${{ matrix.go }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
 
-    - name: Download Dependencies
-      run: go mod download
+      - name: Download Dependencies
+        run: go mod download
 
-    - name: Run Tests
-      run: make test
+      - name: Run Tests
+        run: make test

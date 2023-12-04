@@ -3,8 +3,8 @@ package proto
 import (
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -366,7 +366,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 }
 
 func loadProtobuf(t *testing.T, fileName string) RawMessage {
-	b, err := ioutil.ReadFile("fixtures/protobuf/" + fileName)
+	b, err := os.ReadFile("fixtures/protobuf/" + fileName)
 	if err != nil {
 		t.Fatal(err)
 	}
