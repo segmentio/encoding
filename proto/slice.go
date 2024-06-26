@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	. "github.com/segmentio/encoding/internal/runtime_reflect"
+	. "github.com/wandb/segmentio-encoding/internal/runtime_reflect"
 )
 
 type repeatedField struct {
