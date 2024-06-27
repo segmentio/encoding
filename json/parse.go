@@ -296,19 +296,16 @@ func (d decoder) parseNumber(b []byte) (v, r []byte, kind Kind, err error) {
 		return
 	}
 
-	// Check for NaN and ±Inf
-	if len(b) >= 3 {
-		switch string(b[:3]) {
-		case "NaN":
-			return []byte("NaN"), b[3:], Float, nil
-		case "Inf":
-			return []byte("Infinity"), b[8:], Float, nil
-		}
+	// Special cases for non-standard JSON number values.
+	switch {
+	case bytes.HasPrefix(b, []byte("NaN")):
+		return b[:3], b[3:], Float, nil
+	case bytes.HasPrefix(b, []byte("Infinity")):
+		return b[:8], b[8:], Float, nil
+	case bytes.HasPrefix(b, []byte("-Infinity")):
+		return b[:9], b[9:], Float, nil
 	}
-	if len(b) >= 4 && string(b[:4]) == "-Inf" {
-		return []byte("-Infinity"), b[9:], Float, nil
-	}
-	
+
 	// Assume it's an unsigned integer at first.
 	kind = Uint
 
