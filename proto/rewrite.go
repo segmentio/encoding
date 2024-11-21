@@ -139,17 +139,22 @@ func (f fieldset) index(i int) (int, int) {
 // ParseRewriteTemplate constructs a Rewriter for a protobuf type using the
 // given json template to describe the rewrite rules.
 //
-// The json template contains a representation of the
-func ParseRewriteTemplate(typ Type, jsonTemplate []byte) (Rewriter, error) {
+// The json template contains a representation of the message that is used as
+// the source values to overwrite in
+func ParseRewriteTemplate(typ Type, jsonTemplate []byte, rules ...RewriterRules) (Rewriter, error) {
 	switch typ.Kind() {
 	case Struct:
-		return parseRewriteTemplateStruct(typ, 0, jsonTemplate)
+		return parseRewriteTemplateStruct(typ, 0, jsonTemplate, rules...)
 	default:
 		return nil, fmt.Errorf("cannot construct a rewrite template from a non-struct type %s", typ.Name())
 	}
 }
 
-func parseRewriteTemplate(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
+func parseRewriteTemplate(t Type, f FieldNumber, j json.RawMessage, rule any) (Rewriter, error) {
+	if rwer, ok := rule.(Rewriterer); ok {
+		return rwer.Rewriter(t, f, j)
+	}
+
 	switch t.Kind() {
 	case Bool:
 		return parseRewriteTemplateBool(t, f, j)
@@ -184,7 +189,11 @@ func parseRewriteTemplate(t Type, f FieldNumber, j json.RawMessage) (Rewriter, e
 	case Map:
 		return parseRewriteTemplateMap(t, f, j)
 	case Struct:
-		return parseRewriteTemplateStruct(t, f, j)
+		sub, n, ok := [1]RewriterRules{}, 0, false
+		if sub[0], ok = rule.(RewriterRules); ok {
+			n = 1
+		}
+		return parseRewriteTemplateStruct(t, f, j, sub[:n]...)
 	default:
 		return nil, fmt.Errorf("cannot construct a rewriter from type %s", t.Name())
 	}
@@ -376,7 +385,7 @@ func parseRewriteTemplateMap(t Type, f FieldNumber, j json.RawMessage) (Rewriter
 	return MultiRewriter(rewriters...), nil
 }
 
-func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
+func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage, rules ...RewriterRules) (Rewriter, error) {
 	template := map[string]json.RawMessage{}
 
 	if err := json.Unmarshal(j, &template); err != nil {
@@ -408,10 +417,18 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage) (Rewri
 			fields = []json.RawMessage{v}
 		}
 
+		var rule any
+		for i := range rules {
+			if r, ok := rules[i][f.Name]; ok {
+				rule = r
+				break
+			}
+		}
+
 		rewriters = rewriters[:0]
 
 		for _, v := range fields {
-			rw, err := parseRewriteTemplate(f.Type, f.Number, v)
+			rw, err := parseRewriteTemplate(f.Type, f.Number, v, rule)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", k, err)
 			}
@@ -461,4 +478,118 @@ func (f *embddedRewriter) Rewrite(out, in []byte) ([]byte, error) {
 	copy(out[prefix+tagAndLen:], out[prefix:])
 	copy(out[prefix:], b[:tagAndLen])
 	return out, nil
+}
+
+// RewriterRules defines a set of rules for overriding the Rewriter used for any
+// particular field. These maps may be nested for defining rules for struct members.
+//
+// For example:
+//
+//	rules := proto.RewriterRules {
+//		"flags": proto.BitOr[uint64]{},
+//		"nested": proto.RewriterRules {
+//			"name": myCustomRewriter,
+//		},
+//	}
+type RewriterRules map[string]any
+
+// Rewriterer is the interface for producing a Rewriter for a given Type, FieldNumber
+// and json.RawMessage. The JSON value is the JSON-encoded payload that should be
+// decoded to produce the appropriate Rewriter. Implementations of the Rewriterer
+// interface are added to the RewriterRules to specify the rules for performing
+// custom rewrite logic.
+type Rewriterer interface {
+	Rewriter(Type, FieldNumber, json.RawMessage) (Rewriter, error)
+}
+
+// BitOr implments the Rewriterer interface for providing a bitwise-or rewrite
+// logic for integers rather than replacing them. Instances of this type are
+// zero-size, carrying only the generic type for creating the appropriate
+// Rewriter when requested.
+//
+// Adding these to a RewriterRules looks like:
+//
+//	rules := proto.RewriterRules {
+//		"flags": proto.BitOr[uint64]{},
+//	}
+//
+// When used as a rule when rewriting from a template, the BitOr expects a JSON-
+// encoded integer passed into the Rewriter method. This parsed integer is then
+// used to perform a bitwise-or against the protobuf message that is being rewritten.
+//
+// The above example can then be used like:
+//
+//	template := []byte(`{"flags": 8}`) // n |= 0b1000
+//	rw, err := proto.ParseRewriteTemplate(typ, template, rules)
+type BitOr[T integer] struct{}
+
+// integer is the contraint used by the BitOr Rewriterer and the bitOrRW Rewriter.
+// Because these perform bitwise-or operations, the types must be integer-like.
+type integer interface {
+	~int | ~int32 | ~int64 | ~uint | ~uint32 | ~uint64
+}
+
+// Rewriter implements the Rewriterer interface. The JSON value provided to this
+// method comes from the template used for rewriting. The returned Rewriter will use
+// this JSON-encoded integer to perform a bitwise-or against the protobuf message
+// that is being rewritten.
+func (BitOr[T]) Rewriter(t Type, f FieldNumber, j json.RawMessage) (Rewriter, error) {
+	var v T
+	err := json.Unmarshal(j, &v)
+	if err != nil {
+		return nil, err
+	}
+	return BitOrRewriter(t, f, v)
+}
+
+// BitOrRewriter creates a bitwise-or Rewriter for a given field type and number.
+// The mask is the value or'ed with values in the target protobuf.
+func BitOrRewriter[T integer](t Type, f FieldNumber, mask T) (Rewriter, error) {
+	switch t.Kind() {
+	case Int32, Int64, Sint32, Sint64, Uint32, Uint64, Fix32, Fix64, Sfix32, Sfix64:
+	default:
+		return nil, fmt.Errorf("cannot construct a rewriter from type %s", t.Name())
+	}
+	return bitOrRW[T]{mask: mask, t: t, f: f}, nil
+}
+
+// bitOrRW is the Rewriter returned by the BitOr Rewriter method.
+type bitOrRW[T integer] struct {
+	mask T
+	t    Type
+	f    FieldNumber
+}
+
+// Rewrite implements the Rewriter interface performing a bitwise-or between the
+// template value and the input value.
+func (r bitOrRW[T]) Rewrite(out, in []byte) ([]byte, error) {
+	var v T
+	if err := Unmarshal(in, &v); err != nil {
+		return nil, err
+	}
+
+	v |= r.mask
+
+	switch r.t.Kind() {
+	case Int32:
+		return r.f.Int32(int32(v)).Rewrite(out, in)
+	case Int64:
+		return r.f.Int64(int64(v)).Rewrite(out, in)
+	case Sint32:
+		return r.f.Uint32(encodeZigZag32(int32(v))).Rewrite(out, in)
+	case Sint64:
+		return r.f.Uint64(encodeZigZag64(int64(v))).Rewrite(out, in)
+	case Uint32, Uint64:
+		return r.f.Uint64(uint64(v)).Rewrite(out, in)
+	case Fix32:
+		return r.f.Fixed32(uint32(v)).Rewrite(out, in)
+	case Fix64:
+		return r.f.Fixed64(uint64(v)).Rewrite(out, in)
+	case Sfix32:
+		return r.f.Fixed32(encodeZigZag32(int32(v))).Rewrite(out, in)
+	case Sfix64:
+		return r.f.Fixed64(encodeZigZag64(int64(v))).Rewrite(out, in)
+	}
+
+	panic("unreachable") // Kind is validated when creating instances
 }

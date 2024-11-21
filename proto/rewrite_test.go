@@ -291,6 +291,71 @@ func TestParseRewriteTemplate(t *testing.T) {
 	}
 }
 
+func TestParseRewriteRules(t *testing.T) {
+	type submessage struct {
+		Flags uint64 `protobuf:"varint,1,opt,name=flags,proto3"`
+	}
+
+	type message struct {
+		Flags       uint64       `protobuf:"varint,2,opt,name=flags,proto3"`
+		Subfield    *submessage  `protobuf:"bytes,99,opt,name=subfield,proto3"`
+		Submessages []submessage `protobuf:"bytes,100,rep,name=submessages,proto3"`
+	}
+
+	original := &message{
+		Flags: 0b00000001,
+		Subfield: &submessage{
+			Flags: 0b00000010,
+		},
+	}
+
+	expected := &message{
+		Flags: 0b00000001 | 16,
+		Subfield: &submessage{
+			Flags: 0b00000010 | 32,
+		},
+	}
+
+	rules := RewriterRules{
+		"flags": BitOr[uint64]{},
+		"subfield": RewriterRules{
+			"flags": BitOr[uint64]{},
+		},
+	}
+
+	rw, err := ParseRewriteTemplate(TypeOf(reflect.TypeOf(original)), []byte(`{
+  "flags": 16,
+  "subfield": {
+    "flags": 32
+  }
+}`), rules)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b1, err := Marshal(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b2, err := rw.Rewrite(nil, b1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	found := &message{}
+	if err := Unmarshal(b2, &found); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(expected, found) {
+		t.Error("messages mismatch after rewrite")
+		t.Logf("want:\n%+v", expected)
+		t.Logf("got:\n%+v", found)
+	}
+}
+
 func BenchmarkRewrite(b *testing.B) {
 	type message struct {
 		A int
