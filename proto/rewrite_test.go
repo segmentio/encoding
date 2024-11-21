@@ -297,9 +297,8 @@ func TestParseRewriteRules(t *testing.T) {
 	}
 
 	type message struct {
-		Flags       uint64       `protobuf:"varint,2,opt,name=flags,proto3"`
-		Subfield    *submessage  `protobuf:"bytes,99,opt,name=subfield,proto3"`
-		Submessages []submessage `protobuf:"bytes,100,rep,name=submessages,proto3"`
+		Flags    uint64      `protobuf:"varint,2,opt,name=flags,proto3"`
+		Subfield *submessage `protobuf:"bytes,99,opt,name=subfield,proto3"`
 	}
 
 	original := &message{
