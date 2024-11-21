@@ -139,8 +139,13 @@ func (f fieldset) index(i int) (int, int) {
 // ParseRewriteTemplate constructs a Rewriter for a protobuf type using the
 // given json template to describe the rewrite rules.
 //
-// The json template contains a representation of the message that is used as
-// the source values to overwrite in
+// The json template contains a representation of the message that is used as the
+// source values to overwrite in the protobuf targeted by the resulting rewriter.
+//
+// The rules are an optional set of RewriterRules that can provide alternative
+// Rewriters from the default used for the field type. These rules are given the
+// json.RawMessage bytes from the template, and they are expected to create a
+// Rewriter to be applied against the target protobuf.
 func ParseRewriteTemplate(typ Type, jsonTemplate []byte, rules ...RewriterRules) (Rewriter, error) {
 	switch typ.Kind() {
 	case Struct:
