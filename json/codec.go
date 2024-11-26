@@ -712,7 +712,9 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 
 		if embfield.pointer {
 			subfield.codec = constructEmbeddedStructPointerCodec(embfield.subtype.typ, embfield.unexported, subfield.offset, subfield.codec)
+			subfield.ptrOffset += subfield.offset
 			subfield.offset = embfield.offset
+			subfield.ptr = true
 		} else {
 			subfield.offset += embfield.offset
 		}
@@ -968,7 +970,6 @@ type structType struct {
 	ficaseIndex map[string]*structField
 	keyset      []byte
 	typ         reflect.Type
-	inlined     bool
 }
 
 type structField struct {
@@ -983,6 +984,8 @@ type structField struct {
 	typ       reflect.Type
 	zero      reflect.Value
 	index     int
+	ptr       bool
+	ptrOffset uintptr
 }
 
 func unmarshalTypeError(b []byte, t reflect.Type) error {
