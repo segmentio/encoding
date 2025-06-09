@@ -193,7 +193,8 @@ func encodeFuncMapOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 			return nil
 		}
 
-		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
+		iter := v.MapRange()
+		for iter.Next() {
 			if err := encodeKey(w, iter.Key(), flags); err != nil {
 				return err
 			}
@@ -228,7 +229,8 @@ func encodeFuncMapAsSetOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 			return nil
 		}
 
-		for i, iter := 0, v.MapRange(); iter.Next(); i++ {
+		iter := v.MapRange()
+		for iter.Next() {
 			if err := enc(w, iter.Key(), flags); err != nil {
 				return err
 			}
