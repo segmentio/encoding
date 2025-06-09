@@ -205,7 +205,7 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr b
 		c = constructUnsupportedTypeCodec(t)
 	}
 
-	p := reflect.PtrTo(t)
+	p := reflect.PointerTo(t)
 
 	if canAddr {
 		switch {
@@ -291,7 +291,7 @@ func constructSliceCodec(t reflect.Type, seen map[reflect.Type]*structType) code
 		// Go 1.7+ behavior: slices of byte types (and aliases) may override the
 		// default encoding and decoding behaviors by implementing marshaler and
 		// unmarshaler interfaces.
-		p := reflect.PtrTo(e)
+		p := reflect.PointerTo(e)
 		c := codec{}
 
 		switch {
@@ -391,7 +391,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 	kc := codec{}
 	vc := constructCodec(v, seen, false)
 
-	if k.Implements(textMarshalerType) || reflect.PtrTo(k).Implements(textUnmarshalerType) {
+	if k.Implements(textMarshalerType) || reflect.PointerTo(k).Implements(textUnmarshalerType) {
 		kc.encode = constructTextMarshalerEncodeFunc(k, false)
 		kc.decode = constructTextUnmarshalerDecodeFunc(k, true)
 
@@ -1095,10 +1095,10 @@ var (
 	timeType       = reflect.TypeOf(time.Time{})
 	rawMessageType = reflect.TypeOf(RawMessage(nil))
 
-	numberPtrType     = reflect.PtrTo(numberType)
-	durationPtrType   = reflect.PtrTo(durationType)
-	timePtrType       = reflect.PtrTo(timeType)
-	rawMessagePtrType = reflect.PtrTo(rawMessageType)
+	numberPtrType     = reflect.PointerTo(numberType)
+	durationPtrType   = reflect.PointerTo(durationType)
+	timePtrType       = reflect.PointerTo(timeType)
+	rawMessagePtrType = reflect.PointerTo(rawMessageType)
 
 	sliceInterfaceType       = reflect.TypeOf(([]any)(nil))
 	sliceStringType          = reflect.TypeOf(([]any)(nil))
