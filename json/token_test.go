@@ -304,7 +304,7 @@ func BenchmarkTokenizer(b *testing.B) {
 			function: func(b *testing.B, json []byte) {
 				t := NewTokenizer(nil)
 
-				for i := 0; i < b.N; i++ {
+				for range b.N {
 					t.Reset(json)
 
 					for t.Next() {

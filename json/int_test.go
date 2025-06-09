@@ -27,7 +27,7 @@ func TestAppendInt(t *testing.T) {
 func benchStd(b *testing.B, n int64) {
 	var buf [20]byte
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		strconv.AppendInt(buf[:0], n, 10)
 	}
 }
@@ -35,7 +35,7 @@ func benchStd(b *testing.B, n int64) {
 func benchNew(b *testing.B, n int64) {
 	var buf [20]byte
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		appendInt(buf[:0], n)
 	}
 }

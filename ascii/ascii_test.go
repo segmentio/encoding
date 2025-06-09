@@ -97,7 +97,7 @@ func BenchmarkValidPrint(b *testing.B) {
 func benchmarkValidationFunction(b *testing.B, function func(string) bool) {
 	for _, test := range testStrings {
 		b.Run(limit(test), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = function(test)
 			}
 			b.SetBytes(int64(len(test)))
@@ -233,7 +233,7 @@ func BenchmarkEqualFold(b *testing.B) {
 		b.Run(limit(test), func(b *testing.B) {
 			other := test + "_" // not the same pointer
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = EqualFoldString(test, other[:len(test)]) // same length
 			}
 

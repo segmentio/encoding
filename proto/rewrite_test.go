@@ -377,7 +377,7 @@ func BenchmarkRewrite(b *testing.B) {
 
 	out := make([]byte, 0, 2*cap(p))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		out, err = rw.Rewrite(out[:0], p)
 	}
 }

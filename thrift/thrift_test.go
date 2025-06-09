@@ -286,7 +286,7 @@ func benchmarkMarshal(b *testing.B, p thrift.Protocol) {
 		},
 	}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		buf.Reset()
 		enc.Encode(val)
 	}
@@ -323,7 +323,7 @@ func benchmarkUnmarshal(b *testing.B, p thrift.Protocol) {
 	dec := thrift.NewDecoder(p.NewReader(rb))
 	val := &BenchmarkDecodeType{}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rb.Reset(buf)
 		dec.Decode(val)
 	}

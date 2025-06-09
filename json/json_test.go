@@ -639,7 +639,7 @@ func BenchmarkMarshal(b *testing.B) {
 				return
 			}
 
-			for i := 0; i != b.N; i++ {
+			for range b.N {
 				j, _ = marshal(j[:0], v)
 			}
 
@@ -663,7 +663,7 @@ func BenchmarkUnmarshal(b *testing.B) {
 			j, _ := json.Marshal(x)
 			x = newValue(v).Interface()
 
-			for i := 0; i != b.N; i++ {
+			for range b.N {
 				unmarshal(j, x)
 			}
 
@@ -1352,7 +1352,7 @@ func BenchmarkEasyjsonUnmarshalSmallStruct(b *testing.B) {
 
 	json := []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var value Entities
 		if err := Unmarshal(json, &value); err != nil {
 			b.Fatal(err)
@@ -1957,7 +1957,7 @@ func TestAppendUnescape(t *testing.T) {
 func BenchmarkUnescape(b *testing.B) {
 	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
 	out := []byte{}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		out = Unescape(s)
 	}
 
@@ -1968,7 +1968,7 @@ func BenchmarkUnmarshalField(b *testing.B) {
 	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
 	var v string
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		json.Unmarshal(s, &v)
 	}
 

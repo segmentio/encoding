@@ -68,7 +68,7 @@ func BenchmarkValidate(b *testing.B) {
 }
 
 func benchmarkValidateSuccess(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if !Valid("2018-01-01T23:42:59.123456789Z", Flexible) {
 			b.Fatal("not valid")
 		}
@@ -76,7 +76,7 @@ func benchmarkValidateSuccess(b *testing.B) {
 }
 
 func benchmarkValidateFailure(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if Valid("2018-01-01T23:42:59 oops!", Flexible) {
 			b.Fatal("valid but should not")
 		}
@@ -89,7 +89,7 @@ func BenchmarkTimeParse(b *testing.B) {
 }
 
 func benchmarkTimeParseSuccess(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if _, err := time.Parse(time.RFC3339Nano, "2018-01-01T23:42:59.123456789Z"); err != nil {
 			b.Fatal("not valid")
 		}
@@ -97,7 +97,7 @@ func benchmarkTimeParseSuccess(b *testing.B) {
 }
 
 func benchmarkTimeParseFailure(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if _, err := time.Parse(time.RFC3339Nano, "2018-01-01T23:42:59 oops!"); err == nil {
 			b.Fatal("valid but should not")
 		}

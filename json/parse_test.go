@@ -136,7 +136,7 @@ func BenchmarkParseString(b *testing.B) {
 	s := []byte(`"__segment_internal"`)
 
 	d := decoder{}
-	for i := 0; i != b.N; i++ {
+	for range b.N {
 		d.parseString(s)
 	}
 }
@@ -144,7 +144,7 @@ func BenchmarkParseString(b *testing.B) {
 func BenchmarkToLower(b *testing.B) {
 	s := []byte("someFieldWithALongName")
 
-	for i := 0; i != b.N; i++ {
+	for range b.N {
 		bytes.ToLower(s)
 	}
 }
@@ -153,7 +153,7 @@ func BenchmarkAppendToLower(b *testing.B) {
 	a := []byte(nil)
 	s := []byte("someFieldWithALongName")
 
-	for i := 0; i != b.N; i++ {
+	for range b.N {
 		a = appendToLower(a[:0], s)
 	}
 }
@@ -164,25 +164,25 @@ var (
 )
 
 func BenchmarkHasPrefix(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkHasPrefixResult = hasPrefix(benchmarkHasPrefixString, "null")
 	}
 }
 
 func BenchmarkHasNullPrefix(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkHasPrefixResult = hasNullPrefix(benchmarkHasPrefixString)
 	}
 }
 
 func BenchmarkHasTruePrefix(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkHasPrefixResult = hasTruePrefix(benchmarkHasPrefixString)
 	}
 }
 
 func BenchmarkHasFalsePrefix(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkHasPrefixResult = hasFalsePrefix(benchmarkHasPrefixString)
 	}
 }
@@ -192,7 +192,7 @@ func BenchmarkParseStringEscapeNone(b *testing.B) {
 	var s string
 	b.SetBytes(int64(len(j)))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := Unmarshal(j, &s); err != nil {
 			b.Fatal(err)
 		}
@@ -205,7 +205,7 @@ func BenchmarkParseStringEscapeOne(b *testing.B) {
 	var s string
 	b.SetBytes(int64(len(j)))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := Unmarshal(j, &s); err != nil {
 			b.Fatal(err)
 		}
@@ -218,7 +218,7 @@ func BenchmarkParseStringEscapeAll(b *testing.B) {
 	var s string
 	b.SetBytes(int64(len(j)))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := Unmarshal(j, &s); err != nil {
 			b.Fatal(err)
 		}

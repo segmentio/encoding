@@ -405,31 +405,31 @@ func TestParseInvalid(t *testing.T) {
 }
 
 func BenchmarkParse(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Parse("2006-01-02T15:04:05Z")
 	}
 }
 
 func BenchmarkParseMilliseconds(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Parse("2006-01-02T15:04:05.123Z")
 	}
 }
 
 func BenchmarkParseMicroseconds(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Parse("2006-01-02T15:04:05.123456Z")
 	}
 }
 
 func BenchmarkParseNanoseconds(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Parse("2006-01-02T15:04:05.123456789Z")
 	}
 }
 
 func BenchmarkParseInvalid(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Parse("2006-01-02T15:04:05.XZ")
 	}
 }

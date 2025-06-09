@@ -37,7 +37,7 @@ func TestMarshalToShortBuffer(t *testing.T) {
 func BenchmarkEncodeVarintShort(b *testing.B) {
 	c := [10]byte{}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		encodeVarint(c[:], 0)
 	}
 }
@@ -45,7 +45,7 @@ func BenchmarkEncodeVarintShort(b *testing.B) {
 func BenchmarkEncodeVarintLong(b *testing.B) {
 	c := [10]byte{}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		encodeVarint(c[:], math.MaxUint64)
 	}
 }
@@ -53,7 +53,7 @@ func BenchmarkEncodeVarintLong(b *testing.B) {
 func BenchmarkEncodeTag(b *testing.B) {
 	c := [8]byte{}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		encodeTag(c[:], 1, varint)
 	}
 }
@@ -74,7 +74,7 @@ func BenchmarkEncodeMessage(b *testing.B) {
 	data := buf[:size]
 	b.SetBytes(int64(size))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if _, err := MarshalTo(data, msg); err != nil {
 			b.Fatal(err)
 		}
@@ -95,7 +95,7 @@ func BenchmarkEncodeMap(b *testing.B) {
 	data := buf[:size]
 	b.SetBytes(int64(size))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if _, err := MarshalTo(data, msg); err != nil {
 			b.Fatal(err)
 		}
@@ -114,7 +114,7 @@ func BenchmarkEncodeSlice(b *testing.B) {
 	data := buf[:size]
 	b.SetBytes(int64(size))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if _, err := MarshalTo(data, &msg); err != nil {
 			b.Fatal(err)
 		}

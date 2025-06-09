@@ -31,7 +31,7 @@ func BenchmarkEscapeIndex7EscapeHTML(b *testing.B) {
 
 func benchmarkEscapeIndex(b *testing.B, s string, escapeHTML bool) {
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		escapeIndex(s, escapeHTML)
 	}
 	b.SetBytes(int64(len(s)))

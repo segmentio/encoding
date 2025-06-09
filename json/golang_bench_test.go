@@ -127,7 +127,7 @@ func benchMarshalBytes(n int) func(*testing.B) {
 		bytes.Repeat(sample, (n/len(sample))+1)[:n],
 	}
 	return func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			if _, err := Marshal(v); err != nil {
 				b.Fatal("Marshal:", err)
 			}
@@ -179,7 +179,7 @@ func BenchmarkUnicodeDecoder(b *testing.B) {
 	dec := NewDecoder(r)
 	var out string
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := dec.Decode(&out); err != nil {
 			b.Fatal("Decode:", err)
 		}
@@ -199,7 +199,9 @@ func BenchmarkDecoderStream(b *testing.B) {
 	}
 	ones := strings.Repeat(" 1\n", 300000) + "\n\n\n"
 	b.StartTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
+		// XXX: making use of the index variable
+		// is probably a misuse of b.N loops.
 		if i%300000 == 0 {
 			buf.WriteString(ones)
 		}
@@ -340,7 +342,7 @@ func BenchmarkTypeFieldsCache(b *testing.B) {
 		ts := types[:nt]
 		b.Run(fmt.Sprintf("MissTypes%d", nt), func(b *testing.B) {
 			nc := runtime.GOMAXPROCS(0)
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				clearCache()
 				var wg sync.WaitGroup
 				for j := 0; j < nc; j++ {
