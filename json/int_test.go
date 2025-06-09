@@ -8,7 +8,7 @@ import (
 
 func TestAppendInt(t *testing.T) {
 	var ints []int64
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		u := uint64(1) << i
 		ints = append(ints, int64(u-1), int64(u), int64(u+1), -int64(u))
 	}

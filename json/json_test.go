@@ -295,7 +295,7 @@ func makeSlice(n int) []int {
 
 func makeMapStringBool(n int) map[string]bool {
 	m := make(map[string]bool, n)
-	for i := 0; i != n; i++ {
+	for i := range n {
 		m[strconv.Itoa(i)] = true
 	}
 	return m
@@ -303,7 +303,7 @@ func makeMapStringBool(n int) map[string]bool {
 
 func makeMapStringString(n int) map[string]string {
 	m := make(map[string]string, n)
-	for i := 0; i != n; i++ {
+	for i := range n {
 		m[strconv.Itoa(i)] = fmt.Sprintf("%d Hello, world!", i)
 	}
 	return m
@@ -311,7 +311,7 @@ func makeMapStringString(n int) map[string]string {
 
 func makeMapStringStringSlice(n int) map[string][]string {
 	m := make(map[string][]string, n)
-	for i := 0; i != n; i++ {
+	for i := range n {
 		m[strconv.Itoa(i)] = []string{strconv.Itoa(i), "Hello,", "world!"}
 	}
 	return m
@@ -319,7 +319,7 @@ func makeMapStringStringSlice(n int) map[string][]string {
 
 func makeMapStringInterface(n int) map[string]interface{} {
 	m := make(map[string]interface{}, n)
-	for i := 0; i != n; i++ {
+	for i := range n {
 		m[strconv.Itoa(i)] = nil
 	}
 	return m

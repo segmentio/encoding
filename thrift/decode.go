@@ -237,7 +237,7 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		v.Set(reflect.MakeSlice(t, int(l.Size), int(l.Size)))
 		flags = flags.only(decodeFlags)
 
-		for i := 0; i < int(l.Size); i++ {
+		for i := range int(l.Size) {
 			if err := dec(r, v.Index(i), flags); err != nil {
 				return with(dontExpectEOF(err), &decodeErrorList{cause: l, index: i})
 			}
@@ -292,7 +292,7 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		tmpElem := reflect.New(elem).Elem()
 		flags = flags.only(decodeFlags)
 
-		for i := 0; i < int(m.Size); i++ {
+		for i := range int(m.Size) {
 			if err := decodeKey(r, tmpKey, flags); err != nil {
 				return with(dontExpectEOF(err), &decodeErrorMap{cause: m, index: i})
 			}
@@ -345,7 +345,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		tmp := reflect.New(key).Elem()
 		flags = flags.only(decodeFlags)
 
-		for i := 0; i < int(s.Size); i++ {
+		for i := range int(s.Size) {
 			if err := dec(r, tmp, flags); err != nil {
 				return with(dontExpectEOF(err), &decodeErrorSet{cause: s, index: i})
 			}
@@ -542,7 +542,7 @@ func readList(r Reader, f func(Reader, Type) error) error {
 		return err
 	}
 
-	for i := 0; i < int(l.Size); i++ {
+	for i := range int(l.Size) {
 		if err := f(r, l.Type); err != nil {
 			return with(dontExpectEOF(err), &decodeErrorList{cause: l, index: i})
 		}
@@ -557,7 +557,7 @@ func readSet(r Reader, f func(Reader, Type) error) error {
 		return err
 	}
 
-	for i := 0; i < int(s.Size); i++ {
+	for i := range int(s.Size) {
 		if err := f(r, s.Type); err != nil {
 			return with(dontExpectEOF(err), &decodeErrorSet{cause: s, index: i})
 		}
@@ -572,7 +572,7 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 		return err
 	}
 
-	for i := 0; i < int(m.Size); i++ {
+	for i := range int(m.Size) {
 		if err := f(r, m.Key, m.Value); err != nil {
 			return with(dontExpectEOF(err), &decodeErrorMap{cause: m, index: i})
 		}

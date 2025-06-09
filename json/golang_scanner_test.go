@@ -289,7 +289,7 @@ func genMap(n int) map[string]interface{} {
 		f = 1
 	}
 	x := make(map[string]interface{})
-	for i := 0; i < f; i++ {
+	for i := range f {
 		x[genString(10)] = genValue(((i+1)*n)/f - (i*n)/f)
 	}
 	return x

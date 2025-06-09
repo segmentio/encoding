@@ -366,7 +366,7 @@ func structTypeOf(t reflect.Type, seen map[reflect.Type]Type) *structType {
 	fieldNumber := FieldNumber(0)
 	taggedFields := FieldNumber(0)
 
-	for i, n := 0, t.NumField(); i < n; i++ {
+	for i := range t.NumField() {
 		f := t.Field(i)
 
 		if f.PkgPath != "" {

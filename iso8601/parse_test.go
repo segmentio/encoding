@@ -78,9 +78,9 @@ func TestParse(t *testing.T) {
 	}
 
 	// Check ~4M YYYY-MM-DD dates in 20 byte form.
-	for year := 0; year <= 9999; year++ {
-		for month := 0; month <= 13; month++ {
-			for day := 0; day <= 32; day++ {
+	for year := range 10000 {
+		for month := range 14 {
+			for day := range 33 {
 				input := fmt.Sprintf("%04d-%02d-%02dT12:34:56Z", year, month, day)
 				expect, expectErr := time.Parse(time.RFC3339Nano, input)
 				actual, actualErr := Parse(input)
@@ -94,9 +94,9 @@ func TestParse(t *testing.T) {
 	}
 
 	// Check ~4M YYYY-MM-DD dates in 24 byte form.
-	for year := 0; year <= 9999; year++ {
-		for month := 0; month <= 13; month++ {
-			for day := 0; day <= 32; day++ {
+	for year := range 10000 {
+		for month := range 14 {
+			for day := range 33 {
 				input := fmt.Sprintf("%04d-%02d-%02dT12:34:56.789Z", year, month, day)
 				expect, expectErr := time.Parse(time.RFC3339Nano, input)
 				actual, actualErr := Parse(input)
@@ -110,9 +110,9 @@ func TestParse(t *testing.T) {
 	}
 
 	// Check ~4M YYYY-MM-DD dates in 30 byte form.
-	for year := 0; year <= 9999; year++ {
-		for month := 0; month <= 13; month++ {
-			for day := 0; day <= 32; day++ {
+	for year := range 10000 {
+		for month := range 14 {
+			for day := range 33 {
 				input := fmt.Sprintf("%04d-%02d-%02dT12:34:56.123456789Z", year, month, day)
 				expect, expectErr := time.Parse(time.RFC3339Nano, input)
 				actual, actualErr := Parse(input)
@@ -126,9 +126,9 @@ func TestParse(t *testing.T) {
 	}
 
 	// Check all ~1M HH:MM:SS times in 20 byte form.
-	for hour := 0; hour < 100; hour++ {
-		for minute := 0; minute < 100; minute++ {
-			for second := 0; second < 100; second++ {
+	for hour := range 100 {
+		for minute := range 100 {
+			for second := range 100 {
 				input := fmt.Sprintf("2000-01-01T%02d:%02d:%02dZ", hour, minute, second)
 				expect, expectErr := time.Parse(time.RFC3339Nano, input)
 				actual, actualErr := Parse(input)
@@ -142,9 +142,9 @@ func TestParse(t *testing.T) {
 	}
 
 	// Check ~1M HH:MM:SS.MMM times in 24 byte form.
-	for hour := 0; hour < 100; hour++ {
-		for minute := 0; minute < 100; minute++ {
-			for second := 0; second < 100; second++ {
+	for hour := range 100 {
+		for minute := range 100 {
+			for second := range 100 {
 				input := fmt.Sprintf("2000-01-01T%02d:%02d:%02d.123Z", hour, minute, second)
 				expect, expectErr := time.Parse(time.RFC3339Nano, input)
 				actual, actualErr := Parse(input)
@@ -158,9 +158,9 @@ func TestParse(t *testing.T) {
 	}
 
 	// Check ~1M HH:MM:SS.MMM times in 30 byte form.
-	for hour := 0; hour < 100; hour++ {
-		for minute := 0; minute < 100; minute++ {
-			for second := 0; second < 100; second++ {
+	for hour := range 100 {
+		for minute := range 100 {
+			for second := range 100 {
 				input := fmt.Sprintf("2000-01-01T%02d:%02d:%02d.123456789Z", hour, minute, second)
 				expect, expectErr := time.Parse(time.RFC3339Nano, input)
 				actual, actualErr := Parse(input)

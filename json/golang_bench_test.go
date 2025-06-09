@@ -70,7 +70,7 @@ func codeInit() {
 
 	if !bytes.Equal(data, codeJSON) {
 		println("different lengths", len(data), len(codeJSON))
-		for i := 0; i < len(data) && i < len(codeJSON); i++ {
+		for i := range min(len(data), len(codeJSON)) {
 			if data[i] != codeJSON[i] {
 				println("re-marshal: changed at byte", i)
 				println("orig: ", string(codeJSON[i-10:i+10]))
@@ -345,7 +345,7 @@ func BenchmarkTypeFieldsCache(b *testing.B) {
 			for range b.N {
 				clearCache()
 				var wg sync.WaitGroup
-				for j := 0; j < nc; j++ {
+				for j := range nc {
 					wg.Add(1)
 					go func(j int) {
 						for _, t := range ts[(j*len(ts))/nc : ((j+1)*len(ts))/nc] {

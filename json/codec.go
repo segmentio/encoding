@@ -562,7 +562,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 	names := make(map[string]struct{})
 	embedded := make([]embeddedField, 0, 10)
 
-	for i, n := 0, t.NumField(); i < n; i++ {
+	for i := range t.NumField() {
 		f := t.Field(i)
 
 		var (
@@ -1005,7 +1005,7 @@ var syntaxErrorMsgOffset = ^uintptr(0)
 
 func init() {
 	t := reflect.TypeOf(SyntaxError{})
-	for i, n := 0, t.NumField(); i < n; i++ {
+	for i := range t.NumField() {
 		if f := t.Field(i); f.Type.Kind() == reflect.String {
 			syntaxErrorMsgOffset = f.Offset
 		}
@@ -1207,7 +1207,7 @@ func fmtFrac(buf []byte, v uint64, prec int) (nw int, nv uint64) {
 	// Omit trailing zeros up to and including decimal point.
 	w := len(buf)
 	print := false
-	for i := 0; i < prec; i++ {
+	for range prec {
 		digit := v % 10
 		print = print || digit != 0
 		if print {

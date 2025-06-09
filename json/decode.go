@@ -514,7 +514,7 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 	b = b[1:]
 
 	var err error
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b = skipSpaces(b)
 
 		if i != 0 {

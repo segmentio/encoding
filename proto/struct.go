@@ -57,7 +57,7 @@ func structCodecOf(t reflect.Type, seen map[reflect.Type]*codec) *codec {
 	number := fieldNumber(1)
 	fields := make([]structField, 0, numField)
 
-	for i := 0; i < numField; i++ {
+	for i := range numField {
 		f := t.Field(i)
 
 		if f.PkgPath != "" {

@@ -40,7 +40,7 @@ func sliceSizeFuncOf(t reflect.Type, r *repeatedField) sizeFunc {
 		n := 0
 
 		if v := (*Slice)(p); v != nil {
-			for i := 0; i < v.Len(); i++ {
+			for i := range v.Len() {
 				elem := v.Index(i, elemSize)
 				size := r.codec.size(elem, wantzero)
 				n += tagSize + size
@@ -63,7 +63,7 @@ func sliceEncodeFuncOf(t reflect.Type, r *repeatedField) encodeFunc {
 		offset := 0
 
 		if s := (*Slice)(p); s != nil {
-			for i := 0; i < s.Len(); i++ {
+			for i := range s.Len() {
 				elem := s.Index(i, elemSize)
 				size := r.codec.size(elem, wantzero)
 

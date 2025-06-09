@@ -154,7 +154,7 @@ func encodeFuncSliceOf(t reflect.Type, seen encodeFuncCache) encodeFunc {
 			return err
 		}
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if err := enc(w, v.Index(i), flags); err != nil {
 				return err
 			}
