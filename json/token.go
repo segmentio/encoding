@@ -423,6 +423,4 @@ func releaseStack(s *stack) {
 	stackPool.Put(s)
 }
 
-var (
-	stackPool sync.Pool // *stack
-)
+var stackPool sync.Pool // *stack

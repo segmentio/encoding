@@ -564,10 +564,8 @@ func (d decoder) decodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t 
 	}
 }
 
-var (
-	// This is a placeholder used to consturct non-nil empty slices.
-	empty struct{}
-)
+// This is a placeholder used to consturct non-nil empty slices.
+var empty struct{}
 
 func (d decoder) decodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect.Type, decode decodeFunc) ([]byte, error) {
 	if hasNullPrefix(b) {

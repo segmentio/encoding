@@ -159,8 +159,10 @@ func BenchmarkAppendToLower(b *testing.B) {
 	}
 }
 
-var benchmarkHasPrefixString = []byte("some random string")
-var benchmarkHasPrefixResult = false
+var (
+	benchmarkHasPrefixString = []byte("some random string")
+	benchmarkHasPrefixResult = false
+)
 
 func BenchmarkHasPrefix(b *testing.B) {
 	for i := 0; i < b.N; i++ {

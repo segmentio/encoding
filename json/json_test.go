@@ -1496,10 +1496,12 @@ func (*intPtrB) MarshalText() ([]byte, error) {
 	return []byte("B"), nil
 }
 
-type structA struct{ I intPtrA }
-type structB struct{ I intPtrB }
-type structC struct{ M Marshaler }
-type structD struct{ M encoding.TextMarshaler }
+type (
+	structA struct{ I intPtrA }
+	structB struct{ I intPtrB }
+	structC struct{ M Marshaler }
+	structD struct{ M encoding.TextMarshaler }
+)
 
 func TestGithubIssue16(t *testing.T) {
 	// https://github.com/segmentio/encoding/issues/16

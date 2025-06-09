@@ -44,11 +44,15 @@ type decoder struct {
 	flags ParseFlags
 }
 
-type encodeFunc func(encoder, []byte, unsafe.Pointer) ([]byte, error)
-type decodeFunc func(decoder, []byte, unsafe.Pointer) ([]byte, error)
+type (
+	encodeFunc func(encoder, []byte, unsafe.Pointer) ([]byte, error)
+	decodeFunc func(decoder, []byte, unsafe.Pointer) ([]byte, error)
+)
 
-type emptyFunc func(unsafe.Pointer) bool
-type sortFunc func([]reflect.Value)
+type (
+	emptyFunc func(unsafe.Pointer) bool
+	sortFunc  func([]reflect.Value)
+)
 
 // Eventually consistent cache mapping go types to dynamically generated
 // codecs.

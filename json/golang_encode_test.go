@@ -110,9 +110,11 @@ func TestStringTag(t *testing.T) {
 }
 
 // byte slices are special even if they're renamed types.
-type renamedByte byte
-type renamedByteSlice []byte
-type renamedRenamedByteSlice []renamedByte
+type (
+	renamedByte             byte
+	renamedByteSlice        []byte
+	renamedRenamedByteSlice []renamedByte
+)
 
 func TestEncodeRenamedByteSlice(t *testing.T) {
 	s := renamedByteSlice("abc")
