@@ -164,7 +164,7 @@ func baseTypeOf(t reflect.Type) reflect.Type {
 }
 
 func structSizeFuncOf(t reflect.Type, fields []structField) sizeFunc {
-	var inlined = inlined(t)
+	inlined := inlined(t)
 	var unique, repeated []*structField
 
 	for i := range fields {
@@ -212,7 +212,7 @@ func structSizeFuncOf(t reflect.Type, fields []structField) sizeFunc {
 }
 
 func structEncodeFuncOf(t reflect.Type, fields []structField) encodeFunc {
-	var inlined = inlined(t)
+	inlined := inlined(t)
 	var unique, repeated []*structField
 
 	for i := range fields {

@@ -278,7 +278,7 @@ func (e encoder) encodeTime(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t reflect.Type, encode encodeFunc) ([]byte, error) {
-	var start = len(b)
+	start := len(b)
 	var err error
 	b = append(b, '[')
 
@@ -316,7 +316,7 @@ func (e encoder) encodeMap(b []byte, p unsafe.Pointer, t reflect.Type, encodeKey
 		sortKeys(keys)
 	}
 
-	var start = len(b)
+	start := len(b)
 	var err error
 	b = append(b, '{')
 
@@ -373,7 +373,7 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 
 		if len(m) != 0 {
 			var err error
-			var i = 0
+			i := 0
 
 			for k, v := range m {
 				if i != 0 {
@@ -405,7 +405,7 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 	}
 	sort.Sort(s)
 
-	var start = len(b)
+	start := len(b)
 	var err error
 	b = append(b, '{')
 
@@ -451,7 +451,7 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 
 		if len(m) != 0 {
 			var err error
-			var i = 0
+			i := 0
 
 			for k, v := range m {
 				if i != 0 {
@@ -484,7 +484,7 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 	}
 	sort.Sort(s)
 
-	var start = len(b)
+	start := len(b)
 	var err error
 	b = append(b, '{')
 
@@ -529,7 +529,7 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 		b = append(b, '{')
 
 		if len(m) != 0 {
-			var i = 0
+			i := 0
 
 			for k, v := range m {
 				if i != 0 {
@@ -589,7 +589,7 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 		return append(b, "null"...), nil
 	}
 
-	var stringSize = unsafe.Sizeof("")
+	stringSize := unsafe.Sizeof("")
 
 	if (e.flags & SortMapKeys) == 0 {
 		// Optimized code path when the program does not need the map keys to be
@@ -598,7 +598,7 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 
 		if len(m) != 0 {
 			var err error
-			var i = 0
+			i := 0
 
 			for k, v := range m {
 				if i != 0 {
@@ -631,7 +631,7 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 	}
 	sort.Sort(s)
 
-	var start = len(b)
+	start := len(b)
 	var err error
 	b = append(b, '{')
 
@@ -676,7 +676,7 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 		b = append(b, '{')
 
 		if len(m) != 0 {
-			var i = 0
+			i := 0
 
 			for k, v := range m {
 				if i != 0 {
@@ -736,7 +736,7 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 }
 
 func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byte, error) {
-	var start = len(b)
+	start := len(b)
 	var err error
 	var k string
 	var n int

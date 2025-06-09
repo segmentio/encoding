@@ -191,7 +191,7 @@ func (ValText) MarshalText() ([]byte, error) {
 }
 
 func TestRefValMarshal(t *testing.T) {
-	var s = struct {
+	s := struct {
 		R0 Ref
 		R1 *Ref
 		R2 RefText
@@ -867,7 +867,7 @@ func TestMarshalFloat(t *testing.T) {
 		smaller = math.Inf(-1)
 	)
 
-	var digits = "1.2345678901234567890123"
+	digits := "1.2345678901234567890123"
 	for i := len(digits); i >= 2; i-- {
 		if testing.Short() && i < len(digits)-4 {
 			break

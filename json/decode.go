@@ -829,7 +829,7 @@ func (d decoder) decodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 	var err error
 	var key string
 	var val RawMessage
-	var input = b
+	input := b
 
 	b = b[1:]
 	for {
@@ -910,7 +910,7 @@ func (d decoder) decodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 	var err error
 	var key string
 	var val string
-	var input = b
+	input := b
 
 	b = b[1:]
 	for {
@@ -991,8 +991,8 @@ func (d decoder) decodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 	var err error
 	var key string
 	var buf []string
-	var input = b
-	var stringSize = unsafe.Sizeof("")
+	input := b
+	stringSize := unsafe.Sizeof("")
 
 	b = b[1:]
 	for {
@@ -1076,7 +1076,7 @@ func (d decoder) decodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 	var err error
 	var key string
 	var val bool
-	var input = b
+	input := b
 
 	b = b[1:]
 	for {
@@ -1153,7 +1153,7 @@ func (d decoder) decodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 	// memory buffer used to convert short field names to lowercase
 	var buf [64]byte
 	var key []byte
-	var input = b
+	input := b
 
 	b = b[1:]
 	for {

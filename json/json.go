@@ -271,7 +271,7 @@ func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 // Marshal is documented at https://golang.org/pkg/encoding/json/#Marshal
 func Marshal(x interface{}) ([]byte, error) {
 	var err error
-	var buf = encoderBufferPool.Get().(*encoderBuffer)
+	buf := encoderBufferPool.Get().(*encoderBuffer)
 
 	if buf.data, err = Append(buf.data[:0], x, EscapeHTML|SortMapKeys); err != nil {
 		return nil, err
@@ -509,7 +509,7 @@ func (enc *Encoder) Encode(v interface{}) error {
 	}
 
 	var err error
-	var buf = encoderBufferPool.Get().(*encoderBuffer)
+	buf := encoderBufferPool.Get().(*encoderBuffer)
 
 	buf.data, err = Append(buf.data[:0], v, enc.flags)
 

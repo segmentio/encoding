@@ -1351,7 +1351,7 @@ func BenchmarkEasyjsonUnmarshalSmallStruct(b *testing.B) {
 		UserMentions []*string `json:"user_mentions"`
 	}
 
-	var json = []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
+	json := []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
 
 	for i := 0; i < b.N; i++ {
 		var value Entities
@@ -1676,7 +1676,7 @@ func TestGithubIssue26(t *testing.T) {
 	type interfaceType interface{}
 
 	var value interfaceType
-	var data = []byte(`{}`)
+	data := []byte(`{}`)
 
 	if err := Unmarshal(data, &value); err != nil {
 		t.Error(err)

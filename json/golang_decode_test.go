@@ -2089,7 +2089,7 @@ func TestPrefilled(t *testing.T) {
 	ptrToMap := func(m map[string]interface{}) *map[string]interface{} { return &m }
 
 	// Values here change, cannot reuse table across runs.
-	var prefillTests = []struct {
+	prefillTests := []struct {
 		in  string
 		ptr interface{}
 		out interface{}
