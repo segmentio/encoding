@@ -1648,9 +1648,9 @@ func TestGithubIssue23(t *testing.T) {
 
 		b, _ := Marshal(C{
 			C: map[string]B{
-				"1": B{
+				"1": {
 					B: map[string]A{
-						"2": A{
+						"2": {
 							A: map[string]string{"3": "!"},
 						},
 					},
