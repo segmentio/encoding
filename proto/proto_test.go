@@ -116,7 +116,7 @@ type messageWithCustomField struct {
 
 func TestMarshalUnmarshal(t *testing.T) {
 	intVal := 42
-	values := []interface{}{
+	values := []any{
 		// bool
 		true,
 		false,

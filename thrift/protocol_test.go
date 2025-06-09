@@ -11,57 +11,57 @@ import (
 
 var protocolReadWriteTests = [...]struct {
 	scenario string
-	read     interface{}
-	write    interface{}
-	values   []interface{}
+	read     any
+	write    any
+	values   []any
 }{
 	{
 		scenario: "bool",
 		read:     thrift.Reader.ReadBool,
 		write:    thrift.Writer.WriteBool,
-		values:   []interface{}{false, true},
+		values:   []any{false, true},
 	},
 
 	{
 		scenario: "int8",
 		read:     thrift.Reader.ReadInt8,
 		write:    thrift.Writer.WriteInt8,
-		values:   []interface{}{int8(0), int8(1), int8(-1)},
+		values:   []any{int8(0), int8(1), int8(-1)},
 	},
 
 	{
 		scenario: "int16",
 		read:     thrift.Reader.ReadInt16,
 		write:    thrift.Writer.WriteInt16,
-		values:   []interface{}{int16(0), int16(1), int16(-1)},
+		values:   []any{int16(0), int16(1), int16(-1)},
 	},
 
 	{
 		scenario: "int32",
 		read:     thrift.Reader.ReadInt32,
 		write:    thrift.Writer.WriteInt32,
-		values:   []interface{}{int32(0), int32(1), int32(-1)},
+		values:   []any{int32(0), int32(1), int32(-1)},
 	},
 
 	{
 		scenario: "int64",
 		read:     thrift.Reader.ReadInt64,
 		write:    thrift.Writer.WriteInt64,
-		values:   []interface{}{int64(0), int64(1), int64(-1)},
+		values:   []any{int64(0), int64(1), int64(-1)},
 	},
 
 	{
 		scenario: "float64",
 		read:     thrift.Reader.ReadFloat64,
 		write:    thrift.Writer.WriteFloat64,
-		values:   []interface{}{float64(0), float64(1), float64(-1)},
+		values:   []any{float64(0), float64(1), float64(-1)},
 	},
 
 	{
 		scenario: "bytes",
 		read:     thrift.Reader.ReadBytes,
 		write:    thrift.Writer.WriteBytes,
-		values: []interface{}{
+		values: []any{
 			[]byte(""),
 			[]byte("A"),
 			[]byte("1234567890"),
@@ -73,7 +73,7 @@ var protocolReadWriteTests = [...]struct {
 		scenario: "string",
 		read:     thrift.Reader.ReadString,
 		write:    thrift.Writer.WriteString,
-		values: []interface{}{
+		values: []any{
 			"",
 			"A",
 			"1234567890",
@@ -85,7 +85,7 @@ var protocolReadWriteTests = [...]struct {
 		scenario: "message",
 		read:     thrift.Reader.ReadMessage,
 		write:    thrift.Writer.WriteMessage,
-		values: []interface{}{
+		values: []any{
 			thrift.Message{},
 			thrift.Message{Type: thrift.Call, Name: "Hello", SeqID: 10},
 			thrift.Message{Type: thrift.Reply, Name: "World", SeqID: 11},
@@ -98,7 +98,7 @@ var protocolReadWriteTests = [...]struct {
 		scenario: "field",
 		read:     thrift.Reader.ReadField,
 		write:    thrift.Writer.WriteField,
-		values: []interface{}{
+		values: []any{
 			thrift.Field{ID: 101, Type: thrift.TRUE},
 			thrift.Field{ID: 102, Type: thrift.FALSE},
 			thrift.Field{ID: 103, Type: thrift.I8},
@@ -119,7 +119,7 @@ var protocolReadWriteTests = [...]struct {
 		scenario: "list",
 		read:     thrift.Reader.ReadList,
 		write:    thrift.Writer.WriteList,
-		values: []interface{}{
+		values: []any{
 			thrift.List{},
 			thrift.List{Size: 0, Type: thrift.BOOL},
 			thrift.List{Size: 1, Type: thrift.I8},
@@ -131,7 +131,7 @@ var protocolReadWriteTests = [...]struct {
 		scenario: "map",
 		read:     thrift.Reader.ReadMap,
 		write:    thrift.Writer.WriteMap,
-		values: []interface{}{
+		values: []any{
 			thrift.Map{},
 			thrift.Map{Size: 1, Key: thrift.BINARY, Value: thrift.MAP},
 			thrift.Map{Size: 1000, Key: thrift.BINARY, Value: thrift.LIST},

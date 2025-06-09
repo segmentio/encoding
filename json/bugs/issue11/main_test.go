@@ -9,7 +9,7 @@ import (
 )
 
 func TestIssue11(t *testing.T) {
-	m := map[string]map[string]interface{}{
+	m := map[string]map[string]any{
 		"outerkey": {
 			"innerkey": "innervalue",
 		},

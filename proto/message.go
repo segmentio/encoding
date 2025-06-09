@@ -106,7 +106,7 @@ func (f FieldNumber) Bytes(v []byte) RawMessage {
 }
 
 // Value constructs a RawMessage for field number f from v.
-func (f FieldNumber) Value(v interface{}) RawMessage {
+func (f FieldNumber) Value(v any) RawMessage {
 	switch x := v.(type) {
 	case bool:
 		return f.Bool(x)

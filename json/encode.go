@@ -344,7 +344,7 @@ func (e encoder) encodeMap(b []byte, p unsafe.Pointer, t reflect.Type, encodeKey
 
 type element struct {
 	key string
-	val interface{}
+	val any
 	raw RawMessage
 }
 
@@ -357,11 +357,11 @@ func (m *mapslice) Less(i, j int) bool { return m.elements[i].key < m.elements[j
 func (m *mapslice) Swap(i, j int)      { m.elements[i], m.elements[j] = m.elements[j], m.elements[i] }
 
 var mapslicePool = sync.Pool{
-	New: func() interface{} { return new(mapslice) },
+	New: func() any { return new(mapslice) },
 }
 
 func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
-	m := *(*map[string]interface{})(p)
+	m := *(*map[string]any)(p)
 	if m == nil {
 		return append(b, "null"...), nil
 	}
@@ -813,7 +813,7 @@ func (e encoder) encodePointer(b []byte, p unsafe.Pointer, t reflect.Type, encod
 }
 
 func (e encoder) encodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return Append(b, *(*interface{})(p), e.flags)
+	return Append(b, *(*any)(p), e.flags)
 }
 
 func (e encoder) encodeMaybeEmptyInterface(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {

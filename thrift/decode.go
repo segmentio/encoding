@@ -19,7 +19,7 @@ import (
 // to Unmarshal, allowing the function to reuse objects referenced by pointer
 // fields of struct values. When reusing objects, the application is responsible
 // for resetting the state of v before calling Unmarshal again.
-func Unmarshal(p Protocol, b []byte, v interface{}) error {
+func Unmarshal(p Protocol, b []byte, v any) error {
 	br := bytes.NewReader(b)
 	pr := p.NewReader(br)
 
@@ -43,7 +43,7 @@ func NewDecoder(r Reader) *Decoder {
 	return &Decoder{r: r, f: decoderFlags(r)}
 }
 
-func (d *Decoder) Decode(v interface{}) error {
+func (d *Decoder) Decode(v any) error {
 	t := reflect.TypeOf(v)
 	p := reflect.ValueOf(v)
 
