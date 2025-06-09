@@ -1778,7 +1778,7 @@ func TestSetTrustRawMessage(t *testing.T) {
 	b := buf.Bytes()
 	exp := []byte(`{"k":"value"}`)
 	exp = append(exp, '\n')
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1798,7 +1798,7 @@ func TestSetTrustRawMessage(t *testing.T) {
 	b = buf.Bytes()
 	exp = []byte(`{"k":bad"value}`)
 	exp = append(exp, '\n')
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1820,7 +1820,7 @@ func TestSetAppendNewline(t *testing.T) {
 	b := buf.Bytes()
 	exp := []byte(`"value"`)
 	exp = append(exp, '\n')
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1836,7 +1836,7 @@ func TestSetAppendNewline(t *testing.T) {
 	}
 	b = buf.Bytes()
 	exp = []byte(`"value"`)
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1862,7 +1862,7 @@ func TestAppendEscape(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		b := AppendEscape([]byte{}, `value`, AppendFlags(0))
 		exp := []byte(`"value"`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1874,7 +1874,7 @@ func TestAppendEscape(t *testing.T) {
 	t.Run("escaped", func(t *testing.T) {
 		b := AppendEscape([]byte{}, `"escaped"	<value>`, EscapeHTML)
 		exp := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1891,7 +1891,7 @@ func TestAppendEscape(t *testing.T) {
 		b = AppendEscape(b, `"escaped"	<value>`, EscapeHTML)
 		b = append(b, '}')
 		exp := []byte(`{"key":"\"escaped\"\t\u003cvalue\u003e"}`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1918,7 +1918,7 @@ func TestAppendUnescape(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		out := AppendUnescape([]byte{}, []byte(`"value"`), ParseFlags(0))
 		exp := []byte("value")
-		if bytes.Compare(exp, out) != 0 {
+		if !bytes.Equal(exp, out) {
 			t.Error(
 				"unexpected decoding:",
 				"expected", exp,
@@ -1930,7 +1930,7 @@ func TestAppendUnescape(t *testing.T) {
 	t.Run("escaped", func(t *testing.T) {
 		b := AppendUnescape([]byte{}, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
 		exp := []byte(`"escaped"	<value>`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1945,7 +1945,7 @@ func TestAppendUnescape(t *testing.T) {
 		b = AppendUnescape(b, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
 		b = append(b, '}')
 		exp := []byte(`{"key":"escaped"	<value>}`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", string(exp),

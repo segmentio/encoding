@@ -55,7 +55,7 @@ func (d *Decoder) Decode(v interface{}) error {
 	p = p.Elem()
 
 	cache, _ := decoderCache.Load().(map[typeID]decodeFunc)
-	decode, _ := cache[makeTypeID(t)]
+	decode := cache[makeTypeID(t)]
 
 	if decode == nil {
 		decode = decodeFuncOf(t, make(decodeFuncCache))
@@ -385,7 +385,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 		seen[i/64] |= 1 << (i % 64)
 
 		// TODO: implement type conversions?
-		if f.Type != field.typ && !(f.Type == TRUE && field.typ == BOOL) {
+		if f.Type != field.typ && (f.Type != TRUE || field.typ != BOOL) {
 			if flags.have(strict) {
 				return &TypeMismatch{item: "field value", Expect: field.typ, Found: f.Type}
 			}

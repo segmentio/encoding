@@ -32,7 +32,7 @@ func NewEncoder(w Writer) *Encoder {
 func (e *Encoder) Encode(v interface{}) error {
 	t := reflect.TypeOf(v)
 	cache, _ := encoderCache.Load().(map[typeID]encodeFunc)
-	encode, _ := cache[makeTypeID(t)]
+	encode := cache[makeTypeID(t)]
 
 	if encode == nil {
 		encode = encodeFuncOf(t, make(encodeFuncCache))
@@ -295,7 +295,7 @@ encodeFields:
 		}
 
 		skipValue := coalesceBoolFields && field.Type == BOOL
-		if skipValue && isTrue(x) == true {
+		if skipValue && isTrue(x) {
 			field.Type = TRUE
 		}
 

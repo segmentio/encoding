@@ -706,7 +706,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 	for _, embfield := range embedded {
 		subfield := *embfield.subfield
 
-		if ambiguousNames[subfield.name] > 1 && !(subfield.tag && ambiguousTags[subfield.name] == 1) {
+		if ambiguousNames[subfield.name] > 1 && (!subfield.tag || ambiguousTags[subfield.name] != 1) {
 			continue // ambiguous embedded field
 		}
 

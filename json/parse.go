@@ -106,7 +106,7 @@ func (d decoder) parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 		}
 
 		for _, c := range b[1:] {
-			if !(c >= '0' && c <= '9') {
+			if c < '0' || c > '9' {
 				if count == 0 {
 					b, err := d.inputError(b, t)
 					return 0, b, err
@@ -340,7 +340,7 @@ func (d decoder) parseNumber(b []byte) (v, r []byte, kind Kind, err error) {
 		decimalStart := i
 
 		for i < len(b) {
-			if c := b[i]; !('0' <= c && c <= '9') {
+			if c := b[i]; '0' > c || c > '9' {
 				if i == decimalStart {
 					r, err = b[i:], syntaxError(b, "expected digit but found '%c'", c)
 					return
@@ -375,7 +375,7 @@ func (d decoder) parseNumber(b []byte) (v, r []byte, kind Kind, err error) {
 		exponentStart := i
 
 		for i < len(b) {
-			if c := b[i]; !('0' <= c && c <= '9') {
+			if c := b[i]; '0' > c || c > '9' {
 				if i == exponentStart {
 					err = syntaxError(b, "expected digit but found '%c'", c)
 					return
