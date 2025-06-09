@@ -5,9 +5,7 @@ import (
 	"fmt"
 )
 
-var (
-	ErrWireTypeUnknown = errors.New("unknown wire type")
-)
+var ErrWireTypeUnknown = errors.New("unknown wire type")
 
 type UnmarshalFieldError struct {
 	FieldNumer int

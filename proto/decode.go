@@ -27,9 +27,7 @@ func decodeZigZag32(v uint32) int32 {
 
 type decodeFunc = func([]byte, unsafe.Pointer, flags) (int, error)
 
-var (
-	errVarintOverflow = errors.New("varint overflowed 64 bits integer")
-)
+var errVarintOverflow = errors.New("varint overflowed 64 bits integer")
 
 func decodeVarint(b []byte) (uint64, int, error) {
 	if len(b) != 0 && b[0] < 0x80 {

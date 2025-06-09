@@ -174,7 +174,7 @@ func BenchmarkScan(b *testing.B) {
 		},
 	})
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Scan(m, func(f FieldNumber, t WireType, v RawValue) (bool, error) {
 			switch f {
 			case 1, 2, 3:

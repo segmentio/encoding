@@ -12,7 +12,7 @@ type RecursiveMessage struct {
 
 func TestTypeOf(t *testing.T) {
 	tests := []struct {
-		value interface{}
+		value any
 		proto string
 	}{
 		// primitive types

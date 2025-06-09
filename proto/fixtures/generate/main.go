@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	os.Mkdir("protobuf", 0755)
+	os.Mkdir("protobuf", 0o755)
 
 	tests := []struct {
 		name  string
@@ -27,6 +27,6 @@ func main() {
 
 	for _, test := range tests {
 		b, _ := proto.Marshal(&test.value)
-		os.WriteFile("protobuf/"+test.name, b, 0644)
+		os.WriteFile("protobuf/"+test.name, b, 0o644)
 	}
 }

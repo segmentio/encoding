@@ -12,16 +12,16 @@ import (
 
 var marshalTestValues = [...]struct {
 	scenario string
-	values   []interface{}
+	values   []any
 }{
 	{
 		scenario: "bool",
-		values:   []interface{}{false, true},
+		values:   []any{false, true},
 	},
 
 	{
 		scenario: "int",
-		values: []interface{}{
+		values: []any{
 			int(0),
 			int(-1),
 			int(1),
@@ -30,7 +30,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "int8",
-		values: []interface{}{
+		values: []any{
 			int8(0),
 			int8(-1),
 			int8(1),
@@ -41,7 +41,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "int16",
-		values: []interface{}{
+		values: []any{
 			int16(0),
 			int16(-1),
 			int16(1),
@@ -52,7 +52,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "int32",
-		values: []interface{}{
+		values: []any{
 			int32(0),
 			int32(-1),
 			int32(1),
@@ -63,7 +63,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "int64",
-		values: []interface{}{
+		values: []any{
 			int64(0),
 			int64(-1),
 			int64(1),
@@ -74,7 +74,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "string",
-		values: []interface{}{
+		values: []any{
 			"",
 			"A",
 			"1234567890",
@@ -84,7 +84,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "[]byte",
-		values: []interface{}{
+		values: []any{
 			[]byte(""),
 			[]byte("A"),
 			[]byte("1234567890"),
@@ -94,7 +94,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "[]string",
-		values: []interface{}{
+		values: []any{
 			[]string{},
 			[]string{"A"},
 			[]string{"hello", "world", "!!!"},
@@ -104,7 +104,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "map[string]int",
-		values: []interface{}{
+		values: []any{
 			map[string]int{},
 			map[string]int{"A": 1},
 			map[string]int{"hello": 1, "world": 2, "answer": 42},
@@ -113,7 +113,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "map[int64]struct{}",
-		values: []interface{}{
+		values: []any{
 			map[int64]struct{}{},
 			map[int64]struct{}{0: {}, 1: {}, 2: {}},
 		},
@@ -121,7 +121,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "[]map[string]struct{}",
-		values: []interface{}{
+		values: []any{
 			[]map[string]struct{}{},
 			[]map[string]struct{}{{}, {"A": {}, "B": {}, "C": {}}},
 		},
@@ -129,12 +129,12 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "struct{}",
-		values:   []interface{}{struct{}{}},
+		values:   []any{struct{}{}},
 	},
 
 	{
 		scenario: "Point2D",
-		values: []interface{}{
+		values: []any{
 			Point2D{},
 			Point2D{X: 1},
 			Point2D{Y: 2},
@@ -144,7 +144,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "RecursiveStruct",
-		values: []interface{}{
+		values: []any{
 			RecursiveStruct{},
 			RecursiveStruct{Value: "hello"},
 			RecursiveStruct{Value: "hello", Next: &RecursiveStruct{}},
@@ -154,7 +154,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "StructWithEnum",
-		values: []interface{}{
+		values: []any{
 			StructWithEnum{},
 			StructWithEnum{Enum: 1},
 			StructWithEnum{Enum: 2},
@@ -163,7 +163,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "StructWithPointToPointerToBool",
-		values: []interface{}{
+		values: []any{
 			StructWithPointerToPointerToBool{
 				Test: newBoolPtr(true),
 			},
@@ -172,7 +172,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "StructWithEmbeddedStrutPointerWithPointerToPointer",
-		values: []interface{}{
+		values: []any{
 			StructWithEmbeddedStrutPointerWithPointerToPointer{
 				StructWithPointerToPointerToBool: &StructWithPointerToPointerToBool{
 					Test: newBoolPtr(true),
@@ -183,7 +183,7 @@ var marshalTestValues = [...]struct {
 
 	{
 		scenario: "Union",
-		values: []interface{}{
+		values: []any{
 			Union{},
 			Union{A: true, F: newBool(true)},
 			Union{B: 42, F: newInt(42)},
@@ -216,10 +216,10 @@ type StructWithEmbeddedStrutPointerWithPointerToPointer struct {
 }
 
 type Union struct {
-	A bool        `thrift:"1"`
-	B int         `thrift:"2"`
-	C string      `thrift:"3"`
-	F interface{} `thrift:",union"`
+	A bool   `thrift:"1"`
+	B int    `thrift:"2"`
+	C string `thrift:"3"`
+	F any    `thrift:",union"`
 }
 
 func newBool(b bool) *bool       { return &b }
@@ -286,7 +286,7 @@ func benchmarkMarshal(b *testing.B, p thrift.Protocol) {
 		},
 	}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		buf.Reset()
 		enc.Encode(val)
 	}
@@ -323,7 +323,7 @@ func benchmarkUnmarshal(b *testing.B, p thrift.Protocol) {
 	dec := thrift.NewDecoder(p.NewReader(rb))
 	val := &BenchmarkDecodeType{}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rb.Reset(buf)
 		dec.Decode(val)
 	}

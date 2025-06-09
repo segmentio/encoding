@@ -19,7 +19,7 @@ import (
 // to Unmarshal, allowing the function to reuse objects referenced by pointer
 // fields of struct values. When reusing objects, the application is responsible
 // for resetting the state of v before calling Unmarshal again.
-func Unmarshal(p Protocol, b []byte, v interface{}) error {
+func Unmarshal(p Protocol, b []byte, v any) error {
 	br := bytes.NewReader(b)
 	pr := p.NewReader(br)
 
@@ -43,7 +43,7 @@ func NewDecoder(r Reader) *Decoder {
 	return &Decoder{r: r, f: decoderFlags(r)}
 }
 
-func (d *Decoder) Decode(v interface{}) error {
+func (d *Decoder) Decode(v any) error {
 	t := reflect.TypeOf(v)
 	p := reflect.ValueOf(v)
 
@@ -55,7 +55,7 @@ func (d *Decoder) Decode(v interface{}) error {
 	p = p.Elem()
 
 	cache, _ := decoderCache.Load().(map[typeID]decodeFunc)
-	decode, _ := cache[makeTypeID(t)]
+	decode := cache[makeTypeID(t)]
 
 	if decode == nil {
 		decode = decodeFuncOf(t, make(decodeFuncCache))
@@ -237,7 +237,7 @@ func decodeFuncSliceOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		v.Set(reflect.MakeSlice(t, int(l.Size), int(l.Size)))
 		flags = flags.only(decodeFlags)
 
-		for i := 0; i < int(l.Size); i++ {
+		for i := range int(l.Size) {
 			if err := dec(r, v.Index(i), flags); err != nil {
 				return with(dontExpectEOF(err), &decodeErrorList{cause: l, index: i})
 			}
@@ -292,7 +292,7 @@ func decodeFuncMapOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		tmpElem := reflect.New(elem).Elem()
 		flags = flags.only(decodeFlags)
 
-		for i := 0; i < int(m.Size); i++ {
+		for i := range int(m.Size) {
 			if err := decodeKey(r, tmpKey, flags); err != nil {
 				return with(dontExpectEOF(err), &decodeErrorMap{cause: m, index: i})
 			}
@@ -345,7 +345,7 @@ func decodeFuncMapAsSetOf(t reflect.Type, seen decodeFuncCache) decodeFunc {
 		tmp := reflect.New(key).Elem()
 		flags = flags.only(decodeFlags)
 
-		for i := 0; i < int(s.Size); i++ {
+		for i := range int(s.Size) {
 			if err := dec(r, tmp, flags); err != nil {
 				return with(dontExpectEOF(err), &decodeErrorSet{cause: s, index: i})
 			}
@@ -385,7 +385,7 @@ func (dec *structDecoder) decode(r Reader, v reflect.Value, flags flags) error {
 		seen[i/64] |= 1 << (i % 64)
 
 		// TODO: implement type conversions?
-		if f.Type != field.typ && !(f.Type == TRUE && field.typ == BOOL) {
+		if f.Type != field.typ && (f.Type != TRUE || field.typ != BOOL) {
 			if flags.have(strict) {
 				return &TypeMismatch{item: "field value", Expect: field.typ, Found: f.Type}
 			}
@@ -542,7 +542,7 @@ func readList(r Reader, f func(Reader, Type) error) error {
 		return err
 	}
 
-	for i := 0; i < int(l.Size); i++ {
+	for i := range int(l.Size) {
 		if err := f(r, l.Type); err != nil {
 			return with(dontExpectEOF(err), &decodeErrorList{cause: l, index: i})
 		}
@@ -557,7 +557,7 @@ func readSet(r Reader, f func(Reader, Type) error) error {
 		return err
 	}
 
-	for i := 0; i < int(s.Size); i++ {
+	for i := range int(s.Size) {
 		if err := f(r, s.Type); err != nil {
 			return with(dontExpectEOF(err), &decodeErrorSet{cause: s, index: i})
 		}
@@ -572,7 +572,7 @@ func readMap(r Reader, f func(Reader, Type, Type) error) error {
 		return err
 	}
 
-	for i := 0; i < int(m.Size); i++ {
+	for i := range int(m.Size) {
 		if err := f(r, m.Key, m.Value); err != nil {
 			return with(dontExpectEOF(err), &decodeErrorMap{cause: m, index: i})
 		}

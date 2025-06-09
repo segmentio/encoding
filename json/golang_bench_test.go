@@ -38,8 +38,10 @@ type codeNode struct {
 	MeanT    int64       `json:"mean_t"`
 }
 
-var codeJSON []byte
-var codeStruct codeResponse
+var (
+	codeJSON   []byte
+	codeStruct codeResponse
+)
 
 func codeInit() {
 	f, err := os.Open("testdata/code.json.gz")
@@ -68,7 +70,7 @@ func codeInit() {
 
 	if !bytes.Equal(data, codeJSON) {
 		println("different lengths", len(data), len(codeJSON))
-		for i := 0; i < len(data) && i < len(codeJSON); i++ {
+		for i := range min(len(data), len(codeJSON)) {
 			if data[i] != codeJSON[i] {
 				println("re-marshal: changed at byte", i)
 				println("orig: ", string(codeJSON[i-10:i+10]))
@@ -125,7 +127,7 @@ func benchMarshalBytes(n int) func(*testing.B) {
 		bytes.Repeat(sample, (n/len(sample))+1)[:n],
 	}
 	return func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			if _, err := Marshal(v); err != nil {
 				b.Fatal("Marshal:", err)
 			}
@@ -177,7 +179,7 @@ func BenchmarkUnicodeDecoder(b *testing.B) {
 	dec := NewDecoder(r)
 	var out string
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := dec.Decode(&out); err != nil {
 			b.Fatal("Decode:", err)
 		}
@@ -191,13 +193,15 @@ func BenchmarkDecoderStream(b *testing.B) {
 	var buf bytes.Buffer
 	dec := NewDecoder(&buf)
 	buf.WriteString(`"` + strings.Repeat("x", 1000000) + `"` + "\n\n\n")
-	var x interface{}
+	var x any
 	if err := dec.Decode(&x); err != nil {
 		b.Fatal("Decode:", err)
 	}
 	ones := strings.Repeat(" 1\n", 300000) + "\n\n\n"
 	b.StartTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
+		// XXX: making use of the index variable
+		// is probably a misuse of b.N loops.
 		if i%300000 == 0 {
 			buf.WriteString(ones)
 		}
@@ -338,10 +342,10 @@ func BenchmarkTypeFieldsCache(b *testing.B) {
 		ts := types[:nt]
 		b.Run(fmt.Sprintf("MissTypes%d", nt), func(b *testing.B) {
 			nc := runtime.GOMAXPROCS(0)
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				clearCache()
 				var wg sync.WaitGroup
-				for j := 0; j < nc; j++ {
+				for j := range nc {
 					wg.Add(1)
 					go func(j int) {
 						for _, t := range ts[(j*len(ts))/nc : ((j+1)*len(ts))/nc] {

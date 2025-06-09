@@ -31,8 +31,8 @@ type testSyntaxError struct {
 func (e *testSyntaxError) Error() string { return e.msg }
 
 var (
-	marshal    func([]byte, interface{}) ([]byte, error)
-	unmarshal  func([]byte, interface{}) error
+	marshal    func([]byte, any) ([]byte, error)
+	unmarshal  func([]byte, any) error
 	escapeHTML bool
 )
 
@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 		enc := json.NewEncoder(buf)
 		enc.SetEscapeHTML(escapeHTML)
 
-		marshal = func(b []byte, v interface{}) ([]byte, error) {
+		marshal = func(b []byte, v any) ([]byte, error) {
 			buf.data = b
 			err := enc.Encode(v)
 			return buf.data, err
@@ -62,11 +62,11 @@ func TestMain(m *testing.M) {
 			flags |= EscapeHTML
 		}
 
-		marshal = func(b []byte, v interface{}) ([]byte, error) {
+		marshal = func(b []byte, v any) ([]byte, error) {
 			return Append(b, v, flags)
 		}
 
-		unmarshal = func(b []byte, v interface{}) error {
+		unmarshal = func(b []byte, v any) error {
 			_, err := Parse(b, v, ZeroCopy)
 			return err
 		}
@@ -93,7 +93,7 @@ var (
 	bigNeg128 = new(big.Int).Neg(bigPos128)
 )
 
-var testValues = [...]interface{}{
+var testValues = [...]any{
 	// constants
 	nil,
 	false,
@@ -189,7 +189,7 @@ var testValues = [...]interface{}{
 	makeSlice(250),
 	makeSlice(1020),
 	[]string{"A", "B", "C"},
-	[]interface{}{nil, true, false, 0.5, "Hello World!"},
+	[]any{nil, true, false, 0.5, "Hello World!"},
 
 	// map
 	makeMapStringBool(0),
@@ -227,7 +227,7 @@ var testValues = [...]interface{}{
 		S string
 	}{42, time.Date(2016, 12, 20, 0, 20, 1, 0, time.UTC), "Hello World!"},
 	// These types are interesting because they fit in a pointer so the compiler
-	// puts their value directly into the pointer field of the interface{} that
+	// puts their value directly into the pointer field of the any that
 	// is passed to Marshal.
 	struct{ X *int }{},
 	struct{ X *int }{new(int)},
@@ -237,12 +237,12 @@ var testValues = [...]interface{}{
 	struct{ X, Y *int }{},
 	struct{ X, Y *int }{new(int), new(int)},
 	struct {
-		A string                 `json:"name"`
-		B string                 `json:"-"`
-		C string                 `json:",omitempty"`
-		D map[string]interface{} `json:",string"`
+		A string         `json:"name"`
+		B string         `json:"-"`
+		C string         `json:",omitempty"`
+		D map[string]any `json:",string"`
 		e string
-	}{A: "Luke", D: map[string]interface{}{"answer": float64(42)}},
+	}{A: "Luke", D: map[string]any{"answer": float64(42)}},
 	struct{ point }{point{1, 2}},
 	tree{
 		Value: "T",
@@ -272,7 +272,7 @@ var testValues = [...]interface{}{
 	loadTestdata(filepath.Join(runtime.GOROOT(), "src/encoding/json/testdata/code.json.gz")),
 }
 
-var durationTestValues = []interface{}{
+var durationTestValues = []any{
 	// duration
 	time.Nanosecond,
 	time.Microsecond,
@@ -295,7 +295,7 @@ func makeSlice(n int) []int {
 
 func makeMapStringBool(n int) map[string]bool {
 	m := make(map[string]bool, n)
-	for i := 0; i != n; i++ {
+	for i := range n {
 		m[strconv.Itoa(i)] = true
 	}
 	return m
@@ -303,7 +303,7 @@ func makeMapStringBool(n int) map[string]bool {
 
 func makeMapStringString(n int) map[string]string {
 	m := make(map[string]string, n)
-	for i := 0; i != n; i++ {
+	for i := range n {
 		m[strconv.Itoa(i)] = fmt.Sprintf("%d Hello, world!", i)
 	}
 	return m
@@ -311,21 +311,21 @@ func makeMapStringString(n int) map[string]string {
 
 func makeMapStringStringSlice(n int) map[string][]string {
 	m := make(map[string][]string, n)
-	for i := 0; i != n; i++ {
+	for i := range n {
 		m[strconv.Itoa(i)] = []string{strconv.Itoa(i), "Hello,", "world!"}
 	}
 	return m
 }
 
-func makeMapStringInterface(n int) map[string]interface{} {
-	m := make(map[string]interface{}, n)
-	for i := 0; i != n; i++ {
+func makeMapStringInterface(n int) map[string]any {
+	m := make(map[string]any, n)
+	for i := range n {
 		m[strconv.Itoa(i)] = nil
 	}
 	return m
 }
 
-func testName(v interface{}) string {
+func testName(v any) string {
 	return fmt.Sprintf("%T", v)
 }
 
@@ -344,7 +344,7 @@ type codeNode2 struct {
 	MeanT    int64       `json:"mean_t"`
 }
 
-func loadTestdata(path string) interface{} {
+func loadTestdata(path string) any {
 	f, err := os.Open(path)
 	if err != nil {
 		return err.Error()
@@ -623,7 +623,7 @@ func TestParse_numeric(t *testing.T) {
 	}
 }
 
-func newValue(model interface{}) reflect.Value {
+func newValue(model any) reflect.Value {
 	if model == nil {
 		return reflect.New(reflect.TypeOf(&model).Elem())
 	}
@@ -639,7 +639,7 @@ func BenchmarkMarshal(b *testing.B) {
 				return
 			}
 
-			for i := 0; i != b.N; i++ {
+			for range b.N {
 				j, _ = marshal(j[:0], v)
 			}
 
@@ -663,7 +663,7 @@ func BenchmarkUnmarshal(b *testing.B) {
 			j, _ := json.Marshal(x)
 			x = newValue(v).Interface()
 
-			for i := 0; i != b.N; i++ {
+			for range b.N {
 				unmarshal(j, x)
 			}
 
@@ -764,7 +764,6 @@ func TestDecodeLines(t *testing.T) {
 		reader      io.Reader
 		expectCount int
 	}{
-
 		// simple
 
 		{
@@ -948,7 +947,7 @@ func TestDontMatchCaseIncensitiveStructFields(t *testing.T) {
 
 func TestMarshalFuzzBugs(t *testing.T) {
 	tests := []struct {
-		value  interface{}
+		value  any
 		output string
 	}{
 		{ // html sequences are escaped even in RawMessage
@@ -984,27 +983,27 @@ func TestMarshalFuzzBugs(t *testing.T) {
 func TestUnmarshalFuzzBugs(t *testing.T) {
 	tests := []struct {
 		input string
-		value interface{}
+		value any
 	}{
 		{ // non-UTF8 sequences must be converted to the utf8.RuneError character.
 			input: "[\"00000\xef\"]",
-			value: []interface{}{"00000�"},
+			value: []any{"00000�"},
 		},
 		{ // UTF16 surrogate followed by null character
 			input: "[\"\\ud800\\u0000\"]",
-			value: []interface{}{"�\x00"},
+			value: []any{"�\x00"},
 		},
 		{ // UTF16 surrogate followed by ascii character
 			input: "[\"\\uDF00\\u000e\"]",
-			value: []interface{}{"�\x0e"},
+			value: []any{"�\x0e"},
 		},
 		{ // UTF16 surrogate followed by unicode character
 			input: "[[\"\\uDF00\\u0800\"]]",
-			value: []interface{}{[]interface{}{"�ࠀ"}},
+			value: []any{[]any{"�ࠀ"}},
 		},
 		{ // invalid UTF16 surrogate sequenced followed by a valid UTF16 surrogate sequence
 			input: "[\"\\udf00\\udb00\\udf00\"]",
-			value: []interface{}{"�\U000d0300"},
+			value: []any{"�\U000d0300"},
 		},
 		{ // decode single-element slice into []byte field
 			input: "{\"f\":[0],\"0\":[0]}",
@@ -1051,7 +1050,7 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // random ASCII character
 			input: "}",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // random byte after valid JSON, decoded to a nil type
 			input: "0\x93",
@@ -1062,23 +1061,23 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // random byte after valid JSON, decoded to a slice type
 			input: "0\x93",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // decode integer into slice
 			input: "0",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // decode integer with trailing space into slice
 			input: "0\t",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // decode integer with leading random bytes into slice
 			input: "\b0",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // decode string into slice followed by number
 			input: "\"\"0",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // decode what looks like an object followed by a number into a string
 			input: "{0",
@@ -1101,15 +1100,15 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode what looks like an array followed by a number into a slice
 			input: "[9E600",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // decode a number which is too large to fit in a float64
 			input: "[1e900]",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // many nested arrays openings
 			input: "[[[[[[",
-			value: []interface{}{},
+			value: []any{},
 		},
 		{ // decode a map with value type mismatch and missing closing character
 			input: "{\"\":0",
@@ -1143,7 +1142,7 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 		},
 		{ // decode object with null key into map
 			input: "{null:0}",
-			value: map[string]interface{}{},
+			value: map[string]any{},
 		},
 		{ // decode unquoted integer into struct field with string tag
 			input: "{\"S\":0}",
@@ -1312,8 +1311,8 @@ func TestUnmarshalFuzzBugs(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run("", func(t *testing.T) {
-			var ptr1 interface{}
-			var ptr2 interface{}
+			var ptr1 any
+			var ptr2 any
 
 			if test.value != nil {
 				ptr1 = reflect.New(reflect.TypeOf(test.value)).Interface()
@@ -1351,9 +1350,9 @@ func BenchmarkEasyjsonUnmarshalSmallStruct(b *testing.B) {
 		UserMentions []*string `json:"user_mentions"`
 	}
 
-	var json = []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
+	json := []byte(`{"hashtags":[{"indices":[5, 10],"text":"some-text"}],"urls":[],"user_mentions":[]}`)
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var value Entities
 		if err := Unmarshal(json, &value); err != nil {
 			b.Fatal(err)
@@ -1437,7 +1436,7 @@ func TestGithubIssue13(t *testing.T) {
 func TestGithubIssue15(t *testing.T) {
 	// https://github.com/segmentio/encoding/issues/15
 	tests := []struct {
-		m interface{}
+		m any
 		s string
 	}{
 		{
@@ -1496,15 +1495,17 @@ func (*intPtrB) MarshalText() ([]byte, error) {
 	return []byte("B"), nil
 }
 
-type structA struct{ I intPtrA }
-type structB struct{ I intPtrB }
-type structC struct{ M Marshaler }
-type structD struct{ M encoding.TextMarshaler }
+type (
+	structA struct{ I intPtrA }
+	structB struct{ I intPtrB }
+	structC struct{ M Marshaler }
+	structD struct{ M encoding.TextMarshaler }
+)
 
 func TestGithubIssue16(t *testing.T) {
 	// https://github.com/segmentio/encoding/issues/16
 	tests := []struct {
-		value  interface{}
+		value  any
 		output string
 	}{
 		{value: sliceA(nil), output: `"A"`},
@@ -1648,9 +1649,9 @@ func TestGithubIssue23(t *testing.T) {
 
 		b, _ := Marshal(C{
 			C: map[string]B{
-				"1": B{
+				"1": {
 					B: map[string]A{
-						"2": A{
+						"2": {
 							A: map[string]string{"3": "!"},
 						},
 					},
@@ -1673,10 +1674,10 @@ func TestGithubIssue23(t *testing.T) {
 }
 
 func TestGithubIssue26(t *testing.T) {
-	type interfaceType interface{}
+	type interfaceType any
 
 	var value interfaceType
-	var data = []byte(`{}`)
+	data := []byte(`{}`)
 
 	if err := Unmarshal(data, &value); err != nil {
 		t.Error(err)
@@ -1693,7 +1694,6 @@ func TestGithubIssue28(t *testing.T) {
 	} else if string(b) != `{"err":{}}` {
 		t.Error(string(b))
 	}
-
 }
 
 func TestGithubIssue41(t *testing.T) {
@@ -1716,7 +1716,6 @@ func TestGithubIssue41(t *testing.T) {
 			"expected: ", expectedString,
 		)
 	}
-
 }
 
 func TestGithubIssue44(t *testing.T) {
@@ -1778,7 +1777,7 @@ func TestSetTrustRawMessage(t *testing.T) {
 	b := buf.Bytes()
 	exp := []byte(`{"k":"value"}`)
 	exp = append(exp, '\n')
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1798,7 +1797,7 @@ func TestSetTrustRawMessage(t *testing.T) {
 	b = buf.Bytes()
 	exp = []byte(`{"k":bad"value}`)
 	exp = append(exp, '\n')
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1820,7 +1819,7 @@ func TestSetAppendNewline(t *testing.T) {
 	b := buf.Bytes()
 	exp := []byte(`"value"`)
 	exp = append(exp, '\n')
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1836,7 +1835,7 @@ func TestSetAppendNewline(t *testing.T) {
 	}
 	b = buf.Bytes()
 	exp = []byte(`"value"`)
-	if bytes.Compare(exp, b) != 0 {
+	if !bytes.Equal(exp, b) {
 		t.Error(
 			"unexpected encoding:",
 			"expected", exp,
@@ -1862,7 +1861,7 @@ func TestAppendEscape(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		b := AppendEscape([]byte{}, `value`, AppendFlags(0))
 		exp := []byte(`"value"`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1874,7 +1873,7 @@ func TestAppendEscape(t *testing.T) {
 	t.Run("escaped", func(t *testing.T) {
 		b := AppendEscape([]byte{}, `"escaped"	<value>`, EscapeHTML)
 		exp := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1891,7 +1890,7 @@ func TestAppendEscape(t *testing.T) {
 		b = AppendEscape(b, `"escaped"	<value>`, EscapeHTML)
 		b = append(b, '}')
 		exp := []byte(`{"key":"\"escaped\"\t\u003cvalue\u003e"}`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1918,7 +1917,7 @@ func TestAppendUnescape(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		out := AppendUnescape([]byte{}, []byte(`"value"`), ParseFlags(0))
 		exp := []byte("value")
-		if bytes.Compare(exp, out) != 0 {
+		if !bytes.Equal(exp, out) {
 			t.Error(
 				"unexpected decoding:",
 				"expected", exp,
@@ -1930,7 +1929,7 @@ func TestAppendUnescape(t *testing.T) {
 	t.Run("escaped", func(t *testing.T) {
 		b := AppendUnescape([]byte{}, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
 		exp := []byte(`"escaped"	<value>`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", exp,
@@ -1945,7 +1944,7 @@ func TestAppendUnescape(t *testing.T) {
 		b = AppendUnescape(b, []byte(`"\"escaped\"\t\u003cvalue\u003e"`), ParseFlags(0))
 		b = append(b, '}')
 		exp := []byte(`{"key":"escaped"	<value>}`)
-		if bytes.Compare(exp, b) != 0 {
+		if !bytes.Equal(exp, b) {
 			t.Error(
 				"unexpected encoding:",
 				"expected", string(exp),
@@ -1958,7 +1957,7 @@ func TestAppendUnescape(t *testing.T) {
 func BenchmarkUnescape(b *testing.B) {
 	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
 	out := []byte{}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		out = Unescape(s)
 	}
 
@@ -1969,7 +1968,7 @@ func BenchmarkUnmarshalField(b *testing.B) {
 	s := []byte(`"\"escaped\"\t\u003cvalue\u003e"`)
 	var v string
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		json.Unmarshal(s, &v)
 	}
 

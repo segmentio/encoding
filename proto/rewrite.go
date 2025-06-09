@@ -399,7 +399,7 @@ func parseRewriteTemplateStruct(t Type, f FieldNumber, j json.RawMessage, rules 
 
 	fieldsByName := map[string]Field{}
 
-	for i, n := 0, t.NumField(); i < n; i++ {
+	for i := range t.NumField() {
 		f := t.Field(i)
 		fieldsByName[f.Name] = f
 	}

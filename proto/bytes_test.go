@@ -19,7 +19,7 @@ func BenchmarkIsZeroBytes64K(b *testing.B) {
 }
 
 func benchmarkIsZeroBytes(b *testing.B, slice []byte) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		isZeroBytes(slice)
 	}
 }

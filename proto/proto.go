@@ -7,13 +7,13 @@ import (
 	"unsafe"
 )
 
-func Size(v interface{}) int {
+func Size(v any) int {
 	t, p := inspect(v)
 	c := cachedCodecOf(t)
 	return c.size(p, inline|toplevel)
 }
 
-func Marshal(v interface{}) ([]byte, error) {
+func Marshal(v any) ([]byte, error) {
 	t, p := inspect(v)
 	c := cachedCodecOf(t)
 	b := make([]byte, c.size(p, inline|toplevel))
@@ -24,7 +24,7 @@ func Marshal(v interface{}) ([]byte, error) {
 	return b, nil
 }
 
-func MarshalTo(b []byte, v interface{}) (int, error) {
+func MarshalTo(b []byte, v any) (int, error) {
 	t, p := inspect(v)
 	c := cachedCodecOf(t)
 	n, err := c.encode(b, p, inline|toplevel)
@@ -34,7 +34,7 @@ func MarshalTo(b []byte, v interface{}) (int, error) {
 	return n, err
 }
 
-func Unmarshal(b []byte, v interface{}) error {
+func Unmarshal(b []byte, v any) error {
 	if len(b) == 0 {
 		// An empty input is a valid protobuf message with all fields set to the
 		// zero-value.
@@ -100,11 +100,11 @@ type iface struct {
 	ptr unsafe.Pointer
 }
 
-func inspect(v interface{}) (reflect.Type, unsafe.Pointer) {
+func inspect(v any) (reflect.Type, unsafe.Pointer) {
 	return reflect.TypeOf(v), pointer(v)
 }
 
-func pointer(v interface{}) unsafe.Pointer {
+func pointer(v any) unsafe.Pointer {
 	return (*iface)(unsafe.Pointer(&v)).ptr
 }
 

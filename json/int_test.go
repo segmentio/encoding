@@ -8,7 +8,7 @@ import (
 
 func TestAppendInt(t *testing.T) {
 	var ints []int64
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		u := uint64(1) << i
 		ints = append(ints, int64(u-1), int64(u), int64(u+1), -int64(u))
 	}
@@ -27,7 +27,7 @@ func TestAppendInt(t *testing.T) {
 func benchStd(b *testing.B, n int64) {
 	var buf [20]byte
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		strconv.AppendInt(buf[:0], n, 10)
 	}
 }
@@ -35,7 +35,7 @@ func benchStd(b *testing.B, n int64) {
 func benchNew(b *testing.B, n int64) {
 	var buf [20]byte
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		appendInt(buf[:0], n)
 	}
 }

@@ -11,7 +11,7 @@ import (
 
 func TestNumberIsValid(t *testing.T) {
 	// From: https://stackoverflow.com/a/13340826
-	var jsonNumberRegexp = regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$`)
+	jsonNumberRegexp := regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$`)
 
 	validTests := []string{
 		"0",
@@ -115,15 +115,15 @@ func TestNumberIsValid(t *testing.T) {
 
 func BenchmarkNumberIsValid(b *testing.B) {
 	s := "-61657.61667E+61673"
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		isValidNumber(s)
 	}
 }
 
 func BenchmarkNumberIsValidRegexp(b *testing.B) {
-	var jsonNumberRegexp = regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$`)
+	jsonNumberRegexp := regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$`)
 	s := "-61657.61667E+61673"
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		jsonNumberRegexp.MatchString(s)
 	}
 }

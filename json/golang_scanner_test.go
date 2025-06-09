@@ -199,10 +199,7 @@ func TestIndentErrors(t *testing.T) {
 func diff(t *testing.T, a, b []byte) {
 	for i := 0; ; i++ {
 		if i >= len(a) || i >= len(b) || a[i] != b[i] {
-			j := i - 10
-			if j < 0 {
-				j = 0
-			}
+			j := max(0, i-10)
 			t.Errorf("diverge at %d: «%s» vs «%s»", i, trim(a[j:]), trim(b[j:]))
 			return
 		}
@@ -232,7 +229,7 @@ func initBig() {
 	jsonBig = b
 }
 
-func genValue(n int) interface{} {
+func genValue(n int) any {
 	if n > 1 {
 		switch rand.Intn(2) {
 		case 0:
@@ -265,7 +262,7 @@ func genString(stddev float64) string {
 	return string(c)
 }
 
-func genArray(n int) []interface{} {
+func genArray(n int) []any {
 	f := int(math.Abs(rand.NormFloat64()) * math.Min(10, float64(n/2)))
 	if f > n {
 		f = n
@@ -273,23 +270,21 @@ func genArray(n int) []interface{} {
 	if f < 1 {
 		f = 1
 	}
-	x := make([]interface{}, f)
+	x := make([]any, f)
 	for i := range x {
 		x[i] = genValue(((i+1)*n)/f - (i*n)/f)
 	}
 	return x
 }
 
-func genMap(n int) map[string]interface{} {
+func genMap(n int) map[string]any {
 	f := int(math.Abs(rand.NormFloat64()) * math.Min(10, float64(n/2)))
-	if f > n {
-		f = n
-	}
+	f = min(f, n)
 	if n > 0 && f == 0 {
 		f = 1
 	}
-	x := make(map[string]interface{})
-	for i := 0; i < f; i++ {
+	x := make(map[string]any)
+	for i := range f {
 		x[genString(10)] = genValue(((i+1)*n)/f - (i*n)/f)
 	}
 	return x

@@ -116,7 +116,7 @@ type messageWithCustomField struct {
 
 func TestMarshalUnmarshal(t *testing.T) {
 	intVal := 42
-	values := []interface{}{
+	values := []any{
 		// bool
 		true,
 		false,
@@ -279,20 +279,20 @@ func TestMarshalUnmarshal(t *testing.T) {
 			M1: map[int]int{0: 1},
 			M2: map[string]string{"": "A"},
 			M3: map[string]message{
-				"m0": message{},
-				"m1": message{A: 42},
-				"m3": message{S: submessage{X: "X", Y: "Y"}},
+				"m0": {},
+				"m1": {A: 42},
+				"m3": {S: submessage{X: "X", Y: "Y"}},
 			},
 			M4: map[string]*message{
-				"m0": &message{},
-				"m1": &message{A: 42},
-				"m3": &message{S: submessage{X: "X", Y: "Y"}},
+				"m0": {},
+				"m1": {A: 42},
+				"m3": {S: submessage{X: "X", Y: "Y"}},
 			},
 			M5: map[key]uint{
-				key{Hi: 0, Lo: 0}: 0,
-				key{Hi: 1, Lo: 0}: 1,
-				key{Hi: 0, Lo: 1}: 2,
-				key{Hi: math.MaxUint64, Lo: math.MaxUint64}: 3,
+				{Hi: 0, Lo: 0}:                           0,
+				{Hi: 1, Lo: 0}:                           1,
+				{Hi: 0, Lo: 1}:                           2,
+				{Hi: math.MaxUint64, Lo: math.MaxUint64}: 3,
 			},
 		},
 

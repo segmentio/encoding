@@ -79,6 +79,7 @@ func makemap(t unsafe.Pointer, cap int) unsafe.Pointer
 
 // m escapes into the return value, but the caller of mapiterinit
 // doesn't let the return value escape.
+//
 //go:noescape
 //go:linkname mapiterinit runtime.mapiterinit
 func mapiterinit(t unsafe.Pointer, m unsafe.Pointer, it *hiter)

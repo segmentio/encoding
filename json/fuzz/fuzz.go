@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Copyright 2015 go-fuzz project authors. All rights reserved.
@@ -15,7 +16,7 @@ import (
 	"github.com/segmentio/encoding/json"
 )
 
-func fixS(v interface{}) {
+func fixS(v any) {
 	if s, ok := v.(*S); ok {
 		if len(s.P) == 0 {
 			s.P = []byte(`""`)
@@ -25,12 +26,12 @@ func fixS(v interface{}) {
 
 func Fuzz(data []byte) int {
 	score := 0
-	for _, ctor := range []func() interface{}{
-		func() interface{} { return nil },
-		func() interface{} { return new([]interface{}) },
-		func() interface{} { m := map[string]string{}; return &m },
-		func() interface{} { m := map[string]interface{}{}; return &m },
-		func() interface{} { return new(S) },
+	for _, ctor := range []func() any{
+		func() any { return nil },
+		func() any { return new([]any) },
+		func() any { m := map[string]string{}; return &m },
+		func() any { m := map[string]any{}; return &m },
+		func() any { return new(S) },
 	} {
 		// Note: we modified the test to verify that we behavior like the
 		// standard encoding/json package, whether it's right or wrong.
@@ -102,10 +103,10 @@ type S struct {
 	D bool
 	E uint8
 	F []byte
-	G interface{}
-	H map[string]interface{}
+	G any
+	H map[string]any
 	I map[string]string
-	J []interface{}
+	J []any
 	K []string
 	L S1
 	M *S1

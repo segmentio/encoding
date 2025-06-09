@@ -70,7 +70,7 @@ func BenchmarkDecodeTag(b *testing.B) {
 	c := [8]byte{}
 	n, _ := encodeTag(c[:], 1, varint)
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		decodeTag(c[:n])
 	}
 }
@@ -89,7 +89,7 @@ func BenchmarkDecodeMessage(b *testing.B) {
 	msg := message{}
 	b.SetBytes(int64(len(data)))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := Unmarshal(data, &msg); err != nil {
 			b.Fatal(err)
 		}
@@ -115,7 +115,7 @@ func BenchmarkDecodeMap(b *testing.B) {
 	msg := message{}
 	b.SetBytes(int64(len(data)))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := Unmarshal(data, &msg); err != nil {
 			b.Fatal(err)
 		}
@@ -137,11 +137,10 @@ func BenchmarkDecodeSlice(b *testing.B) {
 	msg := message{}
 	b.SetBytes(int64(len(data)))
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := Unmarshal(data, &msg); err != nil {
 			b.Fatal(err)
 		}
 		msg = message{}
 	}
-
 }
