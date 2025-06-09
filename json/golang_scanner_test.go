@@ -199,10 +199,7 @@ func TestIndentErrors(t *testing.T) {
 func diff(t *testing.T, a, b []byte) {
 	for i := 0; ; i++ {
 		if i >= len(a) || i >= len(b) || a[i] != b[i] {
-			j := i - 10
-			if j < 0 {
-				j = 0
-			}
+			j := max(0, i-10)
 			t.Errorf("diverge at %d: «%s» vs «%s»", i, trim(a[j:]), trim(b[j:]))
 			return
 		}
@@ -282,9 +279,7 @@ func genArray(n int) []interface{} {
 
 func genMap(n int) map[string]interface{} {
 	f := int(math.Abs(rand.NormFloat64()) * math.Min(10, float64(n/2)))
-	if f > n {
-		f = n
-	}
+	f = min(f, n)
 	if n > 0 && f == 0 {
 		f = 1
 	}
