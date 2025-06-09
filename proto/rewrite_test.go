@@ -328,7 +328,6 @@ func TestParseRewriteRules(t *testing.T) {
     "flags": 32
   }
 }`), rules)
-
 	if err != nil {
 		t.Fatal(err)
 	}

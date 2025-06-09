@@ -73,7 +73,6 @@ func TestParseStringUnquote(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.in, func(t *testing.T) {
 			out, ext, _, err := d.parseStringUnquote([]byte(test.in), nil)
-
 			if err != nil {
 				t.Errorf("%s => %s", test.in, err)
 				return

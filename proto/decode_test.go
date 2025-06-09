@@ -143,5 +143,4 @@ func BenchmarkDecodeSlice(b *testing.B) {
 		}
 		msg = message{}
 	}
-
 }

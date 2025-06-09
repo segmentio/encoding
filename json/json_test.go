@@ -764,7 +764,6 @@ func TestDecodeLines(t *testing.T) {
 		reader      io.Reader
 		expectCount int
 	}{
-
 		// simple
 
 		{
@@ -1695,7 +1694,6 @@ func TestGithubIssue28(t *testing.T) {
 	} else if string(b) != `{"err":{}}` {
 		t.Error(string(b))
 	}
-
 }
 
 func TestGithubIssue41(t *testing.T) {
@@ -1718,7 +1716,6 @@ func TestGithubIssue41(t *testing.T) {
 			"expected: ", expectedString,
 		)
 	}
-
 }
 
 func TestGithubIssue44(t *testing.T) {

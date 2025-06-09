@@ -512,7 +512,6 @@ func (enc *Encoder) Encode(v interface{}) error {
 	buf := encoderBufferPool.Get().(*encoderBuffer)
 
 	buf.data, err = Append(buf.data[:0], v, enc.flags)
-
 	if err != nil {
 		encoderBufferPool.Put(buf)
 		return err
