@@ -158,30 +158,9 @@ func (e encoder) encodeString(b []byte, p unsafe.Pointer) ([]byte, error) {
 		}
 
 		switch c {
-		case '\\', '"':
+		case '\\', '"', '\b', '\f', '\n', '\r', '\t':
 			b = append(b, s[i:j]...)
-			b = append(b, '\\', c)
-			i = j + 1
-			j = j + 1
-			continue
-
-		case '\n':
-			b = append(b, s[i:j]...)
-			b = append(b, '\\', 'n')
-			i = j + 1
-			j = j + 1
-			continue
-
-		case '\r':
-			b = append(b, s[i:j]...)
-			b = append(b, '\\', 'r')
-			i = j + 1
-			j = j + 1
-			continue
-
-		case '\t':
-			b = append(b, s[i:j]...)
-			b = append(b, '\\', 't')
+			b = append(b, '\\', escapeByteRepr(c))
 			i = j + 1
 			j = j + 1
 			continue

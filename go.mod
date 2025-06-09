@@ -1,6 +1,6 @@
 module github.com/segmentio/encoding
 
-go 1.18
+go 1.23
 
 require github.com/segmentio/asm v1.1.3
 
