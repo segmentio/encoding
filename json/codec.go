@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/big"
 	"reflect"
 	"sort"
@@ -73,11 +74,8 @@ func cacheLoad() map[unsafe.Pointer]codec {
 
 func cacheStore(typ reflect.Type, cod codec, oldCodecs map[unsafe.Pointer]codec) {
 	newCodecs := make(map[unsafe.Pointer]codec, len(oldCodecs)+1)
+	maps.Copy(newCodecs, oldCodecs)
 	newCodecs[typeid(typ)] = cod
-
-	for t, c := range oldCodecs {
-		newCodecs[t] = c
-	}
 
 	cache.Store(&newCodecs)
 }
