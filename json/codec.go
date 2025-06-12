@@ -568,6 +568,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 			anonymous  = f.Anonymous
 			tag        = false
 			omitempty  = false
+			omitzero   = false
 			stringify  = false
 			unexported = len(f.PkgPath) != 0
 		)
@@ -593,6 +594,8 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				switch tag {
 				case "omitempty":
 					omitempty = true
+				case "omitzero":
+					omitzero = true
 				case "string":
 					stringify = true
 				}
@@ -675,9 +678,11 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 		fields = append(fields, structField{
 			codec:     codec,
 			offset:    offset + f.Offset,
-			empty:     emptyFuncOf(f.Type),
+			isEmpty:   emptyFuncOf(f.Type),
+			isZero:    zeroFuncOf(f.Type),
 			tag:       tag,
 			omitempty: omitempty,
+			omitzero:  omitzero,
 			name:      name,
 			index:     i << 32,
 			typ:       f.Type,
@@ -895,6 +900,18 @@ func isValidTag(s string) bool {
 	return true
 }
 
+func zeroFuncOf(t reflect.Type) emptyFunc {
+	if t.Implements(isZeroerType) {
+		return func(p unsafe.Pointer) bool {
+			return unsafeToAny(t, p).(isZeroer).IsZero()
+		}
+	}
+
+	return func(p unsafe.Pointer) bool {
+		return reflectDeref(t, p).IsZero()
+	}
+}
+
 func emptyFuncOf(t reflect.Type) emptyFunc {
 	switch t {
 	case bytesType, rawMessageType:
@@ -908,7 +925,7 @@ func emptyFuncOf(t reflect.Type) emptyFunc {
 		}
 
 	case reflect.Map:
-		return func(p unsafe.Pointer) bool { return reflect.NewAt(t, p).Elem().Len() == 0 }
+		return func(p unsafe.Pointer) bool { return reflectDeref(t, p).Len() == 0 }
 
 	case reflect.Slice:
 		return func(p unsafe.Pointer) bool { return (*slice)(p).len == 0 }
@@ -953,6 +970,14 @@ func emptyFuncOf(t reflect.Type) emptyFunc {
 	return func(unsafe.Pointer) bool { return false }
 }
 
+func reflectDeref(t reflect.Type, p unsafe.Pointer) reflect.Value {
+	return reflect.NewAt(t, p).Elem()
+}
+
+func unsafeToAny(t reflect.Type, p unsafe.Pointer) any {
+	return reflectDeref(t, p).Interface()
+}
+
 type iface struct {
 	typ unsafe.Pointer
 	ptr unsafe.Pointer
@@ -976,9 +1001,11 @@ type structType struct {
 type structField struct {
 	codec     codec
 	offset    uintptr
-	empty     emptyFunc
+	isEmpty   emptyFunc
+	isZero    emptyFunc
 	tag       bool
 	omitempty bool
+	omitzero  bool
 	json      string
 	html      string
 	name      string
@@ -1064,6 +1091,8 @@ type sliceHeader struct {
 	Cap  int
 }
 
+type isZeroer interface{ IsZero() bool }
+
 var (
 	nullType = reflect.TypeOf(nil)
 	boolType = reflect.TypeFor[bool]()
@@ -1111,6 +1140,7 @@ var (
 	jsonUnmarshalerType = reflect.TypeFor[Unmarshaler]()
 	textMarshalerType   = reflect.TypeFor[encoding.TextMarshaler]()
 	textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
+	isZeroerType        = reflect.TypeFor[isZeroer]()
 
 	bigIntDecoder = constructJSONUnmarshalerDecodeFunc(bigIntType, false)
 )

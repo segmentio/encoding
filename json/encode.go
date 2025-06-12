@@ -748,7 +748,11 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		f := &st.fields[i]
 		v := unsafe.Pointer(uintptr(p) + f.offset)
 
-		if f.omitempty && f.empty(v) {
+		switch {
+		case f.omitempty && f.isEmpty(v):
+			continue
+
+		case f.omitzero && f.isZero(v):
 			continue
 		}
 
