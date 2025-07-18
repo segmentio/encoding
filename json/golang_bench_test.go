@@ -261,6 +261,32 @@ func BenchmarkUnmarshalString(b *testing.B) {
 	})
 }
 
+func BenchmarkUnmarshalObjectMixed(b *testing.B) {
+	b.ReportAllocs()
+	data := []byte(`{"string":"hello world","time":"2025-07-17T18:40:04.338Z","bool":true,"integer":42,"decimal":3.14,"null":null,"object":{"hello":"world"},"array":[1,2,3]}`)
+	b.RunParallel(func(pb *testing.PB) {
+		var m map[string]any
+		for pb.Next() {
+			if err := Unmarshal(data, &m); err != nil {
+				b.Fatal("Unmarshal:", err)
+			}
+		}
+	})
+}
+
+func BenchmarkUnmarshalArrayMixed(b *testing.B) {
+	b.ReportAllocs()
+	data := []byte(`["hello world","2025-07-17T18:40:04.338Z",true,42,3.14,null,{"hello":"world"},[1,2,3]]`)
+	b.RunParallel(func(pb *testing.PB) {
+		var a []any
+		for pb.Next() {
+			if err := Unmarshal(data, &a); err != nil {
+				b.Fatal("Unmarshal:", err)
+			}
+		}
+	})
+}
+
 func BenchmarkUnmarshalFloat64(b *testing.B) {
 	b.ReportAllocs()
 	data := []byte(`3.14`)

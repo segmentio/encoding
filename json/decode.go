@@ -1292,15 +1292,19 @@ func (d decoder) decodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 
 	switch k.Class() {
 	case Object:
-		v, err = decodeInto[map[string]any](&val, v, d, decoder.decodeMapStringInterface)
+		m := make(map[string]interface{})
+		v, err = d.decodeMapStringInterface(v, unsafe.Pointer(&m))
+		val = m
 
 	case Array:
-		size := alignedSize(interfaceType)
-		fn := constructSliceDecodeFunc(size, sliceInterfaceType, decoder.decodeInterface)
-		v, err = decodeInto[[]any](&val, v, d, fn)
+		a := make([]interface{}, 0, 10)
+		v, err = d.decodeSlice(v, unsafe.Pointer(&a), unsafe.Sizeof(a[0]), sliceInterfaceType, decoder.decodeInterface)
+		val = a
 
 	case String:
-		v, err = decodeInto[string](&val, v, d, decoder.decodeString)
+		s := ""
+		v, err = d.decodeString(v, unsafe.Pointer(&s))
+		val = s
 
 	case Null:
 		v, val = nil, nil
