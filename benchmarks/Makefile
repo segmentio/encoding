@@ -74,7 +74,7 @@ benchstat := ${GOPATH}/bin/benchstat
 all:
 
 $(benchstat):
-	go install golang.org/x/perf/cmd/benchstat
+	go install golang.org/x/perf/cmd/benchstat@latest
 
 $(benchmark.cmd.dir)/message.pb.go: $(benchmark.cmd.dir)/message.proto
 	@protoc -I. \
