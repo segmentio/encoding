@@ -995,7 +995,6 @@ type structType struct {
 	ficaseIndex map[string]*structField
 	keyset      []byte
 	typ         reflect.Type
-	inlined     bool
 }
 
 type structField struct {
