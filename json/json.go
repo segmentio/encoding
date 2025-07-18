@@ -15,7 +15,7 @@ import (
 type Delim = json.Delim
 
 // InvalidUTF8Error is documented at https://golang.org/pkg/encoding/json/#InvalidUTF8Error
-type InvalidUTF8Error = json.InvalidUTF8Error
+type InvalidUTF8Error = json.InvalidUTF8Error //nolint:staticcheck // compat.
 
 // InvalidUnmarshalError is documented at https://golang.org/pkg/encoding/json/#InvalidUnmarshalError
 type InvalidUnmarshalError = json.InvalidUnmarshalError
@@ -39,7 +39,7 @@ type SyntaxError = json.SyntaxError
 type Token = json.Token
 
 // UnmarshalFieldError is documented at https://golang.org/pkg/encoding/json/#UnmarshalFieldError
-type UnmarshalFieldError = json.UnmarshalFieldError
+type UnmarshalFieldError = json.UnmarshalFieldError //nolint:staticcheck // compat.
 
 // UnmarshalTypeError is documented at https://golang.org/pkg/encoding/json/#UnmarshalTypeError
 type UnmarshalTypeError = json.UnmarshalTypeError

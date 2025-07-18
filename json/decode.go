@@ -1410,7 +1410,7 @@ func (d decoder) decodeMaybeEmptyInterface(b []byte, p unsafe.Pointer, t reflect
 	return d.decodeUnmarshalTypeError(b, p, t)
 }
 
-func (d decoder) decodeUnmarshalTypeError(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
+func (d decoder) decodeUnmarshalTypeError(b []byte, _ unsafe.Pointer, t reflect.Type) ([]byte, error) {
 	v, b, _, err := d.parseValue(b)
 	if err != nil {
 		return b, err
@@ -1500,7 +1500,7 @@ func (d decoder) decodeTextUnmarshaler(b []byte, p unsafe.Pointer, t reflect.Typ
 		value = "array"
 	}
 
-	return b, &UnmarshalTypeError{Value: value, Type: reflect.PtrTo(t)}
+	return b, &UnmarshalTypeError{Value: value, Type: reflect.PointerTo(t)}
 }
 
 func (d decoder) prependField(key, field string) string {

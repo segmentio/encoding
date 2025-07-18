@@ -240,7 +240,7 @@ var testValues = [...]any{
 		A string         `json:"name"`
 		B string         `json:"-"`
 		C string         `json:",omitempty"`
-		D map[string]any `json:",string"`
+		D map[string]any `json:",string"` //nolint:staticcheck // intentional
 		e string
 	}{A: "Luke", D: map[string]any{"answer": float64(42)}},
 	struct{ point }{point{1, 2}},
@@ -880,12 +880,11 @@ func TestDecodeLines(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			d := NewDecoder(test.reader)
 			var count int
-			var err error
 			for {
 				var o obj
-				err = d.Decode(&o)
+				err := d.Decode(&o)
 				if err != nil {
-					if err == io.EOF {
+					if errors.Is(err, io.EOF) {
 						break
 					}
 
@@ -902,10 +901,6 @@ func TestDecodeLines(t *testing.T) {
 					t.Errorf("object was not unmarshaled correctly: %#v", o)
 				}
 				count++
-			}
-
-			if err != nil && err != io.EOF {
-				t.Error(err)
 			}
 
 			if count != test.expectCount {
