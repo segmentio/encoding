@@ -21,11 +21,6 @@ const (
 	cr = '\r'
 )
 
-const (
-	escape = '\\'
-	quote  = '"'
-)
-
 func internalParseFlags(b []byte) (flags ParseFlags) {
 	// Don't consider surrounding whitespace
 	b = skipSpaces(b)
