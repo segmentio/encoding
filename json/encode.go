@@ -329,14 +329,28 @@ func (e encoder) encodeMap(b []byte, p unsafe.Pointer, t reflect.Type, encodeKey
 		return e.encodeNull(b, nil)
 	}
 
+	// checkRefCycle/freeRefCycle expect the map header pointer itself,
+	// rather than a pointer to the header.
+	p = *(*unsafe.Pointer)(p)
+
+	if shouldCheckForRefCycle(&e) {
+		key := cycleKey{ptr: p}
+		if hasRefCycle(&e, key) {
+			return b, refCycleError(t, p)
+		}
+
+		defer freeRefCycleInfo(&e, key)
+	}
+
 	keys := m.MapKeys()
 	if sortKeys != nil && (e.flags&SortMapKeys) != 0 {
 		sortKeys(keys)
 	}
 
 	start := len(b)
-	var err error
 	b = append(b, '{')
+
+	var err error
 
 	for i, k := range keys {
 		v := m.MapIndex(k)
@@ -384,6 +398,19 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 		return e.encodeNull(b, nil)
 	}
 
+	// checkRefCycle/freeRefCycle expect the map header pointer itself,
+	// rather than a pointer to the header.
+	p = *(*unsafe.Pointer)(p)
+
+	if shouldCheckForRefCycle(&e) {
+		key := cycleKey{ptr: p}
+		if hasRefCycle(&e, key) {
+			return b, refCycleError(mapStringInterfaceType, p)
+		}
+
+		defer freeRefCycleInfo(&e, key)
+	}
+
 	if (e.flags & SortMapKeys) == 0 {
 		// Optimized code path when the program does not need the map keys to be
 		// sorted.
@@ -424,8 +451,9 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 	sort.Sort(s)
 
 	start := len(b)
-	var err error
 	b = append(b, '{')
+
+	var err error
 
 	for i, elem := range s.elements {
 		if i != 0 {
