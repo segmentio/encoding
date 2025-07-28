@@ -6,7 +6,6 @@ import (
 	"io"
 	"math/bits"
 	"reflect"
-	"runtime"
 	"sync"
 	"unsafe"
 )
@@ -194,25 +193,9 @@ func (k Kind) Class() Kind { return Kind(1 << uint(bits.Len(uint(k))-1)) }
 // Append acts like Marshal but appends the json representation to b instead of
 // always reallocating a new slice.
 func Append(b []byte, x any, flags AppendFlags) ([]byte, error) {
-	if x == nil {
-		// Special case for nil values because it makes the rest of the code
-		// simpler to assume that it won't be seeing nil pointers.
-		return append(b, "null"...), nil
-	}
+	e := encoder{flags: flags}
 
-	t := reflect.TypeOf(x)
-	p := (*iface)(unsafe.Pointer(&x)).ptr
-
-	cache := cacheLoad()
-	c, found := cache[typeid(t)]
-
-	if !found {
-		c = constructCachedCodec(t, cache)
-	}
-
-	b, err := c.encode(encoder{flags: flags}, b, p)
-	runtime.KeepAlive(x)
-	return b, err
+	return e.appendAny(b, x)
 }
 
 // Escape is a convenience helper to construct an escaped JSON string from s.
@@ -330,14 +313,9 @@ func Parse(b []byte, x any, flags ParseFlags) ([]byte, error) {
 		}
 		return r, &InvalidUnmarshalError{Type: t}
 	}
+
 	t = t.Elem()
-
-	cache := cacheLoad()
-	c, found := cache[typeid(t)]
-
-	if !found {
-		c = constructCachedCodec(t, cache)
-	}
+	c := cachedCodec(t)
 
 	r, err := c.decode(d, b, p)
 	return skipSpaces(r), err

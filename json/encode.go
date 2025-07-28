@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"sync"
@@ -16,6 +17,23 @@ import (
 )
 
 const hex = "0123456789abcdef"
+
+func (e encoder) appendAny(b []byte, x any) ([]byte, error) {
+	if x == nil {
+		// Special case for nil values because it makes the rest of the code
+		// simpler to assume that it won't be seeing nil pointers.
+		return e.encodeNull(b, nil)
+	}
+
+	t := reflect.TypeOf(x)
+	p := (*iface)(unsafe.Pointer(&x)).ptr
+	c := cachedCodec(t)
+
+	b, err := c.encode(e, b, p)
+	runtime.KeepAlive(x)
+
+	return b, err
+}
 
 func (e encoder) encodeNull(b []byte, p unsafe.Pointer) ([]byte, error) {
 	return append(b, "null"...), nil
@@ -383,7 +401,7 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 				b, _ = e.encodeString(b, unsafe.Pointer(&k))
 				b = append(b, ':')
 
-				b, err = Append(b, v, e.flags)
+				b, err = e.appendAny(b, v)
 				if err != nil {
 					return b, err
 				}
@@ -417,7 +435,7 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
 		b = append(b, ':')
 
-		b, err = Append(b, elem.val, e.flags)
+		b, err = e.appendAny(b, elem.val)
 		if err != nil {
 			break
 		}
@@ -813,11 +831,11 @@ func (e encoder) encodePointer(b []byte, p unsafe.Pointer, t reflect.Type, encod
 }
 
 func (e encoder) encodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
-	return Append(b, *(*any)(p), e.flags)
+	return e.appendAny(b, *(*any)(p))
 }
 
 func (e encoder) encodeMaybeEmptyInterface(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {
-	return Append(b, reflect.NewAt(t, p).Elem().Interface(), e.flags)
+	return e.appendAny(b, reflect.NewAt(t, p).Elem().Interface())
 }
 
 func (e encoder) encodeUnsupportedTypeError(b []byte, p unsafe.Pointer, t reflect.Type) ([]byte, error) {

@@ -63,6 +63,17 @@ type (
 // lookup time for simple types like bool, int, etc..
 var cache atomic.Pointer[map[unsafe.Pointer]codec]
 
+func cachedCodec(t reflect.Type) codec {
+	cache := cacheLoad()
+
+	c, found := cache[typeid(t)]
+	if !found {
+		c = constructCachedCodec(t, cache)
+	}
+
+	return c
+}
+
 func cacheLoad() map[unsafe.Pointer]codec {
 	p := cache.Load()
 	if p == nil {
