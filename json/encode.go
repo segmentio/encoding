@@ -794,22 +794,23 @@ func (e encoder) encodeEmbeddedStructPointer(b []byte, p unsafe.Pointer, t refle
 }
 
 func (e encoder) encodePointer(b []byte, p unsafe.Pointer, t reflect.Type, encode encodeFunc) ([]byte, error) {
-	if p = *(*unsafe.Pointer)(p); p != nil {
-		if e.ptrDepth++; e.ptrDepth >= startDetectingCyclesAfter {
-			if _, seen := e.ptrSeen[p]; seen {
-				// TODO: reconstruct the reflect.Value from p + t so we can set
-				// the erorr's Value field?
-				return b, &UnsupportedValueError{Str: fmt.Sprintf("encountered a cycle via %s", t)}
-			}
-			if e.ptrSeen == nil {
-				e.ptrSeen = make(map[unsafe.Pointer]struct{})
-			}
-			e.ptrSeen[p] = struct{}{}
-			defer delete(e.ptrSeen, p)
-		}
-		return encode(e, b, p)
+	// p was a pointer to the actual user data pointer:
+	// dereference it to operate on the user data pointer.
+	p = *(*unsafe.Pointer)(p)
+	if p == nil {
+		return e.encodeNull(b, nil)
 	}
-	return e.encodeNull(b, nil)
+
+	if shouldCheckForRefCycle(&e) {
+		err := checkRefCycle(&e, t, p)
+		if err != nil {
+			return b, err
+		}
+
+		defer freeRefCycleInfo(&e, p)
+	}
+
+	return encode(e, b, p)
 }
 
 func (e encoder) encodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -967,4 +968,60 @@ func appendCompactEscapeHTML(dst []byte, src []byte) []byte {
 	}
 
 	return dst
+}
+
+// shouldCheckForRefCycle determines whether checking for reference cycles
+// is reasonable to do at this time.
+//
+// When true, checkRefCycle should be called and any error handled,
+// and then a deferred call to freeRefCycleInfo should be made.
+//
+// This should only be called from encoder methods that are possible points
+// that could directly contribute to a reference cycle.
+func shouldCheckForRefCycle(e *encoder) bool {
+	// Note: do not combine this with checkRefCycle,
+	// because checkRefCycle is too large to be inlined,
+	// and a non-inlined depth check leads to ~5%+ benchmark degradation.
+	e.refDepth++
+	return e.refDepth >= startDetectingCyclesAfter
+}
+
+// checkRefCycle returns an error if a reference cycle was detected.
+// The data pointer passed in should be equivalent to one of:
+//
+//   - A normal Go pointer, e.g. `unsafe.Pointer(&T)`
+//   - The pointer to a map header, e.g. `*(*unsafe.Pointer)(&map[K]V)`
+//
+// Many [encoder] methods accept a pointer-to-a-pointer,
+// and so those may need to be derenced in order to safely pass them here.
+func checkRefCycle(e *encoder, t reflect.Type, p unsafe.Pointer) error {
+	_, seen := e.refSeen[p]
+	if seen {
+		v := reflect.NewAt(t, p)
+		return &UnsupportedValueError{
+			Value: v,
+			Str:   fmt.Sprintf("encountered a cycle via %s", t),
+		}
+	}
+
+	if e.refSeen == nil {
+		e.refSeen = cycleMapPool.Get().(cycleMap)
+	}
+
+	e.refSeen[p] = struct{}{}
+
+	return nil
+}
+
+// freeRefCycle performs the cleanup operation for [checkRefCycle].
+// p must be the same value passed into a prior call to checkRefCycle.
+func freeRefCycleInfo(e *encoder, p unsafe.Pointer) {
+	delete(e.refSeen, p)
+	if len(e.refSeen) == 0 {
+		// There are no remaining elements,
+		// so we can release this map for later reuse.
+		m := e.refSeen
+		e.refSeen = nil
+		cycleMapPool.Put(m)
+	}
 }
