@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 	"unicode"
@@ -37,8 +38,19 @@ type encoder struct {
 	// encoder starts tracking pointers it has seen as an attempt to detect
 	// whether it has entered a pointer cycle and needs to error before the
 	// goroutine runs out of stack space.
+	//
+	// This relies on encoder being passed as a value,
+	// and encoder methods calling each other in a traditional stack
+	// (not using trampoline techniques),
+	// since ptrDepth is never decremented.
 	ptrDepth uint32
-	ptrSeen  map[unsafe.Pointer]struct{}
+	ptrSeen  cycleMap
+}
+
+type cycleMap map[unsafe.Pointer]struct{}
+
+var cycleMapPool = sync.Pool{
+	New: func() any { return make(cycleMap) },
 }
 
 type decoder struct {
