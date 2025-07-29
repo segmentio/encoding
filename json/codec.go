@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 	"unicode"
@@ -37,8 +38,19 @@ type encoder struct {
 	// encoder starts tracking pointers it has seen as an attempt to detect
 	// whether it has entered a pointer cycle and needs to error before the
 	// goroutine runs out of stack space.
+	//
+	// This relies on encoder being passed as a value,
+	// and encoder methods calling each other in a traditional stack
+	// (not using trampoline techniques),
+	// since ptrDepth is never decremented.
 	ptrDepth uint32
-	ptrSeen  map[unsafe.Pointer]struct{}
+	ptrSeen  cycleMap
+}
+
+type cycleMap map[unsafe.Pointer]struct{}
+
+var cycleMapPool = sync.Pool{
+	New: func() any { return make(cycleMap) },
 }
 
 type decoder struct {
@@ -568,6 +580,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 			anonymous  = f.Anonymous
 			tag        = false
 			omitempty  = false
+			omitzero   = false
 			stringify  = false
 			unexported = len(f.PkgPath) != 0
 		)
@@ -593,6 +606,8 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				switch tag {
 				case "omitempty":
 					omitempty = true
+				case "omitzero":
+					omitzero = true
 				case "string":
 					stringify = true
 				}
@@ -675,9 +690,11 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 		fields = append(fields, structField{
 			codec:     codec,
 			offset:    offset + f.Offset,
-			empty:     emptyFuncOf(f.Type),
+			isEmpty:   emptyFuncOf(f.Type),
+			isZero:    zeroFuncOf(f.Type),
 			tag:       tag,
 			omitempty: omitempty,
+			omitzero:  omitzero,
 			name:      name,
 			index:     i << 32,
 			typ:       f.Type,
@@ -895,6 +912,18 @@ func isValidTag(s string) bool {
 	return true
 }
 
+func zeroFuncOf(t reflect.Type) emptyFunc {
+	if t.Implements(isZeroerType) {
+		return func(p unsafe.Pointer) bool {
+			return unsafeToAny(t, p).(isZeroer).IsZero()
+		}
+	}
+
+	return func(p unsafe.Pointer) bool {
+		return reflectDeref(t, p).IsZero()
+	}
+}
+
 func emptyFuncOf(t reflect.Type) emptyFunc {
 	switch t {
 	case bytesType, rawMessageType:
@@ -908,7 +937,7 @@ func emptyFuncOf(t reflect.Type) emptyFunc {
 		}
 
 	case reflect.Map:
-		return func(p unsafe.Pointer) bool { return reflect.NewAt(t, p).Elem().Len() == 0 }
+		return func(p unsafe.Pointer) bool { return reflectDeref(t, p).Len() == 0 }
 
 	case reflect.Slice:
 		return func(p unsafe.Pointer) bool { return (*slice)(p).len == 0 }
@@ -953,6 +982,14 @@ func emptyFuncOf(t reflect.Type) emptyFunc {
 	return func(unsafe.Pointer) bool { return false }
 }
 
+func reflectDeref(t reflect.Type, p unsafe.Pointer) reflect.Value {
+	return reflect.NewAt(t, p).Elem()
+}
+
+func unsafeToAny(t reflect.Type, p unsafe.Pointer) any {
+	return reflectDeref(t, p).Interface()
+}
+
 type iface struct {
 	typ unsafe.Pointer
 	ptr unsafe.Pointer
@@ -975,9 +1012,11 @@ type structType struct {
 type structField struct {
 	codec     codec
 	offset    uintptr
-	empty     emptyFunc
+	isEmpty   emptyFunc
+	isZero    emptyFunc
 	tag       bool
 	omitempty bool
+	omitzero  bool
 	json      string
 	html      string
 	name      string
@@ -1063,53 +1102,56 @@ type sliceHeader struct {
 	Cap  int
 }
 
+type isZeroer interface{ IsZero() bool }
+
 var (
 	nullType = reflect.TypeOf(nil)
-	boolType = reflect.TypeOf(false)
+	boolType = reflect.TypeFor[bool]()
 
-	intType   = reflect.TypeOf(int(0))
-	int8Type  = reflect.TypeOf(int8(0))
-	int16Type = reflect.TypeOf(int16(0))
-	int32Type = reflect.TypeOf(int32(0))
-	int64Type = reflect.TypeOf(int64(0))
+	intType   = reflect.TypeFor[int]()
+	int8Type  = reflect.TypeFor[int8]()
+	int16Type = reflect.TypeFor[int16]()
+	int32Type = reflect.TypeFor[int32]()
+	int64Type = reflect.TypeFor[int64]()
 
-	uintType    = reflect.TypeOf(uint(0))
-	uint8Type   = reflect.TypeOf(uint8(0))
-	uint16Type  = reflect.TypeOf(uint16(0))
-	uint32Type  = reflect.TypeOf(uint32(0))
-	uint64Type  = reflect.TypeOf(uint64(0))
-	uintptrType = reflect.TypeOf(uintptr(0))
+	uintType    = reflect.TypeFor[uint]()
+	uint8Type   = reflect.TypeFor[uint8]()
+	uint16Type  = reflect.TypeFor[uint16]()
+	uint32Type  = reflect.TypeFor[uint32]()
+	uint64Type  = reflect.TypeFor[uint64]()
+	uintptrType = reflect.TypeFor[uintptr]()
 
-	float32Type = reflect.TypeOf(float32(0))
-	float64Type = reflect.TypeOf(float64(0))
+	float32Type = reflect.TypeFor[float32]()
+	float64Type = reflect.TypeFor[float64]()
 
-	bigIntType     = reflect.TypeOf(new(big.Int))
-	numberType     = reflect.TypeOf(json.Number(""))
-	stringType     = reflect.TypeOf("")
-	stringsType    = reflect.TypeOf([]string(nil))
-	bytesType      = reflect.TypeOf(([]byte)(nil))
-	durationType   = reflect.TypeOf(time.Duration(0))
-	timeType       = reflect.TypeOf(time.Time{})
-	rawMessageType = reflect.TypeOf(RawMessage(nil))
+	bigIntType     = reflect.TypeFor[*big.Int]()
+	numberType     = reflect.TypeFor[json.Number]()
+	stringType     = reflect.TypeFor[string]()
+	stringsType    = reflect.TypeFor[[]string]()
+	bytesType      = reflect.TypeFor[[]byte]()
+	durationType   = reflect.TypeFor[time.Duration]()
+	timeType       = reflect.TypeFor[time.Time]()
+	rawMessageType = reflect.TypeFor[RawMessage]()
 
 	numberPtrType     = reflect.PointerTo(numberType)
 	durationPtrType   = reflect.PointerTo(durationType)
 	timePtrType       = reflect.PointerTo(timeType)
 	rawMessagePtrType = reflect.PointerTo(rawMessageType)
 
-	sliceInterfaceType       = reflect.TypeOf(([]any)(nil))
-	sliceStringType          = reflect.TypeOf(([]any)(nil))
-	mapStringInterfaceType   = reflect.TypeOf((map[string]any)(nil))
-	mapStringRawMessageType  = reflect.TypeOf((map[string]RawMessage)(nil))
-	mapStringStringType      = reflect.TypeOf((map[string]string)(nil))
-	mapStringStringSliceType = reflect.TypeOf((map[string][]string)(nil))
-	mapStringBoolType        = reflect.TypeOf((map[string]bool)(nil))
+	sliceInterfaceType       = reflect.TypeFor[[]any]()
+	sliceStringType          = reflect.TypeFor[[]any]()
+	mapStringInterfaceType   = reflect.TypeFor[map[string]any]()
+	mapStringRawMessageType  = reflect.TypeFor[map[string]RawMessage]()
+	mapStringStringType      = reflect.TypeFor[map[string]string]()
+	mapStringStringSliceType = reflect.TypeFor[map[string][]string]()
+	mapStringBoolType        = reflect.TypeFor[map[string]bool]()
 
-	interfaceType       = reflect.TypeOf((*any)(nil)).Elem()
-	jsonMarshalerType   = reflect.TypeOf((*Marshaler)(nil)).Elem()
-	jsonUnmarshalerType = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
-	textMarshalerType   = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
-	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	interfaceType       = reflect.TypeFor[any]()
+	jsonMarshalerType   = reflect.TypeFor[Marshaler]()
+	jsonUnmarshalerType = reflect.TypeFor[Unmarshaler]()
+	textMarshalerType   = reflect.TypeFor[encoding.TextMarshaler]()
+	textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
+	isZeroerType        = reflect.TypeFor[isZeroer]()
 
 	bigIntDecoder = constructJSONUnmarshalerDecodeFunc(bigIntType, false)
 )
