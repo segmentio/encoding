@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/big"
 	"reflect"
 	"sort"
@@ -73,11 +74,8 @@ func cacheLoad() map[unsafe.Pointer]codec {
 
 func cacheStore(typ reflect.Type, cod codec, oldCodecs map[unsafe.Pointer]codec) {
 	newCodecs := make(map[unsafe.Pointer]codec, len(oldCodecs)+1)
+	maps.Copy(newCodecs, oldCodecs)
 	newCodecs[typeid(typ)] = cod
-
-	for t, c := range oldCodecs {
-		newCodecs[t] = c
-	}
 
 	cache.Store(&newCodecs)
 }
@@ -205,7 +203,7 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr b
 		c = constructUnsupportedTypeCodec(t)
 	}
 
-	p := reflect.PtrTo(t)
+	p := reflect.PointerTo(t)
 
 	if canAddr {
 		switch {
@@ -291,7 +289,7 @@ func constructSliceCodec(t reflect.Type, seen map[reflect.Type]*structType) code
 		// Go 1.7+ behavior: slices of byte types (and aliases) may override the
 		// default encoding and decoding behaviors by implementing marshaler and
 		// unmarshaler interfaces.
-		p := reflect.PtrTo(e)
+		p := reflect.PointerTo(e)
 		c := codec{}
 
 		switch {
@@ -391,7 +389,7 @@ func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec 
 	kc := codec{}
 	vc := constructCodec(v, seen, false)
 
-	if k.Implements(textMarshalerType) || reflect.PtrTo(k).Implements(textUnmarshalerType) {
+	if k.Implements(textMarshalerType) || reflect.PointerTo(k).Implements(textUnmarshalerType) {
 		kc.encode = constructTextMarshalerEncodeFunc(k, false)
 		kc.decode = constructTextUnmarshalerDecodeFunc(k, true)
 
@@ -972,7 +970,6 @@ type structType struct {
 	ficaseIndex map[string]*structField
 	keyset      []byte
 	typ         reflect.Type
-	inlined     bool
 }
 
 type structField struct {
@@ -1095,10 +1092,10 @@ var (
 	timeType       = reflect.TypeOf(time.Time{})
 	rawMessageType = reflect.TypeOf(RawMessage(nil))
 
-	numberPtrType     = reflect.PtrTo(numberType)
-	durationPtrType   = reflect.PtrTo(durationType)
-	timePtrType       = reflect.PtrTo(timeType)
-	rawMessagePtrType = reflect.PtrTo(rawMessageType)
+	numberPtrType     = reflect.PointerTo(numberType)
+	durationPtrType   = reflect.PointerTo(durationType)
+	timePtrType       = reflect.PointerTo(timeType)
+	rawMessagePtrType = reflect.PointerTo(rawMessageType)
 
 	sliceInterfaceType       = reflect.TypeOf(([]any)(nil))
 	sliceStringType          = reflect.TypeOf(([]any)(nil))
