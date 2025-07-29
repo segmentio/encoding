@@ -241,7 +241,7 @@ func (e encoder) encodeToString(b []byte, p unsafe.Pointer, encode encodeFunc) (
 func (e encoder) encodeBytes(b []byte, p unsafe.Pointer) ([]byte, error) {
 	v := *(*[]byte)(p)
 	if v == nil {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	n := base64.StdEncoding.EncodedLen(len(v)) + 2
@@ -299,7 +299,7 @@ func (e encoder) encodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 	s := (*slice)(p)
 
 	if s.data == nil && s.len == 0 && s.cap == 0 {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	return e.encodeArray(b, s.data, s.len, size, t, encode)
@@ -308,7 +308,7 @@ func (e encoder) encodeSlice(b []byte, p unsafe.Pointer, size uintptr, t reflect
 func (e encoder) encodeMap(b []byte, p unsafe.Pointer, t reflect.Type, encodeKey, encodeValue encodeFunc, sortKeys sortFunc) ([]byte, error) {
 	m := reflect.NewAt(t, p).Elem()
 	if m.IsNil() {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	keys := m.MapKeys()
@@ -363,7 +363,7 @@ var mapslicePool = sync.Pool{
 func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
 	m := *(*map[string]any)(p)
 	if m == nil {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	if (e.flags & SortMapKeys) == 0 {
@@ -441,7 +441,7 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 	m := *(*map[string]RawMessage)(p)
 	if m == nil {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	if (e.flags & SortMapKeys) == 0 {
@@ -520,7 +520,7 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, error) {
 	m := *(*map[string]string)(p)
 	if m == nil {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	if (e.flags & SortMapKeys) == 0 {
@@ -586,7 +586,7 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte, error) {
 	m := *(*map[string][]string)(p)
 	if m == nil {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	stringSize := unsafe.Sizeof("")
@@ -667,7 +667,7 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error) {
 	m := *(*map[string]bool)(p)
 	if m == nil {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	if (e.flags & SortMapKeys) == 0 {
@@ -828,7 +828,7 @@ func (e encoder) encodeRawMessage(b []byte, p unsafe.Pointer) ([]byte, error) {
 	v := *(*RawMessage)(p)
 
 	if v == nil {
-		return append(b, "null"...), nil
+		return e.encodeNull(b, nil)
 	}
 
 	var s []byte
@@ -862,7 +862,7 @@ func (e encoder) encodeJSONMarshaler(b []byte, p unsafe.Pointer, t reflect.Type,
 	switch v.Kind() {
 	case reflect.Ptr, reflect.Interface:
 		if v.IsNil() {
-			return append(b, "null"...), nil
+			return e.encodeNull(b, nil)
 		}
 	}
 
