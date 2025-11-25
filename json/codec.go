@@ -49,6 +49,7 @@ type encoder struct {
 
 type cycleKey struct {
 	ptr unsafe.Pointer
+	len int // 0 for pointers or maps; length for slices or array pointers.
 }
 
 type cycleMap map[cycleKey]struct{}

@@ -296,6 +296,15 @@ func (e encoder) encodeTime(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t reflect.Type, encode encodeFunc) ([]byte, error) {
+	if shouldCheckForRefCycle(&e) {
+		key := cycleKey{ptr: p}
+		if hasRefCycle(&e, key) {
+			return b, refCycleError(t, p)
+		}
+
+		defer freeRefCycleInfo(&e, key)
+	}
+
 	start := len(b)
 	var err error
 	b = append(b, '[')
