@@ -113,7 +113,8 @@ func typeid(t reflect.Type) unsafe.Pointer {
 }
 
 func constructCachedCodec(t reflect.Type, cache map[unsafe.Pointer]codec) codec {
-	c := constructCodec(t, map[reflect.Type]*structType{}, t.Kind() == reflect.Ptr)
+	seen := make(seenMap)
+	c := constructCodec(t, seen, t.Kind() == reflect.Ptr)
 
 	if inlined(t) {
 		c.encode = constructInlineValueEncodeFunc(c.encode)
@@ -123,7 +124,14 @@ func constructCachedCodec(t reflect.Type, cache map[unsafe.Pointer]codec) codec 
 	return c
 }
 
-func constructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) (c codec) {
+type seenType struct {
+	*codec
+	*structType
+}
+
+type seenMap map[reflect.Type]seenType
+
+func constructCodec(t reflect.Type, seen seenMap, canAddr bool) (c codec) {
 	switch t {
 	case nullType, nil:
 		c = codec{encode: encoder.encodeNull, decode: decoder.decodeNull}
@@ -247,7 +255,7 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr b
 	return
 }
 
-func constructStringCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) codec {
+func constructStringCodec(t reflect.Type, seen seenMap, canAddr bool) codec {
 	c := constructCodec(t, seen, canAddr)
 	return codec{
 		encode: constructStringEncodeFunc(c.encode),
@@ -273,7 +281,7 @@ func constructStringToIntDecodeFunc(t reflect.Type, decode decodeFunc) decodeFun
 	}
 }
 
-func constructArrayCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) codec {
+func constructArrayCodec(t reflect.Type, seen seenMap, canAddr bool) codec {
 	e := t.Elem()
 	c := constructCodec(e, seen, canAddr)
 	s := alignedSize(e)
@@ -297,7 +305,7 @@ func constructArrayDecodeFunc(size uintptr, t reflect.Type, decode decodeFunc) d
 	}
 }
 
-func constructSliceCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
+func constructSliceCodec(t reflect.Type, seen seenMap) codec {
 	e := t.Elem()
 	s := alignedSize(e)
 
@@ -364,7 +372,7 @@ func constructSliceDecodeFunc(size uintptr, t reflect.Type, decode decodeFunc) d
 	}
 }
 
-func constructMapCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
+func constructMapCodec(t reflect.Type, seen seenMap) codec {
 	var sortKeys sortFunc
 	k := t.Key()
 	v := t.Elem()
@@ -482,7 +490,7 @@ func constructMapDecodeFunc(t reflect.Type, decodeKey, decodeValue decodeFunc) d
 	}
 }
 
-func constructStructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) codec {
+func constructStructCodec(t reflect.Type, seen seenMap, canAddr bool) codec {
 	st := constructStructType(t, seen, canAddr)
 	return codec{
 		encode: constructStructEncodeFunc(st),
@@ -490,10 +498,11 @@ func constructStructCodec(t reflect.Type, seen map[reflect.Type]*structType, can
 	}
 }
 
-func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool) *structType {
+func constructStructType(t reflect.Type, seen seenMap, canAddr bool) *structType {
 	// Used for preventing infinite recursion on types that have pointers to
 	// themselves.
-	st := seen[t]
+	seenInfo := seen[t]
+	st := seen[t].structType
 
 	if st == nil {
 		st = &structType{
@@ -503,7 +512,9 @@ func constructStructType(t reflect.Type, seen map[reflect.Type]*structType, canA
 			typ:         t,
 		}
 
-		seen[t] = st
+		seenInfo.structType = st
+		seen[t] = seenInfo
+
 		st.fields = appendStructFields(st.fields, t, 0, seen, canAddr)
 
 		for i := range st.fields {
@@ -563,7 +574,7 @@ func constructEmbeddedStructPointerDecodeFunc(t reflect.Type, unexported bool, o
 	}
 }
 
-func appendStructFields(fields []structField, t reflect.Type, offset uintptr, seen map[reflect.Type]*structType, canAddr bool) []structField {
+func appendStructFields(fields []structField, t reflect.Type, offset uintptr, seen seenMap, canAddr bool) []structField {
 	type embeddedField struct {
 		index      int
 		offset     uintptr
@@ -764,7 +775,7 @@ func encodeKeyFragment(s string, flags AppendFlags) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func constructPointerCodec(t reflect.Type, seen map[reflect.Type]*structType) codec {
+func constructPointerCodec(t reflect.Type, seen seenMap) codec {
 	e := t.Elem()
 	c := constructCodec(e, seen, true)
 	return codec{
