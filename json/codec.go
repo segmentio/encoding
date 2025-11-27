@@ -145,18 +145,6 @@ func constructCodec(t reflect.Type, seen map[reflect.Type]*structType, canAddr b
 
 	case rawMessageType:
 		c = codec{encode: encoder.encodeRawMessage, decode: decoder.decodeRawMessage}
-
-	case numberPtrType:
-		c = constructPointerCodec(numberPtrType, nil)
-
-	case durationPtrType:
-		c = constructPointerCodec(durationPtrType, nil)
-
-	case timePtrType:
-		c = constructPointerCodec(timePtrType, nil)
-
-	case rawMessagePtrType:
-		c = constructPointerCodec(rawMessagePtrType, nil)
 	}
 
 	if c.encode != nil {
@@ -1119,11 +1107,6 @@ var (
 	durationType   = reflect.TypeOf(time.Duration(0))
 	timeType       = reflect.TypeOf(time.Time{})
 	rawMessageType = reflect.TypeOf(RawMessage(nil))
-
-	numberPtrType     = reflect.PointerTo(numberType)
-	durationPtrType   = reflect.PointerTo(durationType)
-	timePtrType       = reflect.PointerTo(timeType)
-	rawMessagePtrType = reflect.PointerTo(rawMessageType)
 
 	sliceInterfaceType       = reflect.TypeOf(([]any)(nil))
 	sliceStringType          = reflect.TypeOf(([]any)(nil))
