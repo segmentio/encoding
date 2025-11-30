@@ -78,9 +78,9 @@ type (
 // Note: using a uintptr as key instead of reflect.Type shaved ~15ns off of
 // the ~30ns Marhsal/Unmarshal functions which were dominated by the map
 // lookup time for simple types like bool, int, etc..
-var cache atomic.Pointer[map[unsafe.Pointer]codec]
+var cache atomic.Pointer[map[unsafe.Pointer]*codec]
 
-func cachedCodec(t reflect.Type) codec {
+func cachedCodec(t reflect.Type) *codec {
 	cache := cacheLoad()
 
 	c, found := cache[typeid(t)]
@@ -91,7 +91,7 @@ func cachedCodec(t reflect.Type) codec {
 	return c
 }
 
-func cacheLoad() map[unsafe.Pointer]codec {
+func cacheLoad() map[unsafe.Pointer]*codec {
 	p := cache.Load()
 	if p == nil {
 		return nil
@@ -100,8 +100,8 @@ func cacheLoad() map[unsafe.Pointer]codec {
 	return *p
 }
 
-func cacheStore(typ reflect.Type, cod codec, oldCodecs map[unsafe.Pointer]codec) {
-	newCodecs := make(map[unsafe.Pointer]codec, len(oldCodecs)+1)
+func cacheStore(typ reflect.Type, cod *codec, oldCodecs map[unsafe.Pointer]*codec) {
+	newCodecs := make(map[unsafe.Pointer]*codec, len(oldCodecs)+1)
 	maps.Copy(newCodecs, oldCodecs)
 	newCodecs[typeid(typ)] = cod
 
@@ -112,7 +112,7 @@ func typeid(t reflect.Type) unsafe.Pointer {
 	return (*iface)(unsafe.Pointer(&t)).ptr
 }
 
-func constructCachedCodec(t reflect.Type, cache map[unsafe.Pointer]codec) codec {
+func constructCachedCodec(t reflect.Type, cache map[unsafe.Pointer]*codec) *codec {
 	seen := make(seenMap)
 	c := constructCodec(t, seen, t.Kind() == reflect.Ptr)
 
@@ -131,79 +131,81 @@ type seenType struct {
 
 type seenMap map[reflect.Type]seenType
 
-func constructCodec(t reflect.Type, seen seenMap, canAddr bool) (c codec) {
+func constructCodec(t reflect.Type, seen seenMap, canAddr bool) *codec {
+	var c *codec
+
 	switch t {
 	case nullType, nil:
-		c = codec{encode: encoder.encodeNull, decode: decoder.decodeNull}
+		c = &codec{encode: encoder.encodeNull, decode: decoder.decodeNull}
 
 	case numberType:
-		c = codec{encode: encoder.encodeNumber, decode: decoder.decodeNumber}
+		c = &codec{encode: encoder.encodeNumber, decode: decoder.decodeNumber}
 
 	case bytesType:
-		c = codec{encode: encoder.encodeBytes, decode: decoder.decodeBytes}
+		c = &codec{encode: encoder.encodeBytes, decode: decoder.decodeBytes}
 
 	case durationType:
-		c = codec{encode: encoder.encodeDuration, decode: decoder.decodeDuration}
+		c = &codec{encode: encoder.encodeDuration, decode: decoder.decodeDuration}
 
 	case timeType:
-		c = codec{encode: encoder.encodeTime, decode: decoder.decodeTime}
+		c = &codec{encode: encoder.encodeTime, decode: decoder.decodeTime}
 
 	case interfaceType:
-		c = codec{encode: encoder.encodeInterface, decode: decoder.decodeInterface}
+		c = &codec{encode: encoder.encodeInterface, decode: decoder.decodeInterface}
 
 	case rawMessageType:
-		c = codec{encode: encoder.encodeRawMessage, decode: decoder.decodeRawMessage}
+		c = &codec{encode: encoder.encodeRawMessage, decode: decoder.decodeRawMessage}
 	}
 
-	if c.encode != nil {
-		return
+	if c != nil {
+		return c
 	}
 
 	switch t.Kind() {
 	case reflect.Bool:
-		c = codec{encode: encoder.encodeBool, decode: decoder.decodeBool}
+		c = &codec{encode: encoder.encodeBool, decode: decoder.decodeBool}
 
 	case reflect.Int:
-		c = codec{encode: encoder.encodeInt, decode: decoder.decodeInt}
+		c = &codec{encode: encoder.encodeInt, decode: decoder.decodeInt}
 
 	case reflect.Int8:
-		c = codec{encode: encoder.encodeInt8, decode: decoder.decodeInt8}
+		c = &codec{encode: encoder.encodeInt8, decode: decoder.decodeInt8}
 
 	case reflect.Int16:
-		c = codec{encode: encoder.encodeInt16, decode: decoder.decodeInt16}
+		c = &codec{encode: encoder.encodeInt16, decode: decoder.decodeInt16}
 
 	case reflect.Int32:
-		c = codec{encode: encoder.encodeInt32, decode: decoder.decodeInt32}
+		c = &codec{encode: encoder.encodeInt32, decode: decoder.decodeInt32}
 
 	case reflect.Int64:
-		c = codec{encode: encoder.encodeInt64, decode: decoder.decodeInt64}
+		c = &codec{encode: encoder.encodeInt64, decode: decoder.decodeInt64}
 
 	case reflect.Uint:
-		c = codec{encode: encoder.encodeUint, decode: decoder.decodeUint}
+		c = &codec{encode: encoder.encodeUint, decode: decoder.decodeUint}
 
 	case reflect.Uintptr:
-		c = codec{encode: encoder.encodeUintptr, decode: decoder.decodeUintptr}
+		c = &codec{encode: encoder.encodeUintptr, decode: decoder.decodeUintptr}
 
 	case reflect.Uint8:
-		c = codec{encode: encoder.encodeUint8, decode: decoder.decodeUint8}
+		c = &codec{encode: encoder.encodeUint8, decode: decoder.decodeUint8}
 
 	case reflect.Uint16:
-		c = codec{encode: encoder.encodeUint16, decode: decoder.decodeUint16}
+		c = &codec{encode: encoder.encodeUint16, decode: decoder.decodeUint16}
 
 	case reflect.Uint32:
-		c = codec{encode: encoder.encodeUint32, decode: decoder.decodeUint32}
+		c = &codec{encode: encoder.encodeUint32, decode: decoder.decodeUint32}
 
 	case reflect.Uint64:
-		c = codec{encode: encoder.encodeUint64, decode: decoder.decodeUint64}
+		c = &codec{encode: encoder.encodeUint64, decode: decoder.decodeUint64}
 
 	case reflect.Float32:
-		c = codec{encode: encoder.encodeFloat32, decode: decoder.decodeFloat32}
+		c = &codec{encode: encoder.encodeFloat32, decode: decoder.decodeFloat32}
 
 	case reflect.Float64:
-		c = codec{encode: encoder.encodeFloat64, decode: decoder.decodeFloat64}
+		c = &codec{encode: encoder.encodeFloat64, decode: decoder.decodeFloat64}
 
 	case reflect.String:
-		c = codec{encode: encoder.encodeString, decode: decoder.decodeString}
+		c = &codec{encode: encoder.encodeString, decode: decoder.decodeString}
 
 	case reflect.Interface:
 		c = constructInterfaceCodec(t)
@@ -252,12 +254,12 @@ func constructCodec(t reflect.Type, seen seenMap, canAddr bool) (c codec) {
 		c.decode = constructTextUnmarshalerDecodeFunc(t, true)
 	}
 
-	return
+	return c
 }
 
-func constructStringCodec(t reflect.Type, seen seenMap, canAddr bool) codec {
+func constructStringCodec(t reflect.Type, seen seenMap, canAddr bool) *codec {
 	c := constructCodec(t, seen, canAddr)
-	return codec{
+	return &codec{
 		encode: constructStringEncodeFunc(c.encode),
 		decode: constructStringDecodeFunc(c.decode),
 	}
@@ -281,11 +283,11 @@ func constructStringToIntDecodeFunc(t reflect.Type, decode decodeFunc) decodeFun
 	}
 }
 
-func constructArrayCodec(t reflect.Type, seen seenMap, canAddr bool) codec {
+func constructArrayCodec(t reflect.Type, seen seenMap, canAddr bool) *codec {
 	e := t.Elem()
 	c := constructCodec(e, seen, canAddr)
 	s := alignedSize(e)
-	return codec{
+	return &codec{
 		encode: constructArrayEncodeFunc(s, t, c.encode),
 		decode: constructArrayDecodeFunc(s, t, c.decode),
 	}
@@ -305,7 +307,18 @@ func constructArrayDecodeFunc(size uintptr, t reflect.Type, decode decodeFunc) d
 	}
 }
 
-func constructSliceCodec(t reflect.Type, seen seenMap) codec {
+func constructSliceCodec(t reflect.Type, seen seenMap) *codec {
+	// Detect slice type recursion (and prevent stack overflow).
+	seenInfo := seen[t]
+	c := seenInfo.codec
+	if c != nil {
+		return c
+	}
+
+	c = new(codec)
+	seenInfo.codec = c
+	seen[t] = seenInfo
+
 	e := t.Elem()
 	s := alignedSize(e)
 
@@ -314,7 +327,6 @@ func constructSliceCodec(t reflect.Type, seen seenMap) codec {
 		// default encoding and decoding behaviors by implementing marshaler and
 		// unmarshaler interfaces.
 		p := reflect.PointerTo(e)
-		c := codec{}
 
 		switch {
 		case e.Implements(jsonMarshalerType):
@@ -353,11 +365,11 @@ func constructSliceCodec(t reflect.Type, seen seenMap) codec {
 		return c
 	}
 
-	c := constructCodec(e, seen, true)
-	return codec{
-		encode: constructSliceEncodeFunc(s, t, c.encode),
-		decode: constructSliceDecodeFunc(s, t, c.decode),
-	}
+	inner := constructCodec(e, seen, true)
+	c.encode = constructSliceEncodeFunc(s, t, inner.encode)
+	c.decode = constructSliceDecodeFunc(s, t, inner.decode)
+
+	return c
 }
 
 func constructSliceEncodeFunc(size uintptr, t reflect.Type, encode encodeFunc) encodeFunc {
@@ -372,7 +384,7 @@ func constructSliceDecodeFunc(size uintptr, t reflect.Type, decode decodeFunc) d
 	}
 }
 
-func constructMapCodec(t reflect.Type, seen seenMap) codec {
+func constructMapCodec(t reflect.Type, seen seenMap) *codec {
 	var sortKeys sortFunc
 	k := t.Key()
 	v := t.Elem()
@@ -380,42 +392,44 @@ func constructMapCodec(t reflect.Type, seen seenMap) codec {
 	// Faster implementations for some common cases.
 	switch {
 	case k == stringType && v == interfaceType:
-		return codec{
+		return &codec{
 			encode: encoder.encodeMapStringInterface,
 			decode: decoder.decodeMapStringInterface,
 		}
 
 	case k == stringType && v == rawMessageType:
-		return codec{
+		return &codec{
 			encode: encoder.encodeMapStringRawMessage,
 			decode: decoder.decodeMapStringRawMessage,
 		}
 
 	case k == stringType && v == stringType:
-		return codec{
+		return &codec{
 			encode: encoder.encodeMapStringString,
 			decode: decoder.decodeMapStringString,
 		}
 
 	case k == stringType && v == stringsType:
-		return codec{
+		return &codec{
 			encode: encoder.encodeMapStringStringSlice,
 			decode: decoder.decodeMapStringStringSlice,
 		}
 
 	case k == stringType && v == boolType:
-		return codec{
+		return &codec{
 			encode: encoder.encodeMapStringBool,
 			decode: decoder.decodeMapStringBool,
 		}
 	}
 
-	kc := codec{}
+	var kc *codec
 	vc := constructCodec(v, seen, false)
 
 	if k.Implements(textMarshalerType) || reflect.PointerTo(k).Implements(textUnmarshalerType) {
-		kc.encode = constructTextMarshalerEncodeFunc(k, false)
-		kc.decode = constructTextUnmarshalerDecodeFunc(k, true)
+		kc = &codec{
+			encode: constructTextMarshalerEncodeFunc(k, false),
+			decode: constructTextUnmarshalerDecodeFunc(k, true),
+		}
 
 		sortKeys = func(keys []reflect.Value) {
 			sort.Slice(keys, func(i, j int) bool {
@@ -429,8 +443,10 @@ func constructMapCodec(t reflect.Type, seen seenMap) codec {
 	} else {
 		switch k.Kind() {
 		case reflect.String:
-			kc.encode = encoder.encodeString
-			kc.decode = decoder.decodeString
+			kc = &codec{
+				encode: encoder.encodeString,
+				decode: decoder.decodeString,
+			}
 
 			sortKeys = func(keys []reflect.Value) {
 				sort.Slice(keys, func(i, j int) bool { return keys[i].String() < keys[j].String() })
@@ -468,7 +484,7 @@ func constructMapCodec(t reflect.Type, seen seenMap) codec {
 		vc.encode = constructInlineValueEncodeFunc(vc.encode)
 	}
 
-	return codec{
+	return &codec{
 		encode: constructMapEncodeFunc(t, kc.encode, vc.encode, sortKeys),
 		decode: constructMapDecodeFunc(t, kc.decode, vc.decode),
 	}
@@ -490,9 +506,9 @@ func constructMapDecodeFunc(t reflect.Type, decodeKey, decodeValue decodeFunc) d
 	}
 }
 
-func constructStructCodec(t reflect.Type, seen seenMap, canAddr bool) codec {
+func constructStructCodec(t reflect.Type, seen seenMap, canAddr bool) *codec {
 	st := constructStructType(t, seen, canAddr)
-	return codec{
+	return &codec{
 		encode: constructStructEncodeFunc(st),
 		decode: constructStructDecodeFunc(st),
 	}
@@ -502,7 +518,7 @@ func constructStructType(t reflect.Type, seen seenMap, canAddr bool) *structType
 	// Used for preventing infinite recursion on types that have pointers to
 	// themselves.
 	seenInfo := seen[t]
-	st := seen[t].structType
+	st := seenInfo.structType
 
 	if st == nil {
 		st = &structType{
@@ -555,8 +571,8 @@ func constructStructDecodeFunc(st *structType) decodeFunc {
 	}
 }
 
-func constructEmbeddedStructPointerCodec(t reflect.Type, unexported bool, offset uintptr, field codec) codec {
-	return codec{
+func constructEmbeddedStructPointerCodec(t reflect.Type, unexported bool, offset uintptr, field *codec) *codec {
+	return &codec{
 		encode: constructEmbeddedStructPointerEncodeFunc(t, unexported, offset, field.encode),
 		decode: constructEmbeddedStructPointerDecodeFunc(t, unexported, offset, field.decode),
 	}
@@ -775,10 +791,10 @@ func encodeKeyFragment(s string, flags AppendFlags) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func constructPointerCodec(t reflect.Type, seen seenMap) codec {
+func constructPointerCodec(t reflect.Type, seen seenMap) *codec {
 	e := t.Elem()
 	c := constructCodec(e, seen, true)
-	return codec{
+	return &codec{
 		encode: constructPointerEncodeFunc(e, c.encode),
 		decode: constructPointerDecodeFunc(e, c.decode),
 	}
@@ -796,8 +812,8 @@ func constructPointerDecodeFunc(t reflect.Type, decode decodeFunc) decodeFunc {
 	}
 }
 
-func constructInterfaceCodec(t reflect.Type) codec {
-	return codec{
+func constructInterfaceCodec(t reflect.Type) *codec {
+	return &codec{
 		encode: constructMaybeEmptyInterfaceEncoderFunc(t),
 		decode: constructMaybeEmptyInterfaceDecoderFunc(t),
 	}
@@ -815,8 +831,8 @@ func constructMaybeEmptyInterfaceDecoderFunc(t reflect.Type) decodeFunc {
 	}
 }
 
-func constructUnsupportedTypeCodec(t reflect.Type) codec {
-	return codec{
+func constructUnsupportedTypeCodec(t reflect.Type) *codec {
+	return &codec{
 		encode: constructUnsupportedTypeEncodeFunc(t),
 		decode: constructUnsupportedTypeDecodeFunc(t),
 	}
@@ -1000,7 +1016,7 @@ type structType struct {
 }
 
 type structField struct {
-	codec     codec
+	codec     *codec
 	offset    uintptr
 	empty     emptyFunc
 	tag       bool
