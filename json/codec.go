@@ -366,6 +366,21 @@ func constructSliceCodec(t reflect.Type, seen seenMap) *codec {
 	}
 
 	inner := constructCodec(e, seen, true)
+
+	// If encode/decode functions are nil, that means this is a recursive type,
+	// and so we can use delayed binding to define self-referential calls.
+	if inner.encode == nil {
+		inner.encode = func(e encoder, b []byte, p unsafe.Pointer) ([]byte, error) {
+			return c.encode(e, b, p)
+		}
+	}
+
+	if inner.decode == nil {
+		inner.decode = func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
+			return c.decode(d, b, p)
+		}
+	}
+
 	c.encode = constructSliceEncodeFunc(s, t, inner.encode)
 	c.decode = constructSliceDecodeFunc(s, t, inner.decode)
 
