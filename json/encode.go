@@ -278,20 +278,25 @@ func (e encoder) encodeTime(b []byte, p unsafe.Pointer) ([]byte, error) {
 }
 
 func (e encoder) encodeArray(b []byte, p unsafe.Pointer, n int, size uintptr, t reflect.Type, encode encodeFunc) ([]byte, error) {
+	if n == 0 {
+		return append(b, `[]`...), nil
+	}
+
 	start := len(b)
 	var err error
 	b = append(b, '[')
 
 	for i := range n {
-		if i != 0 {
-			b = append(b, ',')
-		}
 		if b, err = encode(e, b, unsafe.Pointer(uintptr(p)+(uintptr(i)*size))); err != nil {
 			return b[:start], err
 		}
+
+		b = append(b, ',')
 	}
 
-	b = append(b, ']')
+	// Replace trailing comma with closing bracket.
+	b[len(b)-1] = ']'
+
 	return b, nil
 }
 
@@ -311,6 +316,10 @@ func (e encoder) encodeMap(b []byte, p unsafe.Pointer, t reflect.Type, encodeKey
 		return append(b, "null"...), nil
 	}
 
+	if m.Len() == 0 {
+		return append(b, `{}`...), nil
+	}
+
 	keys := m.MapKeys()
 	if sortKeys != nil && (e.flags&SortMapKeys) != 0 {
 		sortKeys(keys)
@@ -320,12 +329,8 @@ func (e encoder) encodeMap(b []byte, p unsafe.Pointer, t reflect.Type, encodeKey
 	var err error
 	b = append(b, '{')
 
-	for i, k := range keys {
+	for _, k := range keys {
 		v := m.MapIndex(k)
-
-		if i != 0 {
-			b = append(b, ',')
-		}
 
 		if b, err = encodeKey(e, b, (*iface)(unsafe.Pointer(&k)).ptr); err != nil {
 			return b[:start], err
@@ -336,9 +341,13 @@ func (e encoder) encodeMap(b []byte, p unsafe.Pointer, t reflect.Type, encodeKey
 		if b, err = encodeValue(e, b, (*iface)(unsafe.Pointer(&v)).ptr); err != nil {
 			return b[:start], err
 		}
+
+		b = append(b, ',')
 	}
 
-	b = append(b, '}')
+	// Replace trailing comma with closing brace.
+	b[len(b)-1] = '}'
+
 	return b, nil
 }
 
@@ -366,33 +375,31 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 		return append(b, "null"...), nil
 	}
 
+	if len(m) == 0 {
+		return append(b, `{}`...), nil
+	}
+
 	if (e.flags & SortMapKeys) == 0 {
 		// Optimized code path when the program does not need the map keys to be
 		// sorted.
 		b = append(b, '{')
+		var err error
 
-		if len(m) != 0 {
-			var err error
-			i := 0
+		for k, v := range m {
+			b, _ = e.encodeString(b, unsafe.Pointer(&k))
+			b = append(b, ':')
 
-			for k, v := range m {
-				if i != 0 {
-					b = append(b, ',')
-				}
-
-				b, _ = e.encodeString(b, unsafe.Pointer(&k))
-				b = append(b, ':')
-
-				b, err = Append(b, v, e.flags)
-				if err != nil {
-					return b, err
-				}
-
-				i++
+			b, err = Append(b, v, e.flags)
+			if err != nil {
+				return b, err
 			}
+
+			b = append(b, ',')
 		}
 
-		b = append(b, '}')
+		// Replace trailing comma with closing brace.
+		b[len(b)-1] = '}'
+
 		return b, nil
 	}
 
@@ -409,11 +416,7 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 	var err error
 	b = append(b, '{')
 
-	for i, elem := range s.elements {
-		if i != 0 {
-			b = append(b, ',')
-		}
-
+	for _, elem := range s.elements {
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
 		b = append(b, ':')
 
@@ -421,7 +424,12 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 		if err != nil {
 			break
 		}
+
+		b = append(b, ',')
 	}
+
+	// Replace trailing comma with closing brace.
+	b[len(b)-1] = '}'
 
 	for i := range s.elements {
 		s.elements[i] = element{}
@@ -434,7 +442,6 @@ func (e encoder) encodeMapStringInterface(b []byte, p unsafe.Pointer) ([]byte, e
 		return b[:start], err
 	}
 
-	b = append(b, '}')
 	return b, nil
 }
 
@@ -444,34 +451,33 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 		return append(b, "null"...), nil
 	}
 
+	if len(m) == 0 {
+		return append(b, `{}`...), nil
+	}
+
 	if (e.flags & SortMapKeys) == 0 {
 		// Optimized code path when the program does not need the map keys to be
 		// sorted.
 		b = append(b, '{')
 
-		if len(m) != 0 {
-			var err error
-			i := 0
+		var err error
 
-			for k, v := range m {
-				if i != 0 {
-					b = append(b, ',')
-				}
+		for k, v := range m {
+			// encodeString doesn't return errors so we ignore it here
+			b, _ = e.encodeString(b, unsafe.Pointer(&k))
+			b = append(b, ':')
 
-				// encodeString doesn't return errors so we ignore it here
-				b, _ = e.encodeString(b, unsafe.Pointer(&k))
-				b = append(b, ':')
-
-				b, err = e.encodeRawMessage(b, unsafe.Pointer(&v))
-				if err != nil {
-					break
-				}
-
-				i++
+			b, err = e.encodeRawMessage(b, unsafe.Pointer(&v))
+			if err != nil {
+				break
 			}
+
+			b = append(b, ',')
 		}
 
-		b = append(b, '}')
+		// Replace trailing comma with closing brace.
+		b[len(b)-1] = '}'
+
 		return b, nil
 	}
 
@@ -488,11 +494,7 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 	var err error
 	b = append(b, '{')
 
-	for i, elem := range s.elements {
-		if i != 0 {
-			b = append(b, ',')
-		}
-
+	for _, elem := range s.elements {
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
 		b = append(b, ':')
 
@@ -500,7 +502,12 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 		if err != nil {
 			break
 		}
+
+		b = append(b, ',')
 	}
+
+	// Replace trailing comma with closing brace.
+	b[len(b)-1] = '}'
 
 	for i := range s.elements {
 		s.elements[i] = element{}
@@ -513,7 +520,6 @@ func (e encoder) encodeMapStringRawMessage(b []byte, p unsafe.Pointer) ([]byte, 
 		return b[:start], err
 	}
 
-	b = append(b, '}')
 	return b, nil
 }
 
@@ -523,29 +529,26 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 		return append(b, "null"...), nil
 	}
 
+	if len(m) == 0 {
+		return append(b, `{}`...), nil
+	}
+
 	if (e.flags & SortMapKeys) == 0 {
 		// Optimized code path when the program does not need the map keys to be
 		// sorted.
 		b = append(b, '{')
 
-		if len(m) != 0 {
-			i := 0
-
-			for k, v := range m {
-				if i != 0 {
-					b = append(b, ',')
-				}
-
-				// encodeString never returns an error so we ignore it here
-				b, _ = e.encodeString(b, unsafe.Pointer(&k))
-				b = append(b, ':')
-				b, _ = e.encodeString(b, unsafe.Pointer(&v))
-
-				i++
-			}
+		for k, v := range m {
+			// encodeString never returns an error so we ignore it here
+			b, _ = e.encodeString(b, unsafe.Pointer(&k))
+			b = append(b, ':')
+			b, _ = e.encodeString(b, unsafe.Pointer(&v))
+			b = append(b, ',')
 		}
 
-		b = append(b, '}')
+		// Replace trailing comma with closing brace.
+		b[len(b)-1] = '}'
+
 		return b, nil
 	}
 
@@ -561,16 +564,16 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 
 	b = append(b, '{')
 
-	for i, elem := range s.elements {
-		if i != 0 {
-			b = append(b, ',')
-		}
-
+	for _, elem := range s.elements {
 		// encodeString never returns an error so we ignore it here
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
 		b = append(b, ':')
 		b, _ = e.encodeString(b, unsafe.Pointer(elem.val.(*string)))
+		b = append(b, ',')
 	}
+
+	// Replace trailing comma with closing brace.
+	b[len(b)-1] = '}'
 
 	for i := range s.elements {
 		s.elements[i] = element{}
@@ -579,7 +582,6 @@ func (e encoder) encodeMapStringString(b []byte, p unsafe.Pointer) ([]byte, erro
 	s.elements = s.elements[:0]
 	mapslicePool.Put(s)
 
-	b = append(b, '}')
 	return b, nil
 }
 
@@ -589,35 +591,34 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 		return append(b, "null"...), nil
 	}
 
-	stringSize := unsafe.Sizeof("")
+	if len(m) == 0 {
+		return append(b, `{}`...), nil
+	}
 
-	if (e.flags & SortMapKeys) == 0 {
+	const stringSize = unsafe.Sizeof("")
+
+	if e.flags&SortMapKeys == 0 {
 		// Optimized code path when the program does not need the map keys to be
 		// sorted.
 		b = append(b, '{')
 
-		if len(m) != 0 {
-			var err error
-			i := 0
+		var err error
 
-			for k, v := range m {
-				if i != 0 {
-					b = append(b, ',')
-				}
+		for k, v := range m {
+			b, _ = e.encodeString(b, unsafe.Pointer(&k))
+			b = append(b, ':')
 
-				b, _ = e.encodeString(b, unsafe.Pointer(&k))
-				b = append(b, ':')
-
-				b, err = e.encodeSlice(b, unsafe.Pointer(&v), stringSize, sliceStringType, encoder.encodeString)
-				if err != nil {
-					return b, err
-				}
-
-				i++
+			b, err = e.encodeSlice(b, unsafe.Pointer(&v), stringSize, sliceStringType, encoder.encodeString)
+			if err != nil {
+				return b, err
 			}
+
+			b = append(b, ',')
 		}
 
-		b = append(b, '}')
+		// Replace trailing comma with closing brace.
+		b[len(b)-1] = '}'
+
 		return b, nil
 	}
 
@@ -635,11 +636,7 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 	var err error
 	b = append(b, '{')
 
-	for i, elem := range s.elements {
-		if i != 0 {
-			b = append(b, ',')
-		}
-
+	for _, elem := range s.elements {
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
 		b = append(b, ':')
 
@@ -647,7 +644,11 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 		if err != nil {
 			break
 		}
+
+		b = append(b, ',')
 	}
+
+	b[len(b)-1] = '}'
 
 	for i := range s.elements {
 		s.elements[i] = element{}
@@ -660,7 +661,6 @@ func (e encoder) encodeMapStringStringSlice(b []byte, p unsafe.Pointer) ([]byte,
 		return b[:start], err
 	}
 
-	b = append(b, '}')
 	return b, nil
 }
 
@@ -670,32 +670,26 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 		return append(b, "null"...), nil
 	}
 
+	if len(m) == 0 {
+		return append(b, `{}`...), nil
+	}
+
 	if (e.flags & SortMapKeys) == 0 {
 		// Optimized code path when the program does not need the map keys to be
 		// sorted.
 		b = append(b, '{')
 
-		if len(m) != 0 {
-			i := 0
-
-			for k, v := range m {
-				if i != 0 {
-					b = append(b, ',')
-				}
-
-				// encodeString never returns an error so we ignore it here
-				b, _ = e.encodeString(b, unsafe.Pointer(&k))
-				if v {
-					b = append(b, ":true"...)
-				} else {
-					b = append(b, ":false"...)
-				}
-
-				i++
+		for k, v := range m {
+			// encodeString never returns an error so we ignore it here
+			b, _ = e.encodeString(b, unsafe.Pointer(&k))
+			if v {
+				b = append(b, ":true,"...)
+			} else {
+				b = append(b, ":false,"...)
 			}
 		}
 
-		b = append(b, '}')
+		b[len(b)-1] = '}'
 		return b, nil
 	}
 
@@ -710,19 +704,17 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 
 	b = append(b, '{')
 
-	for i, elem := range s.elements {
-		if i != 0 {
-			b = append(b, ',')
-		}
-
+	for _, elem := range s.elements {
 		// encodeString never returns an error so we ignore it here
 		b, _ = e.encodeString(b, unsafe.Pointer(&elem.key))
 		if elem.val.(bool) {
-			b = append(b, ":true"...)
+			b = append(b, ":true,"...)
 		} else {
-			b = append(b, ":false"...)
+			b = append(b, ":false,"...)
 		}
 	}
+
+	b[len(b)-1] = '}'
 
 	for i := range s.elements {
 		s.elements[i] = element{}
@@ -731,7 +723,6 @@ func (e encoder) encodeMapStringBool(b []byte, p unsafe.Pointer) ([]byte, error)
 	s.elements = s.elements[:0]
 	mapslicePool.Put(s)
 
-	b = append(b, '}')
 	return b, nil
 }
 
@@ -740,7 +731,6 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 	var err error
 	var k string
 	var n int
-	b = append(b, '{')
 
 	escapeHTML := (e.flags & EscapeHTML) != 0
 
@@ -760,11 +750,7 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 
 		lengthBeforeKey := len(b)
 
-		if n != 0 {
-			b = append(b, k...)
-		} else {
-			b = append(b, k[1:]...)
-		}
+		b = append(b, k...)
 
 		if b, err = f.codec.encode(e, b, v); err != nil {
 			if err == (rollback{}) {
@@ -777,7 +763,17 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		n++
 	}
 
+	if n == 0 {
+		return append(b, `{}`...), nil
+	}
+
 	b = append(b, '}')
+
+	// Replace leading comma with opening curly brace.
+	// We do this after the closing curly brace append
+	// for better cache locality.
+	b[start] = '{'
+
 	return b, nil
 }
 
