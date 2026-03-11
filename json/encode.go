@@ -748,7 +748,11 @@ func (e encoder) encodeStruct(b []byte, p unsafe.Pointer, st *structType) ([]byt
 		f := &st.fields[i]
 		v := unsafe.Pointer(uintptr(p) + f.offset)
 
-		if f.omitempty && f.empty(v) {
+		switch {
+		case f.omitempty && f.isEmpty(v):
+			continue
+
+		case f.omitzero && f.isZero(v):
 			continue
 		}
 
@@ -794,22 +798,21 @@ func (e encoder) encodeEmbeddedStructPointer(b []byte, p unsafe.Pointer, t refle
 }
 
 func (e encoder) encodePointer(b []byte, p unsafe.Pointer, t reflect.Type, encode encodeFunc) ([]byte, error) {
-	if p = *(*unsafe.Pointer)(p); p != nil {
-		if e.ptrDepth++; e.ptrDepth >= startDetectingCyclesAfter {
-			if _, seen := e.ptrSeen[p]; seen {
-				// TODO: reconstruct the reflect.Value from p + t so we can set
-				// the erorr's Value field?
-				return b, &UnsupportedValueError{Str: fmt.Sprintf("encountered a cycle via %s", t)}
-			}
-			if e.ptrSeen == nil {
-				e.ptrSeen = make(map[unsafe.Pointer]struct{})
-			}
-			e.ptrSeen[p] = struct{}{}
-			defer delete(e.ptrSeen, p)
-		}
-		return encode(e, b, p)
+	// p was a pointer to the actual user data pointer:
+	// dereference it to operate on the user data pointer.
+	p = *(*unsafe.Pointer)(p)
+	if p == nil {
+		return e.encodeNull(b, nil)
 	}
-	return e.encodeNull(b, nil)
+
+	err := checkRefCycle(&e, t, p)
+	if err != nil {
+		return b, err
+	}
+
+	defer freeRefCycleInfo(&e, p)
+
+	return encode(e, b, p)
 }
 
 func (e encoder) encodeInterface(b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -967,4 +970,47 @@ func appendCompactEscapeHTML(dst []byte, src []byte) []byte {
 	}
 
 	return dst
+}
+
+// checkRefCycle returns an error if a reference cycle was detected.
+func checkRefCycle(e *encoder, t reflect.Type, p unsafe.Pointer) error {
+	e.ptrDepth++
+	if e.ptrDepth < startDetectingCyclesAfter {
+		return nil
+	}
+
+	_, seen := e.ptrSeen[p]
+	if seen {
+		v := reflect.NewAt(t, p)
+		return &UnsupportedValueError{
+			Value: v,
+			Str:   fmt.Sprintf("encountered a cycle via %s", t),
+		}
+	}
+
+	if e.ptrSeen == nil {
+		e.ptrSeen = cycleMapPool.Get().(cycleMap)
+	}
+
+	e.ptrSeen[p] = struct{}{}
+
+	return nil
+}
+
+func freeRefCycleInfo(e *encoder, p unsafe.Pointer) {
+	if e.ptrSeen == nil {
+		// The map hasn't yet been allocated (not enough recursion depth),
+		// so there's not any work to do in this function.
+		return
+	}
+
+	delete(e.ptrSeen, p)
+	if len(e.ptrSeen) != 0 {
+		// There are other keys in the map, so we can't release it into the pool.
+		return
+	}
+
+	m := e.ptrSeen
+	e.ptrSeen = nil
+	cycleMapPool.Put(m)
 }
