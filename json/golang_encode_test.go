@@ -136,21 +136,85 @@ func TestEncodeRenamedByteSlice(t *testing.T) {
 	}
 }
 
-var unsupportedValues = []any{
-	math.NaN(),
-	math.Inf(-1),
-	math.Inf(1),
+type SamePointerNoCycle struct {
+	Ptr1, Ptr2 *SamePointerNoCycle
+}
+
+var samePointerNoCycle = &SamePointerNoCycle{}
+
+type PointerCycle struct {
+	Ptr *PointerCycle
+}
+
+var pointerCycle = &PointerCycle{}
+
+type PointerCycleIndirect struct {
+	Ptrs []any
+}
+
+type RecursiveSlice []RecursiveSlice
+
+var (
+	pointerCycleIndirect = &PointerCycleIndirect{}
+	mapCycle             = make(map[string]any)
+	sliceCycle           = []any{nil}
+	sliceNoCycle         = []any{nil, nil}
+	recursiveSliceCycle  = []RecursiveSlice{nil}
+)
+
+func init() {
+	ptr := &SamePointerNoCycle{}
+	samePointerNoCycle.Ptr1 = ptr
+	samePointerNoCycle.Ptr2 = ptr
+
+	pointerCycle.Ptr = pointerCycle
+	pointerCycleIndirect.Ptrs = []any{pointerCycleIndirect}
+
+	mapCycle["x"] = mapCycle
+	sliceCycle[0] = sliceCycle
+	sliceNoCycle[1] = sliceNoCycle[:1]
+	for i := startDetectingCyclesAfter; i > 0; i-- {
+		sliceNoCycle = []any{sliceNoCycle}
+	}
+	recursiveSliceCycle[0] = recursiveSliceCycle
+}
+
+func TestSamePointerNoCycle(t *testing.T) {
+	if _, err := Marshal(samePointerNoCycle); err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+}
+
+func TestSliceNoCycle(t *testing.T) {
+	if _, err := Marshal(sliceNoCycle); err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
 }
 
 func TestUnsupportedValues(t *testing.T) {
-	for _, v := range unsupportedValues {
-		if _, err := Marshal(v); err != nil {
-			if _, ok := err.(*UnsupportedValueError); !ok {
-				t.Errorf("for %v, got %T want UnsupportedValueError", v, err)
+	tests := []struct {
+		CaseName
+		in any
+	}{
+		{Name(""), math.NaN()},
+		{Name(""), math.Inf(-1)},
+		{Name(""), math.Inf(1)},
+		{Name(""), pointerCycle},
+		{Name(""), pointerCycleIndirect},
+		{Name(""), mapCycle},
+		{Name(""), sliceCycle},
+		{Name(""), recursiveSliceCycle},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			if _, err := Marshal(tt.in); err != nil {
+				if _, ok := err.(*UnsupportedValueError); !ok {
+					t.Errorf("%s: Marshal error:\n\tgot:  %T\n\twant: %T", tt.Where, err, new(UnsupportedValueError))
+				}
+			} else {
+				t.Errorf("%s: Marshal error: got nil, want non-nil", tt.Where)
 			}
-		} else {
-			t.Errorf("for %v, expected error", v)
-		}
+		})
 	}
 }
 
