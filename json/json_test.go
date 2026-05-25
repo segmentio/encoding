@@ -1839,6 +1839,19 @@ func TestSetAppendNewline(t *testing.T) {
 	}
 }
 
+type errWriter struct{ err error }
+
+func (w *errWriter) Write(p []byte) (int, error) { return 0, w.err }
+
+func TestEncoderEncodeReturnsWriterError(t *testing.T) {
+	want := errors.New("boom")
+	enc := NewEncoder(&errWriter{err: want})
+
+	if err := enc.Encode("v"); !errors.Is(err, want) {
+		t.Errorf("expected writer error to surface, got %v", err)
+	}
+}
+
 func TestEscapeString(t *testing.T) {
 	b := Escape(`value`)
 	x := []byte(`"value"`)
