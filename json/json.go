@@ -533,7 +533,7 @@ func (enc *Encoder) Encode(v any) error {
 		b = enc.buffer.Bytes()
 	}
 
-	if _, err := enc.writer.Write(b); err != nil {
+	if _, err = enc.writer.Write(b); err != nil {
 		enc.err = err
 	}
 
