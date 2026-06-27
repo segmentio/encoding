@@ -691,11 +691,6 @@ func (d decoder) parseArray(b []byte) ([]byte, []byte, Kind, error) {
 	}
 }
 
-// maxNestingDepth bounds how deeply nested a JSON document may be before
-// decoding fails. Without it, parseValue/parseArray/parseObject recurse without
-// limit on attacker-controlled input and exhaust the goroutine stack, which is a
-// fatal, unrecoverable crash in Go (an unauthenticated denial of service). The
-// value matches the limit used by the standard library's encoding/json.
 const maxNestingDepth = 10000
 
 func (d decoder) parseValue(b []byte) ([]byte, []byte, Kind, error) {

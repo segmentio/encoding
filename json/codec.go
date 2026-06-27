@@ -43,9 +43,6 @@ type encoder struct {
 
 type decoder struct {
 	flags ParseFlags
-	// depth tracks the current JSON nesting depth while decoding so that
-	// deeply nested input cannot exhaust the goroutine stack (see
-	// maxNestingDepth). Mirrors the protection in the standard library.
 	depth int
 }
 
