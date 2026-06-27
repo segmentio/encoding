@@ -43,6 +43,7 @@ type encoder struct {
 
 type decoder struct {
 	flags ParseFlags
+	depth int
 }
 
 type (

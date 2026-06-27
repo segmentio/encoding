@@ -691,9 +691,16 @@ func (d decoder) parseArray(b []byte) ([]byte, []byte, Kind, error) {
 	}
 }
 
+const maxNestingDepth = 10000
+
 func (d decoder) parseValue(b []byte) ([]byte, []byte, Kind, error) {
 	if len(b) == 0 {
 		return nil, b, Undefined, syntaxError(b, "unexpected end of JSON input")
+	}
+
+	d.depth++
+	if d.depth > maxNestingDepth {
+		return nil, b, Undefined, syntaxError(b, "exceeded maximum nesting depth")
 	}
 
 	var v []byte
