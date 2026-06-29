@@ -495,6 +495,32 @@ func TestCodecDuration(t *testing.T) {
 	}
 }
 
+// TestDecodeDurationOverflow checks that decoding an integer that overflows
+// int64 into a time.Duration reports the error against time.Duration, the same
+// way the int64 decoder does. Previously the duration decoder reported these
+// errors against int32, which is neither the field's type nor consistent with
+// the rest of the package.
+func TestDecodeDurationOverflow(t *testing.T) {
+	const overflow = `100000000000000000000000`
+
+	var d time.Duration
+	durErr := Unmarshal([]byte(`{"D":`+overflow+`}`), &struct{ D *time.Duration }{D: &d})
+	if durErr == nil {
+		t.Fatal("expected an error decoding an overflowing duration, got nil")
+	}
+
+	ute, ok := durErr.(*UnmarshalTypeError)
+	if !ok {
+		t.Fatalf("expected *UnmarshalTypeError, got %T: %v", durErr, durErr)
+	}
+	if want := reflect.TypeOf(time.Duration(0)); ute.Type != want {
+		t.Errorf("UnmarshalTypeError.Type = %v, want %v", ute.Type, want)
+	}
+	if strings.Contains(durErr.Error(), "int32") {
+		t.Errorf("error should not mention int32: %v", durErr)
+	}
+}
+
 var numericParseTests = [...]struct {
 	name  string
 	input string

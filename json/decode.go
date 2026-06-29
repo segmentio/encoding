@@ -447,11 +447,7 @@ func (d decoder) decodeDuration(b []byte, p unsafe.Pointer) ([]byte, error) {
 	if len(b) > 0 && b[0] != '"' {
 		v, r, err := d.parseInt(b, durationType)
 		if err != nil {
-			return d.inputError(b, int32Type)
-		}
-
-		if v < math.MinInt64 || v > math.MaxInt64 {
-			return r, unmarshalOverflow(b[:len(b)-len(r)], int32Type)
+			return r, err
 		}
 
 		*(*time.Duration)(p) = time.Duration(v)
