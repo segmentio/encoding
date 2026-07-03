@@ -35,6 +35,10 @@ const (
 // Valid check value to verify whether or not it is a valid iso8601 time
 // representation.
 func Valid(value string, flags ValidFlags) bool {
+	if flags == Flexible {
+		return validFlexible(value)
+	}
+
 	var ok bool
 
 	// year
@@ -172,6 +176,105 @@ func readByte(value string, c byte) (string, bool) {
 		return value, false
 	}
 	return value[1:], true
+}
+
+func validFlexible(value string) bool {
+	n := len(value)
+	if n < 10 {
+		return false
+	}
+
+	if !isDigit(value[0]) ||
+		!isDigit(value[1]) ||
+		!isDigit(value[2]) ||
+		!isDigit(value[3]) ||
+		value[4] != '-' ||
+		!isDigit(value[5]) ||
+		!isDigit(value[6]) ||
+		value[7] != '-' ||
+		!isDigit(value[8]) ||
+		!isDigit(value[9]) {
+		return false
+	}
+
+	if n == 10 {
+		return true // date only
+	}
+
+	c := value[10]
+	if c != 'T' && c != ' ' {
+		return false
+	}
+
+	if n < 19 {
+		return false
+	}
+	if !isDigit(value[11]) ||
+		!isDigit(value[12]) ||
+		value[13] != ':' ||
+		!isDigit(value[14]) ||
+		!isDigit(value[15]) ||
+		value[16] != ':' ||
+		!isDigit(value[17]) ||
+		!isDigit(value[18]) {
+		return false
+	}
+
+	i := 19
+	if i == n {
+		return true // missing subsecond and timezone
+	}
+
+	if value[i] == '.' {
+		i++
+		j := i
+		end := i + 9
+		if end > n {
+			end = n
+		}
+		for i < end && isDigit(value[i]) {
+			i++
+		}
+		if i == j {
+			return false
+		}
+		if i == n {
+			return true // missing timezone
+		}
+	}
+
+	if value[i] == 'Z' {
+		return i+1 == n
+	}
+
+	if value[i] == ' ' {
+		i++
+		if i == n {
+			return false
+		}
+	}
+
+	if value[i] != '+' && value[i] != '-' {
+		return false
+	}
+	i++
+
+	if n-i < 4 {
+		return false
+	}
+	if !isDigit(value[i]) || !isDigit(value[i+1]) {
+		return false
+	}
+	i += 2
+
+	if i < n && value[i] == ':' {
+		i++
+	}
+
+	if n-i != 2 {
+		return false
+	}
+	return isDigit(value[i]) && isDigit(value[i+1])
 }
 
 func isDigit(c byte) bool {
