@@ -2,6 +2,7 @@ package thrift_test
 
 import (
 	"bytes"
+	"encoding/binary"
 	"reflect"
 	"strings"
 	"testing"
@@ -200,5 +201,41 @@ func testProtocolReadWriteValues(t *testing.T, p thrift.Protocol) {
 				t.Errorf("unexpected trailing bytes: %d", b.Len())
 			}
 		})
+	}
+}
+
+// TestBinaryLengthBounds checks that a length larger than the data behind it is
+// refused before it is used to size an allocation, while a length the data does
+// satisfy still round-trips.
+func TestBinaryLengthBounds(t *testing.T) {
+	p := &thrift.BinaryProtocol{}
+
+	// A non-strict message header claiming a 64MiB name, with no name behind it.
+	hostile := make([]byte, 4)
+	binary.BigEndian.PutUint32(hostile, 1<<26)
+	hostile[0] &= 0x7f // clear the strict bit
+	if _, err := p.NewReader(bytes.NewReader(hostile)).ReadMessage(); err == nil {
+		t.Fatal("expected an error for a name length with no data behind it")
+	}
+
+	// ReadBytes goes through the same check.
+	hostileBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(hostileBytes, 1<<26)
+	if _, err := p.NewReader(bytes.NewReader(hostileBytes)).ReadBytes(); err == nil {
+		t.Fatal("expected an error for a byte length with no data behind it")
+	}
+
+	// A well formed message must still parse.
+	var good bytes.Buffer
+	w := p.NewWriter(&good)
+	if err := w.WriteMessage(thrift.Message{Type: thrift.Call, Name: "ping", SeqID: 1}); err != nil {
+		t.Fatal(err)
+	}
+	m, err := p.NewReader(bytes.NewReader(good.Bytes())).ReadMessage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Name != "ping" {
+		t.Fatalf("round trip changed the name: %q", m.Name)
 	}
 }

@@ -108,7 +108,22 @@ func (r *binaryReader) ReadLength() (int, error) {
 	if n > math.MaxInt32 {
 		return 0, fmt.Errorf("length out of range: %d", n)
 	}
+	if err := r.checkLength(int(n)); err != nil {
+		return 0, err
+	}
 	return int(n), nil
+}
+
+// checkLength rejects a length that the underlying reader cannot possibly
+// satisfy. The length is read from the wire, and the range check above still
+// admits values up to 2GiB, so without this a four byte header can make the
+// caller allocate gigabytes before io.ReadFull discovers there is no data
+// behind it. Readers that cannot report their remaining size are left alone.
+func (r *binaryReader) checkLength(n int) error {
+	if lr, ok := r.r.(interface{ Len() int }); ok && n > lr.Len() {
+		return fmt.Errorf("length %d exceeds the %d bytes remaining", n, lr.Len())
+	}
+	return nil
 }
 
 func (r *binaryReader) ReadMessage() (Message, error) {
@@ -121,6 +136,9 @@ func (r *binaryReader) ReadMessage() (Message, error) {
 
 	if (b[0] >> 7) == 0 { // non-strict
 		n := int(binary.BigEndian.Uint32(b))
+		if err := r.checkLength(n); err != nil {
+			return m, err
+		}
 		s := make([]byte, n)
 		_, err := io.ReadFull(r.r, s)
 		if err != nil {
