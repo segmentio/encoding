@@ -267,9 +267,21 @@ func (d decoder) decodeNumber(b []byte, p unsafe.Pointer) ([]byte, error) {
 		return b[4:], nil
 	}
 
-	v, r, _, err := d.parseNumber(b)
-	if err != nil {
-		return d.inputError(b, numberType)
+	var v, r []byte
+	var err error
+	if len(b) > 0 && b[0] == '"' {
+		v, r, _, err = d.parseStringUnquote(b, nil)
+		if err != nil {
+			return r, err
+		}
+		if _, rest, _, err := d.parseNumber(v); err != nil || len(rest) != 0 {
+			return r, fmt.Errorf("json: invalid number literal %q", v)
+		}
+	} else {
+		v, r, _, err = d.parseNumber(b)
+		if err != nil {
+			return d.inputError(b, numberType)
+		}
 	}
 
 	if (d.flags & DontCopyNumber) != 0 {
