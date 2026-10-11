@@ -17,7 +17,10 @@ const (
 // escaping, the return value is -1.
 func escapeIndex(s string, escapeHTML bool) int {
 	chunks := stringToUint64(s)
-	for _, n := range chunks {
+	for i, n := range chunks {
+		if endianness == 1 {
+			n = bits.ReverseBytes64(n)
+		}
 		// combine masks before checking for the MSB of each byte. We include
 		// `n` in the mask to check whether any of the *input* byte MSBs were
 		// set (i.e. the byte was outside the ASCII range).
@@ -26,7 +29,7 @@ func escapeIndex(s string, escapeHTML bool) int {
 			mask |= contains(n, '<') | contains(n, '>') | contains(n, '&')
 		}
 		if (mask & msb) != 0 {
-			return bits.TrailingZeros64(mask&msb) / 8
+			return i*8 + bits.TrailingZeros64(mask&msb)/8
 		}
 	}
 
