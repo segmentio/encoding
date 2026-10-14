@@ -1993,3 +1993,19 @@ func TestKind(t *testing.T) {
 		}
 	}
 }
+
+type errWriter struct{}
+
+func (ew *errWriter) Write([]byte) (n int, err error) {
+	return 0, errors.New("test-error")
+}
+
+func TestWriterErr(t *testing.T) {
+	enc := NewEncoder(&errWriter{})
+	err := enc.Encode("")
+	if err == nil {
+		t.Error("expected error not returned")
+	} else if err.Error() != "test-error" {
+		t.Errorf("unexpected error returned: want=test-error got=%s", err.Error())
+	}
+}
