@@ -538,7 +538,7 @@ func (enc *Encoder) Encode(v any) error {
 	}
 
 	encoderBufferPool.Put(buf)
-	return err
+	return enc.err
 }
 
 // SetEscapeHTML is documented at https://golang.org/pkg/encoding/json/#Encoder.SetEscapeHTML
