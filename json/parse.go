@@ -130,13 +130,15 @@ func (d decoder) parseInt(b []byte, t reflect.Type) (int64, []byte, error) {
 			return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 		}
 
+		const max = math.MaxInt64
+		const lim = max / 10
+
 		for ; count < len(b) && b[count] >= '0' && b[count] <= '9'; count++ {
 			x := int64(b[count] - '0')
-			next := value*10 + x
-			if next < value {
+			if value > lim || (value == lim && x > max%10) {
 				return 0, b, unmarshalOverflow(b, t)
 			}
-			value = next
+			value = value*10 + x
 		}
 
 		if count == 0 {
@@ -172,13 +174,15 @@ func (d decoder) parseUint(b []byte, t reflect.Type) (uint64, []byte, error) {
 		return 0, b, syntaxError(b, "invalid leading character '0' in integer")
 	}
 
+	const max = math.MaxUint64
+	const lim = max / 10
+
 	for ; count < len(b) && b[count] >= '0' && b[count] <= '9'; count++ {
 		x := uint64(b[count] - '0')
-		next := value*10 + x
-		if next < value {
+		if value > lim || (value == lim && x > max%10) {
 			return 0, b, unmarshalOverflow(b, t)
 		}
-		value = next
+		value = value*10 + x
 	}
 
 	if count == 0 {
