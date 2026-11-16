@@ -2,6 +2,7 @@ package json
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -223,5 +224,99 @@ func BenchmarkParseStringEscapeAll(b *testing.B) {
 			b.Fatal(err)
 		}
 		s = ""
+	}
+}
+
+func TestParseIntOverflow(t *testing.T) {
+	inputs := []string{
+		"9223372036854775806",
+		"9223372036854775807",
+		"9223372036854775808",
+		"9223372036854775809",
+		"9223372036854775810",
+		"10000000000000000000",
+		"18446744073709551616",
+		"21000000000000000000",
+		"92233720368547758070",
+		"-9223372036854775807",
+		"-9223372036854775808",
+		"-9223372036854775809",
+	}
+
+	d := decoder{}
+	for _, in := range inputs {
+		t.Run(in, func(t *testing.T) {
+			want, wantErr := strconv.ParseInt(in, 10, 64)
+			got, _, err := d.parseInt([]byte(in), int64Type)
+
+			if wantErr != nil {
+				if err == nil {
+					t.Errorf("expected an overflow error, got %d", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if got != want {
+				t.Errorf("got %d, want %d", got, want)
+			}
+		})
+	}
+}
+
+func TestParseUintOverflow(t *testing.T) {
+	inputs := []string{
+		"18446744073709551614",
+		"18446744073709551615",
+		"18446744073709551616",
+		"18446744073709551617",
+		"18446744073709551620",
+		"20000000000000000000",
+		"21000000000000000000",
+		"99999999999999999999",
+		"184467440737095516150",
+	}
+
+	d := decoder{}
+	for _, in := range inputs {
+		t.Run(in, func(t *testing.T) {
+			want, wantErr := strconv.ParseUint(in, 10, 64)
+			got, _, err := d.parseUint([]byte(in), uint64Type)
+
+			if wantErr != nil {
+				if err == nil {
+					t.Errorf("expected an overflow error, got %d", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if got != want {
+				t.Errorf("got %d, want %d", got, want)
+			}
+		})
+	}
+}
+
+func TestUnmarshalIntegerOverflow(t *testing.T) {
+	inputs := []string{
+		`{"u":18446744073709551616}`,
+		`{"u":21000000000000000000}`,
+		`{"i":9223372036854775808}`,
+		`{"i":21000000000000000000}`,
+	}
+
+	for _, in := range inputs {
+		t.Run(in, func(t *testing.T) {
+			var v struct {
+				U uint64 `json:"u"`
+				I int64  `json:"i"`
+			}
+			if err := Unmarshal([]byte(in), &v); err == nil {
+				t.Errorf("expected an overflow error, got %+v", v)
+			}
+		})
 	}
 }
