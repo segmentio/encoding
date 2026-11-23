@@ -245,6 +245,23 @@ func constructStringEncodeFunc(encode encodeFunc) encodeFunc {
 	}
 }
 
+// constructStringFieldEncodeFunc builds the encoder for a struct field that
+// carries the ",string" option.
+//
+// For a pointer field the quoting must apply to the pointed-to value rather
+// than to the pointer itself, otherwise a nil pointer encodes as the invalid
+// `"null"` instead of `null`. This matches the behavior of encoding/json, which
+// applies the option to the underlying value. For non-pointer fields the field
+// encoder (ptrEncode) is quoted directly.
+func constructStringFieldEncodeFunc(t reflect.Type, seen map[reflect.Type]*structType, canAddr bool, ptrEncode encodeFunc) encodeFunc {
+	if t.Kind() == reflect.Ptr {
+		elem := t.Elem()
+		elemEncode := constructCodec(elem, seen, canAddr).encode
+		return constructPointerEncodeFunc(elem, constructStringEncodeFunc(elemEncode))
+	}
+	return constructStringEncodeFunc(ptrEncode)
+}
+
 func constructStringDecodeFunc(decode decodeFunc) decodeFunc {
 	return func(d decoder, b []byte, p unsafe.Pointer) ([]byte, error) {
 		return d.decodeFromString(b, p, decode)
@@ -661,13 +678,13 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 				reflect.Uint16,
 				reflect.Uint32,
 				reflect.Uint64:
-				codec.encode = constructStringEncodeFunc(codec.encode)
+				codec.encode = constructStringFieldEncodeFunc(f.Type, seen, canAddr, codec.encode)
 				codec.decode = constructStringToIntDecodeFunc(typ, codec.decode)
 			case reflect.Bool,
 				reflect.Float32,
 				reflect.Float64,
 				reflect.String:
-				codec.encode = constructStringEncodeFunc(codec.encode)
+				codec.encode = constructStringFieldEncodeFunc(f.Type, seen, canAddr, codec.encode)
 				codec.decode = constructStringDecodeFunc(codec.decode)
 			}
 		}
