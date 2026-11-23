@@ -1993,3 +1993,51 @@ func TestKind(t *testing.T) {
 		}
 	}
 }
+
+// TestMarshalStringTagPointer verifies that the ",string" option applies to the
+// pointed-to value of a pointer field, so a nil pointer encodes as the JSON
+// literal null rather than the invalid quoted "null". See issue #30.
+func TestMarshalStringTagPointer(t *testing.T) {
+	five := 5
+	seven := uint(7)
+	yes := true
+	pi := 3.14
+	hello := "hello"
+
+	type S struct {
+		I  *int     `json:"i,string"`
+		U  *uint    `json:"u,string"`
+		B  *bool    `json:"b,string"`
+		F  *float64 `json:"f,string"`
+		St *string  `json:"s,string"`
+	}
+
+	for _, test := range []struct {
+		name string
+		in   S
+	}{
+		{
+			name: "nil pointers encode as null, not quoted null",
+			in:   S{},
+		},
+		{
+			name: "non-nil pointers encode as quoted values",
+			in:   S{I: &five, U: &seven, B: &yes, F: &pi, St: &hello},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			// Use encoding/json as the reference implementation.
+			want, err := json.Marshal(test.in)
+			if err != nil {
+				t.Fatalf("encoding/json.Marshal error: %v", err)
+			}
+			got, err := Marshal(test.in)
+			if err != nil {
+				t.Fatalf("Marshal error: %v", err)
+			}
+			if string(got) != string(want) {
+				t.Errorf("mismatch with encoding/json\nwant: %s\ngot:  %s", want, got)
+			}
+		})
+	}
+}
