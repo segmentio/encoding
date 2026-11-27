@@ -28,10 +28,9 @@ func Parse(input string) (time.Time, error) {
 		t2 := binary.LittleEndian.Uint64(b[8:16])
 		t3 := uint64(b[16]) | uint64(b[17])<<8 | uint64(b[18])<<16 | uint64('Z')<<24
 
-		// Check for valid separators by masking input with "    -  -  T  :  :  Z".
-		// If separators are all valid, replace them with a '0' (0x30) byte and
-		// check all bytes are now numeric.
-		if !match(t1, mask1) || !match(t2, mask2) || !match(t3, mask3) {
+		// Compare the entire separator bytes before replacing them with '0'
+		// for the digit check below.
+		if t1&0xff0000ff00000000 != mask1 || t2&0x0000ff0000ff0000 != mask2 || b[16] != ':' {
 			return time.Time{}, errInvalidTimestamp
 		}
 		t1 ^= replace1
@@ -129,10 +128,6 @@ func validate(year, month, day, hour, minute, second uint64) error {
 		}
 	}
 	return nil
-}
-
-func match(u, mask uint64) bool {
-	return (u & mask) == mask
 }
 
 func nonNumeric(u uint64) uint64 {

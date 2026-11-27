@@ -214,6 +214,11 @@ func TestParseInvalid(t *testing.T) {
 	for _, input := range []string{
 		// 20 bytes
 		"XXXXXXXXXXXXXXXXXXXX",
+		"2024/03-25T21:36:12Z",
+		"2024-03/25T21:36:12Z",
+		"2024-03-25U21:36:12Z",
+		"2024-03-25T21;36:12Z",
+		"2024-03-25T21:36;12.123Z",
 		"00000000000000000000",
 		"1900-02-29T00:00:00Z", // 28 days in month (not a leap year)
 		"2021-02-29T00:00:00Z", // 28 days in month (not a leap year)
