@@ -549,7 +549,7 @@ func constructEmbeddedStructPointerDecodeFunc(t reflect.Type, unexported bool, o
 
 func appendStructFields(fields []structField, t reflect.Type, offset uintptr, seen map[reflect.Type]*structType, canAddr bool) []structField {
 	type embeddedField struct {
-		index      int
+		index      uint64
 		offset     uintptr
 		pointer    bool
 		unexported bool
@@ -616,7 +616,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 
 				for j := range subtype.fields {
 					embedded = append(embedded, embeddedField{
-						index:      i<<32 | j,
+						index:      uint64(i)<<32 | uint64(j),
 						offset:     offset + f.Offset,
 						pointer:    ptr,
 						unexported: unexported,
@@ -679,7 +679,7 @@ func appendStructFields(fields []structField, t reflect.Type, offset uintptr, se
 			tag:       tag,
 			omitempty: omitempty,
 			name:      name,
-			index:     i << 32,
+			index:     uint64(i) << 32,
 			typ:       f.Type,
 			zero:      reflect.Zero(f.Type),
 		})
@@ -983,7 +983,7 @@ type structField struct {
 	name      string
 	typ       reflect.Type
 	zero      reflect.Value
-	index     int
+	index     uint64
 }
 
 func unmarshalTypeError(b []byte, t reflect.Type) error {
